@@ -9,7 +9,7 @@ from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from draw import *
 
 # global test campaign
-test_campaign = None
+g_test_campaign = None
 
 
 class Analysis(Draw):
@@ -61,12 +61,12 @@ class Analysis(Draw):
         return join(self.DataDir, datetime.strptime(self.TestCampaign, '%Y%m').strftime('%Y-%m'))
 
     def load_test_campaign(self, testcampaign):
-        global test_campaign
-        if test_campaign is None:
-            test_campaign = self.Config.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
-        if test_campaign not in self.get_test_campaigns():
-            critical('The Testcampaign {} does not exist!'.format(test_campaign))
-        return test_campaign
+        global g_test_campaign
+        if g_test_campaign is None:
+            g_test_campaign = self.Config.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
+        if g_test_campaign not in self.get_test_campaigns():
+            critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
+        return g_test_campaign
 
     def get_test_campaigns(self):
         return [basename(path).replace('-', '') for path in glob(join(self.DataDir, '*'))]
