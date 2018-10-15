@@ -17,12 +17,12 @@ from draw import Draw, ufloat
 
 class Converter:
 
-    def __init__(self, filename):
+    def __init__(self, filename, plane, save_dir=None):
 
         self.OldFile = read_root_file(filename)
-        self.OldTree = self.OldFile.Get('Plane7').Get('Hits')
+        self.OldTree = self.OldFile.Get('Plane{}'.format(6 + plane)).Get('Hits')
         self.EventTree = self.OldFile.Get('Event')
-        self.NewFile = self.create_new_file(filename)
+        self.NewFile = self.create_new_file(filename, save_dir)
         self.NewTree = self.OldTree.CloneTree(0)
 
         # New Branches
@@ -37,7 +37,7 @@ class Converter:
         # Charge Fits
         self.FitParameters = zeros((52, 80, 4))
         self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-        self.get_fit_data(filename)
+        self.get_fit_data(save_dir)
 
         # Vars
         self.Hits = []
@@ -51,9 +51,11 @@ class Converter:
         self.ProgressBar.start()
 
     @staticmethod
-    def create_new_file(filename):
+    def create_new_file(filename, save_dir):
         nr = basename(filename).strip('.root').split('_')[-1]
-        return TFile(join(dirname(filename), 'Clustered_{}.root'.format(nr)), 'RECREATE')
+        if save_dir is None:
+            return TFile(join(dirname(filename), 'Clustered_{}.root'.format(nr)), 'RECREATE')
+        return TFile(join(save_dir, 'Clustered_{}.root'.format(nr)), 'RECREATE')
 
     def set_branches(self):
         for key, value in self.ScalarBranches.iteritems():
@@ -68,14 +70,14 @@ class Converter:
         self.ClusteredHits = []
         self.Hits = []
 
-    def get_fit_data(self, filename):
-        pickle_name = 'fitpars.pickle'
+    def get_fit_data(self, save_dir):
+        pickle_name = 'fitpars_{}.pickle'.format(basename(save_dir))
         if file_exists(pickle_name):
             f = open(pickle_name, 'r')
             self.FitParameters = load(f)
             f.close()
         else:
-            f = open(join(dirname(dirname(filename)), 'phCalibration_C0.dat'))
+            f = open(join(save_dir, 'phCalibration.dat'))
             f.readline()
             low_range = [int(val) for val in f.readline().split(':')[-1].split()]
             high_range = [int(val) for val in f.readline().split(':')[-1].split()]
@@ -89,9 +91,13 @@ class Converter:
                 y = [int(val) for val in data[0].split()]
                 x1 = [ufloat(ix, 1) for (ix, iy) in zip(x, y) if iy]
                 y1 = [ufloat(iy, 1) for iy in y if iy]
+                col, row = [int(val) for val in data[-1].split()]
+                if not x1:
+                    self.FitParameters[col][row] = [1, 1, 1, 1]
+                    self.ProgressBar.update(i + 1)
+                    continue
                 g = d.make_tgrapherrors('gcal', 'gcal', x=x1, y=y1)
                 g.Fit(self.Fit, 'q', '', 0, 3000)
-                col, row = [int(val) for val in data[-1].split()]
                 self.FitParameters[col][row] = [self.Fit.GetParameter(i) for i in xrange(4)]
                 self.ProgressBar.update(i + 1)
             self.ProgressBar.finish()
@@ -105,6 +111,8 @@ class Converter:
         return self.Fit.GetX(adc)
 
     def clusterise(self):
+        if len(self.Hits) > 50:
+            return
         for hit in self.Hits:
             if hit in self.ClusteredHits:
                 continue
@@ -145,7 +153,8 @@ class Converter:
                 self.VectorBranches['ClusterY'].push_back(cluster.y())
                 self.VectorBranches['ClusterVcal'].push_back(cluster.charge())
             self.NewTree.Fill()
-            self.ProgressBar.update(i + 1)
+            if not i % 100:
+                self.ProgressBar.update(i + 1)
         self.ProgressBar.finish()
         self.NewFile.cd()
         self.NewFile.Write()
@@ -199,6 +208,8 @@ class Cluster:
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('filename')
+    # noinspection PyTypeChecker
+    p.add_argument('plane', nargs='?', default=0, type=int)
     args = p.parse_args()
-    z = Converter(args.filename)
+    z = Converter(args.filename, args.plane)
     z.run()
