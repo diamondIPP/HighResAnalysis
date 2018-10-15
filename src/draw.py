@@ -13,6 +13,9 @@ from uncertainties.core import Variable, ufloat
 from screeninfo import get_monitors
 
 
+resolution = None
+
+
 class Draw:
 
     def __init__(self, verbose=True, titles=True, save_dir=''):
@@ -487,15 +490,6 @@ def set_palette(pal):
     gStyle.SetPalette(pal)
 
 
-def load_resolution():
-    try:
-        m = get_monitors()
-        return round_down_to(m[0].height, 500)
-    except Exception as err:
-        warning(err)
-        return 1000
-
-
 def make_ufloat(tup):
     if type(tup) is Variable:
         return tup
@@ -521,3 +515,14 @@ def set_z_range(zmin, zmax):
     c = get_last_canvas()
     h = c.GetListOfPrimitives()[1]
     h.GetZaxis().SetRangeUser(zmin, zmax)
+
+
+def load_resolution():
+    global resolution
+    if resolution is None:
+        try:
+            resolution = round_down_to(get_monitors()[0].height, 500)
+        except Exception as err:
+            warning(err)
+            return 1000
+    return resolution
