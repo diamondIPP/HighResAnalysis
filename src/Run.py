@@ -16,34 +16,47 @@ from collections import OrderedDict
 class Run:
     """ Run class containing all the information for a single run from the tree and the json file. """
 
-    def __init__(self, run_number, tc_dir, config, plane):
+    def __init__(self, run_number, plane, tc_dir, config, single_mode=False):
 
         self.RunNumber = run_number
         self.Plane = plane
         self.Config = config
-        # self.DataDir = self.Config.get('MAIN', 'data directory')
         self.TCDir = tc_dir
+        self.SingleMode = single_mode
 
-        self.RunInfo = self.load_run_info(plane)
+        self.RunInfo = self.load_run_info()
         self.RunLogs = self.load_run_logs()
-        self.DutName = load_json(join(tc_dir, self.Config.get('MAIN', 'run plan file'))).keys()[plane]
+        self.DutName = self.load_dut_name()
 
         # Files and Trees
-        self.RawFileName = join(self.TCDir, self.DutName, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
-        self.FileName = join(self.TCDir, self.DutName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(2)))
+        self.RawFileName = self.load_raw_file_name()
+        self.FileName = join(self.TCDir, self.DutName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(3)))
         self.File = self.load_file()
         self.Tree = self.File.Get('Hits')
-        # self.Converter = Converter()
 
-    def load_run_info(self, plane):
+    def load_run_info(self):
+        if self.SingleMode:
+            info('Using single raw files')
+            return None
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))
-        data = data.values()[plane][str(self.RunNumber)]
+        data = data.values()[self.Plane][str(self.RunNumber)]
         data['Batches'] = data['Batches'].split(',')
         return data
 
     def load_run_logs(self):
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
+        data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/']}
+        if self.RunInfo is None:
+            return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.RunNumber)
         return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.RunInfo['Batches']]))
+
+    def load_dut_name(self):
+        return load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))['Plane{}'.format(self.Plane)]['Name']
+
+    def load_raw_file_name(self):
+        if self.SingleMode:
+            return join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(str(self.RunNumber).zfill(3)))
+        return join(self.TCDir, self.DutName, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
 
     def load_file(self):
         if not file_exists(self.FileName):
@@ -51,13 +64,14 @@ class Run:
         return TFile(self.FileName)
 
     def convert_file(self):
-        if not file_exists(self.RawFileName):
+        if not file_exists(self.RawFileName) and not self.SingleMode:
             self.merge_root_files()
         warning('final root file "{}" does not exist. Starting Converter!'.format(self.FileName))
-        converter = Converter(self.RawFileName, self.Plane)
+        converter = Converter(self.RawFileName, self.Plane, join(self.TCDir, self.DutName))
         converter.run()
-        info('removing raw file "{}"'.format(self.RawFileName))
-        remove(self.RawFileName)
+        if not self.SingleMode:
+            info('removing raw file "{}"'.format(self.RawFileName))
+            remove(self.RawFileName)
 
     def merge_root_files(self):
         warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
@@ -74,4 +88,4 @@ class Run:
 
 if __name__ == '__main__':
     a = Analysis()
-    z = Run(11, a.TCDir, a.Config, 1)
+    z = Run(301, 0, a.TCDir, a.Config, single_mode=True)
