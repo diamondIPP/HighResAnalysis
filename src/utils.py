@@ -8,6 +8,8 @@ from os import makedirs, _exit
 from ConfigParser import ConfigParser
 from datetime import datetime
 from ROOT import TFile
+from json import load
+from collections import OrderedDict
 
 
 type_dict = {'int32': 'I',
@@ -88,6 +90,13 @@ def read_root_file(filename):
     if file_exists(filename):
         return TFile(filename)
     critical('The file: "{}" does not exist...'.format(filename))
+
+
+def load_json(filename, ordered=None):
+    if not file_exists(filename):
+        return {}
+    with open(filename) as f:
+        return load(f, object_hook=None if ordered is None else OrderedDict)
 
 
 def do(fs, pars, exe=-1):
