@@ -5,9 +5,10 @@
 # --------------------------------------------------------
 
 from Analysis import *
-from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile
+from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TF1
 from argparse import ArgumentParser
 from Run import Run
+from pickle import load as pload
 
 
 class RunAnalysis(Analysis):
@@ -22,6 +23,10 @@ class RunAnalysis(Analysis):
         self.NEntries = self.Tree.GetEntries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
+
+        self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
+        self.FitParameters = None
+        self.get_calibration_data()
 
     def draw_number_of_hits(self):
         h = TH1I('hnh', 'Number of Hits', 4180, 0, 4180)
@@ -115,54 +120,29 @@ class RunAnalysis(Analysis):
         t = self.Tree.TimeStamp / 1000
         return t
 
-    # def get_calibration_data(self, filename):
-    #     pickle_name = 'fitpars.pickle'
-    #     if file_exists(pickle_name):
-    #         f = open(pickle_name, 'r')
-    #         self.FitParameters = load(f)
-    #         f.close()
-    #     else:
-    #         f = open(join(dirname(dirname(filename)), 'phCalibration_C0.dat'))
-    #         f.readline()
-    #         low_range = [int(val) for val in f.readline().split(':')[-1].split()]
-    #         high_range = [int(val) for val in f.readline().split(':')[-1].split()]
-    #         x = low_range + [val * 7 for val in high_range]
-    #         f.readline()
-    #         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-    #         for line in f.readlines():
-    #             data = line.split('Pix')
-    #             y = [int(val) for val in data[0].split()]
-    #             x1 = [ufloat(ix, 1) for (ix, iy) in zip(x, y) if iy]
-    #             y1 = [ufloat(iy, 1) for iy in y if iy]
-    #             g = self.make_tgrapherrors('gcal', 'gcal', x=x1, y=y1)
-    #             g.Fit(self.Fit, 'q', '', 0, 3000)
-    #             print '\r{}'.format(data[-1]).strip('\n'),
-    #             stdout.flush()
-    #             col, row = [int(val) for val in data[-1].split()]
-    #             self.FitParameters[col][row] = [self.Fit.GetParameter(i) for i in xrange(4)]
-    #         fp = open(pickle_name, 'w')
-    #         dump(self.FitParameters, fp)
-    #         fp.close()
-    #         f.close()
-    #
-    # def draw_calibration_fit(self, col=14, row=14):
-    #     f = open(join(dirname(dirname(self.FileName)), 'phCalibration_C0.dat'))
-    #     f.readline()
-    #     low_range = [int(val) for val in f.readline().split(':')[-1].split()]
-    #     high_range = [int(val) for val in f.readline().split(':')[-1].split()]
-    #     x = [ufloat(xval, 1) for xval in low_range + [val * 7 for val in high_range]]
-    #     f.readline()
-    #     self.Fit.SetParameters(*self.FitParameters[col][row])
-    #     for line in f.readlines():
-    #         data = line.split('Pix')
-    #         icol, irow = [int(val) for val in data[-1].split()]
-    #         if col == icol and row == irow:
-    #             y = [ufloat(int(val), 1) for val in data[0].split()]
-    #             g = self.make_tgrapherrors('gcal', 'Calibration Fit for Pix {} {}'.format(col, row), x=x, y=y)
-    #             self.format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4)
-    #             self.draw_histo(g)
-    #             self.Fit.Draw('same')
-    #             break
+    def get_calibration_data(self):
+        pickle_name = join(self.TCDir, self.Run.DutName, 'fitpars.pickle')
+        with open(pickle_name, 'r') as f:
+            self.FitParameters = pload(f)
+
+    def draw_calibration_fit(self, col=14, row=14):
+        f = open(join(self.TCDir, self.Run.DutName, 'phCalibration.dat'))
+        f.readline()
+        low_range = [int(val) for val in f.readline().split(':')[-1].split()]
+        high_range = [int(val) for val in f.readline().split(':')[-1].split()]
+        x = [ufloat(xval, 1) for xval in low_range + [val * 7 for val in high_range]]
+        f.readline()
+        self.Fit.SetParameters(*self.FitParameters[col][row])
+        for line in f.readlines():
+            data = line.split('Pix')
+            icol, irow = [int(val) for val in data[-1].split()]
+            if col == icol and row == irow:
+                y = [ufloat(int(val), 1) for val in data[0].split()]
+                g = self.make_tgrapherrors('gcal', 'Calibration Fit for Pix {} {}'.format(col, row), x=x, y=y)
+                self.format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4)
+                self.draw_histo(g)
+                self.Fit.Draw('same')
+                break
 
 
 if __name__ == '__main__':
