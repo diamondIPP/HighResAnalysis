@@ -51,11 +51,13 @@ class RunAnalysis(Analysis):
         self.draw_histo(h, draw_opt='colz', rm=.18)
 
     def draw_charge_distribution(self, vcal=True, cut='', x_range=None):
-        h = TH1I('had', 'ADC Distribution', 3756 / 4, -256, 3500)
-        self.Tree.Draw('{}>>had'.format('ClusterVcal' if vcal else ''), TCut(cut), 'goff')
+        binning = [3756 / 4, -256, 3500] if vcal else [255, 0, 255]
+        title = 'VCAL' if vcal else 'ADC'
+        h = TH1I('had', '{} Distribution'.format(title), *binning)
+        self.Tree.Draw('{}>>had'.format('ClusterVcal' if vcal else 'Value'), TCut(cut), 'goff')
         self.format_statbox(only_entries=1)
         x_range = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0) - 1, h.FindLastBinAbove(0) + 1]] if x_range is None else x_range
-        self.format_histo(h, x_tit='VCAL', y_tit='Number of Entries', y_off=1.2, x_range=x_range)
+        self.format_histo(h, x_tit=title, y_tit='Number of Entries', y_off=1.2, x_range=x_range)
         self.draw_histo(h)
 
     def draw_cluster_size(self):
