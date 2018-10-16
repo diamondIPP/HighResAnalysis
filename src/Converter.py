@@ -71,7 +71,7 @@ class Converter:
         self.Hits = []
 
     def get_fit_data(self, save_dir):
-        pickle_name = 'fitpars_{}.pickle'.format(basename(save_dir))
+        pickle_name = join(save_dir, 'fitpars.pickle')
         if file_exists(pickle_name):
             f = open(pickle_name, 'r')
             self.FitParameters = load(f)
@@ -93,7 +93,7 @@ class Converter:
                 y1 = [ufloat(iy, 1) for iy in y if iy]
                 col, row = [int(val) for val in data[-1].split()]
                 if not x1:
-                    self.FitParameters[col][row] = [1, 1, 1, 1]
+                    self.FitParameters[col][row] = [0, 0, 0, 0]
                     self.ProgressBar.update(i + 1)
                     continue
                 g = d.make_tgrapherrors('gcal', 'gcal', x=x1, y=y1)

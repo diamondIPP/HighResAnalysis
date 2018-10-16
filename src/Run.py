@@ -45,7 +45,7 @@ class Run:
 
     def load_run_logs(self):
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
-        data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/']}
+        data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/', '\\', '']}
         if self.RunInfo is None:
             return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.RunNumber)
         return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.RunInfo['Batches']]))
