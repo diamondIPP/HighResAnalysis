@@ -1,11 +1,11 @@
-from TreeReaderLjubljana import ReadData
+from RunAnalysis import RunAnalysis
 from draw import *
 from uncertainties import ufloat
 
 r = []
 for i in xrange(9):
     print i
-    r.append(ReadData('data/Clustered_0{}.root'.format(i)))
+    r.append(RunAnalysis('data/Clustered_0{}.root'.format(i)))
 
 
 d = Draw()
