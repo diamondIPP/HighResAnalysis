@@ -134,13 +134,21 @@ class RunAnalysis(Analysis):
         t = self.Tree.TimeStamp / 1000
         return t
 
+    def get_calibration_number(self):
+        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.Run.DutName, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
+        first_run = int(self.Run.RunLogs.keys()[0])
+        if first_run > numbers[-1]:
+            return numbers[-1]
+        next_number = next(nr for nr in numbers if nr >= first_run)
+        return numbers[numbers.index(next_number) - 1]
+
     def get_calibration_data(self):
-        pickle_name = join(self.TCDir, self.Run.DutName, 'fitpars.pickle')
+        pickle_name = join(self.TCDir, self.Run.DutName, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
         with open(pickle_name, 'r') as f:
             self.FitParameters = pload(f)
 
-    def draw_calibration_fit(self, col=14, row=14):
-        f = open(join(self.TCDir, self.Run.DutName, 'phCalibration.dat'))
+    def draw_calibration_fit(self, col=31, row=55):
+        f = open(join(self.TCDir, self.Run.DutName, 'calibrations', 'phCal{}.dat'.format(self.get_calibration_number())))
         f.readline()
         low_range = [int(val) for val in f.readline().split(':')[-1].split()]
         high_range = [int(val) for val in f.readline().split(':')[-1].split()]
