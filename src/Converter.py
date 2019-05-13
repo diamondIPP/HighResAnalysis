@@ -16,9 +16,13 @@ from draw import Draw, ufloat
 
 
 class Converter:
-    def __init__(self, filename, plane, save_dir=None):
+
+    def __init__(self, filename, plane, save_dir=None, first_run=None):
 
         self.SaveDir = save_dir
+        self.CalibrationDir = join(self.SaveDir, 'calibrations')
+        self.RunNumber = basename(filename).strip('.root').split('_')[-1]
+        self.FirstRun = first_run if first_run is not None else self.RunNumber
 
         self.OldFile = read_root_file(filename)
         self.OldTree = self.OldFile.Get('Plane{}'.format(6 + plane)).Get('Hits')
