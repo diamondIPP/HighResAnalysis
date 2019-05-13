@@ -5,18 +5,20 @@
 # --------------------------------------------------------
 
 from Analysis import *
-from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TF1
+from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TF1, TH1F
 from argparse import ArgumentParser
 from Run import Run
 from pickle import load as pload
+from Langaus import Langau
 
 
 class RunAnalysis(Analysis):
 
     def __init__(self, run_number, plane, test_campaign, single_mode=True, verbose=True):
-        Analysis.__init__(self, test_campaign, verbose)
 
         self.RunNumber = run_number
+        Analysis.__init__(self, test_campaign, verbose)
+
         self.Run = Run(run_number, plane, self.TCDir, self.Config, single_mode)
         self.Tree = self.Run.Tree
 
@@ -31,22 +33,22 @@ class RunAnalysis(Analysis):
     def draw_number_of_hits(self):
         h = TH1I('hnh', 'Number of Hits', 4180, 0, 4180)
         self.Tree.Draw('NHits>>hnh', '', 'goff')
-        self.format_statbox(only_entries=True)
+        self.format_statbox(entries=True)
         x_range = [0, h.GetBinCenter(h.FindLastBinAbove(0)) + 1]
         self.format_histo(h, x_tit='Number of Hits', y_tit='Number of Entries', y_off=1.3, x_range=x_range)
         self.draw_histo(h, draw_opt='colz', logy=True)
 
-    def draw_hitmap(self, start=0, n=1e9, cluster=True, res=1, cut=''):
+    def draw_occupancy(self, start=0, n=1e9, cluster=True, res=1, cut=''):
         h = TH2I('hhm', 'Hit Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
         self.Tree.Draw('{0}Y:{0}X>>hhm'.format('Cluster' if cluster else 'Pix'), TCut(cut), 'goff', int(n), start)
-        self.format_statbox(only_entries=True, x=.78)
+        self.format_statbox(entries=True, x=.78)
         self.format_histo(h, x_tit='Column', y_tit='Row', z_tit='Number of Entries', y_off=1.2, z_off=1.5)
         self.draw_histo(h, draw_opt='colz', rm=.18)
 
     def draw_charge_map(self, res=1, cut=''):
         h = TProfile2D('pam', 'Charge Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
         self.Tree.Draw('ClusterVcal:ClusterY:ClusterX>>pam', TCut(cut), 'goff')
-        self.format_statbox(only_entries=1, x=.78)
+        self.format_statbox(entries=1, x=.78)
         self.format_histo(h, x_tit='Column', y_tit='Row', z_tit='Charge [vcal]', y_off=1.2, z_off=1.5)
         self.draw_histo(h, draw_opt='colz', rm=.18)
 
@@ -55,16 +57,26 @@ class RunAnalysis(Analysis):
         title = 'VCAL' if vcal else 'ADC'
         h = TH1I('had', '{} Distribution'.format(title), *binning)
         self.Tree.Draw('{}>>had'.format('ClusterVcal' if vcal else 'Value'), TCut(cut), 'goff')
-        self.format_statbox(only_entries=1)
+        self.format_statbox(entries=1)
         x_range = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0) - 1, h.FindLastBinAbove(0) + 1]] if x_range is None else x_range
         self.format_histo(h, x_tit=title, y_tit='Number of Entries', y_off=1.2, x_range=x_range)
         self.draw_histo(h)
 
+    def draw_signal_distribution(self, x_range=None, cut=None, threshold=80 * 46.5):
+        h = TH1F('hph', 'Pulse Height Distribution', 50000 / 200, -5000, 45000)
+        self.Tree.Draw('ClusterVcal * 46.5 >> hph', self.Cut() if cut is None else cut, 'goff')
+        self.format_statbox(all_stat=True)
+        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505)
+        self.draw_histo(h, lm=.12)
+        if threshold:
+            self.draw_y_axis(threshold, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(int(round_down_to(threshold, 100))), off=.3, line=True, opt='-L')
+        return h
+
     def draw_cluster_size(self):
         h = TH1I('hcs', 'Cluster Size', 20, 0, 20)
         self.Tree.Draw('ClusterSize>>hcs', '', 'goff')
-        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.2, stats=0)
-        self.draw_histo(h)
+        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=2, stats=0)
+        self.draw_histo(h, lm=.14)
 
     def draw_trigger_phase(self):
         h = TH1I('htp', 'Trigger Phase', 10, 0, 10)
