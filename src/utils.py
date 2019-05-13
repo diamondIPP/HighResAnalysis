@@ -7,7 +7,7 @@ from os.path import isfile, exists
 from os import makedirs, _exit
 from ConfigParser import ConfigParser
 from datetime import datetime
-from ROOT import TFile
+from ROOT import TFile, gROOT
 from json import load
 from collections import OrderedDict
 
@@ -104,3 +104,41 @@ def do(fs, pars, exe=-1):
     exe = pars if exe == -1 else [exe]
     for f, p, e in zip(fs, pars, exe):
         f(p) if e is not None else do_nothing()
+
+
+def get_object(name):
+    return gROOT.FindObject(name)
+
+
+def remove_letters(string):
+    return filter(lambda x: x.isdigit(), string)
+
+
+def get_last_canvas():
+    try:
+        return gROOT.GetListOfCanvases()[-1]
+    except IndexError:
+        warning('There is no canvas is in the list...')
+
+
+def set_z_range(zmin, zmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetZaxis().SetRangeUser(zmin, zmax)
+
+
+def set_axes_range(xmin, xmax, ymin, ymax):
+    set_x_range(xmin, xmax)
+    set_y_range(ymin, ymax)
+
+
+def set_x_range(xmin, xmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetXaxis().SetRangeUser(xmin, xmax)
+
+
+def set_y_range(ymin, ymax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetYaxis().SetRangeUser(ymin, ymax)
