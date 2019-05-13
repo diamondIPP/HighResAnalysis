@@ -30,7 +30,7 @@ class Run:
 
         # Files and Trees
         self.RawFileName = self.load_raw_file_name()
-        self.FileName = join(self.TCDir, self.DutName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(3)))
+        self.FileName = join(self.TCDir, self.DutName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(3 if single_mode else 2)))
         self.File = self.load_file()
         self.Tree = self.File.Get('Hits')
 
@@ -67,7 +67,7 @@ class Run:
         if not file_exists(self.RawFileName) and not self.SingleMode:
             self.merge_root_files()
         warning('final root file "{}" does not exist. Starting Converter!'.format(self.FileName))
-        converter = Converter(self.RawFileName, self.Plane, join(self.TCDir, self.DutName))
+        converter = Converter(self.RawFileName, self.Plane, join(self.TCDir, self.DutName), first_run=int(self.RunLogs.keys()[0]))
         converter.run()
         if not self.SingleMode:
             info('removing raw file "{}"'.format(self.RawFileName))
