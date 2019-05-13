@@ -13,6 +13,7 @@ from numpy import array, average, zeros
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from pickle import load, dump
 from draw import Draw, ufloat
+from glob import glob
 
 
 class Converter:
@@ -31,7 +32,7 @@ class Converter:
         self.NewTree = self.OldTree.CloneTree(0)
 
         # New Branches
-        self.ScalarBranches = OrderedDict([('NCluster', array([0], 'u2')),Aleutian
+        self.ScalarBranches = OrderedDict([('NCluster', array([0], 'u2')),
                                            ('TimeStamp', array([0], 'f8'))])
         self.VectorBranches = OrderedDict([('VCal', vector('float')()),
                                            ('ClusterSize', vector('unsigned short')()),
@@ -55,12 +56,10 @@ class Converter:
         self.ProgressBar = ProgressBar(widgets=['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()], maxval=n)
         self.ProgressBar.start()
 
-    @staticmethod
-    def create_new_file(filename, save_dir):
-        nr = basename(filename).strip('.root').split('_')[-1]
+    def create_new_file(self, filename, save_dir):
         if save_dir is None:
-            return TFile(join(dirname(filename), 'Clustered_{}.root'.format(nr)), 'RECREATE')
-        return TFile(join(save_dir, 'Clustered_{}.root'.format(nr)), 'RECREATE')
+            return TFile(join(dirname(filename), 'Clustered_{}.root'.format(self.RunNumber)), 'RECREATE')
+        return TFile(join(save_dir, 'Clustered_{}.root'.format(self.RunNumber)), 'RECREATE')
 
     def set_branches(self):
         for key, value in self.ScalarBranches.iteritems():
@@ -75,8 +74,15 @@ class Converter:
         self.ClusteredHits = []
         self.Hits = []
 
+    def get_calibration_number(self):
+        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.SaveDir, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
+        if self.FirstRun > numbers[-1]:
+            return numbers[-1]
+        next_number = next(nr for nr in numbers if nr >= int(self.FirstRun))
+        return numbers[numbers.index(next_number) - 1]
+
     def get_fits(self):
-        pickle_name = join(self.SaveDir, 'fitpars.pickle')
+        pickle_name = join(self.CalibrationDir, 'fitpars{}.pickle'.format(self.get_calibration_number()))
         if file_exists(pickle_name):
             with open(pickle_name, 'r') as f:
                 self.FitParameters = load(f)
@@ -88,6 +94,7 @@ class Converter:
             dump(self.FitParameters, f)
 
     def get_fits_from_file(self):
+        # TODO update
         with open(join(self.SaveDir, 'phCalibrationFits.dat')) as f:
             lines = f.readlines()[3:]
             for line in lines:
@@ -97,7 +104,7 @@ class Converter:
                 self.FitParameters[col][row] = data
 
     def get_fits_from_calibration(self):
-        f = open(join(self.SaveDir, 'phCalibration.dat'))
+        f = open(join(self.CalibrationDir, 'phCal{}.dat'.format(self.get_calibration_number())))
         f.readline()
         low_range = [int(val) for val in f.readline().split(':')[-1].split()]
         high_range = [int(val) for val in f.readline().split(':')[-1].split()]
@@ -227,5 +234,5 @@ if __name__ == '__main__':
     # noinspection PyTypeChecker
     p.add_argument('plane', nargs='?', default=0, type=int)
     args = p.parse_args()
-    z = Converter('/scratch2/cern/2018-10/cms-raw/ljutel_359.root', 2, '/scratch2/cern/2018-10/CMS04')
+    z = Converter('/scratch2/cern/2018-10/cms-raw/ljutel_110.root', 0, '/scratch2/cern/2018-10/II6-B6')
     # z.run()
