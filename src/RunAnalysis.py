@@ -166,6 +166,25 @@ class RunAnalysis(Analysis):
                 self.Fit.Draw('same')
                 break
 
+    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
+        h = self.draw_signal_distribution() if h is None and hasattr(self, 'draw_signal_distribution') else h
+        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
+        fit = Langau(h, nconv, fit_range)
+        fit.langaufit()
+        if show:
+            fit.Fit.Draw('lsame')
+            c = get_last_canvas()
+            c.Modified()
+            c.Update()
+        if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
+            self.count += 5
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh, show=show)
+        print 'MPV:', fit.Parameters[1]
+        self.count = 0
+        self.Objects.append(fit)
+        return fit
+
 
 if __name__ == '__main__':
     p = ArgumentParser()
