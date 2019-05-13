@@ -7,6 +7,7 @@ from time import time
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 from draw import *
+from Cut import Cut
 
 # global test campaign
 g_test_campaign = None
@@ -34,6 +35,9 @@ class Analysis(Draw):
         self.TestCampaign = self.load_test_campaign(testcampaign)
         self.TCString = self.generate_tc_str()
         self.TCDir = self.generate_tc_directory()
+
+        # subclasses
+        self.Cut = Cut(self)
 
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
