@@ -526,3 +526,7 @@ def load_resolution():
             warning(err)
             return 1000
     return resolution
+
+
+if __name__ == '__main__':
+    z = Draw()

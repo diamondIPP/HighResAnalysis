@@ -66,7 +66,7 @@ class RunAnalysis(Analysis):
         h = TH1F('hph', 'Pulse Height Distribution', 50000 / 200, -5000, 45000)
         self.Tree.Draw('ClusterVcal * 46.5 >> hph', self.Cut() if cut is None else cut, 'goff')
         self.format_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505)
+        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505, fill_color=self.FillColor)
         self.draw_histo(h, lm=.12)
         if threshold:
             self.draw_y_axis(threshold, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(int(round_down_to(threshold, 100))), off=.3, line=True, opt='-L')
