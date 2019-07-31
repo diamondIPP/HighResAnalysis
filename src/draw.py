@@ -11,6 +11,7 @@ from os.path import dirname, join
 from numpy import ndarray, zeros, array
 from uncertainties.core import Variable, ufloat
 from screeninfo import get_monitors
+from argparse import ArgumentParser
 
 
 resolution = None
@@ -282,16 +283,20 @@ class Draw:
         return t
 
     @staticmethod
-    def format_histo(histo, name=None, title=None, x_tit='', y_tit='', z_tit='', marker=20, color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
+    def format_histo(histo, name=None, title=None, x_tit='', y_tit='', z_tit='', marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                      fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None):
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None):
         h = histo
         if draw_first:
             set_root_output(False)
-            h.Draw('a')
+            h.Draw('nostack' if h.ClassName() == 'THStack' else 'a')
             set_root_output(True)
         do(h.SetTitle, title)
         do(h.SetName, name)
+        if normalise is not None:
+            y_tit = y_tit.replace('Number', 'Percentage')
+            h.Sumw2(True)
+            normalise_histo(h)
         try:
             h.SetStats(stats)
         except AttributeError or ReferenceError:
@@ -306,7 +311,7 @@ class Draw:
             pass
         # lines/fill
         try:
-            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
+            h.SetLineColor(line_color) if line_color is not None else h.SetLineColor(color) if color is not None else do_nothing()
             h.SetLineWidth(lw)
             h.SetFillColor(fill_color) if fill_color is not None else do_nothing()
             h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
@@ -322,8 +327,9 @@ class Draw:
                 x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
                 do(x_axis.SetTitleSize, tit_size)
                 do(x_axis.SetLabelSize, lab_size)
-                x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
-                x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
+                if x_range is not None:
+                    x_axis.SetLimits(x_range[0], x_range[1]) if 'Graph' in h.ClassName() else x_axis.SetRangeUser(x_range[0], x_range[1])
+                do(x_axis.SetNdivisions, ndivx)
                 do(x_axis.SetLabelOffset, l_off_x)
                 do(x_axis.SetTickSize, tick_size)
                 x_axis.CenterTitle(center_x)
@@ -529,4 +535,7 @@ def load_resolution():
 
 
 if __name__ == '__main__':
-    z = Draw()
+    parser = ArgumentParser()
+    parser.add_argument('-t', action='store_false')
+    args = parser.parse_args()
+    z = Draw(titles=args.t)
