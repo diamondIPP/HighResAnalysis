@@ -10,6 +10,9 @@ from datetime import datetime
 from ROOT import TFile, gROOT
 from json import load
 from collections import OrderedDict
+from uncertainties import ufloat
+from uncertainties.core import Variable, AffineScalarFunc
+from numpy import average, sqrt, array
 
 
 type_dict = {'int32': 'I',
@@ -142,3 +145,47 @@ def set_y_range(ymin, ymax):
     c = get_last_canvas()
     h = c.GetListOfPrimitives()[1]
     h.GetYaxis().SetRangeUser(ymin, ymax)
+
+
+def normalise_histo(histo, x_range=None, from_min=False):
+    h = histo
+    x_axis = h.GetXaxis()
+    x_axis.SetRangeUser(*x_range) if x_range is not None else do_nothing()
+    min_bin = h.GetMinimumBin() if from_min else 0
+    integral = h.Integral(min_bin, h.GetNbinsX() - 1)
+    return scale_histo(h, integral)
+
+
+def scale_histo(histo, value=None, to_max=False, x_range=None):
+    h = histo
+    maximum = h.GetBinContent(h.GetMaximumBin())
+    if x_range is not None:
+        h.GetXaxis().SetRangeUser(*x_range) if x_range is not None else do_nothing()
+        maximum = h.GetBinContent(h.GetMaximumBin())
+        h.GetXaxis().UnZoom()
+    value = maximum if to_max else value
+    if value:
+        h.Scale(1. / value)
+    return h
+
+
+def mean_sigma(values, weights=None):
+    """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
+    if len(values) == 1:
+        value = make_ufloat(values[0])
+        return value.n, value.s
+    weights = [1] * len(values) if weights is None else weights
+    if type(values[0]) in [Variable, AffineScalarFunc]:
+        weights = [1 / v.s for v in values]
+        values = array([v.n for v in values], 'd')
+    if all(weight == 0 for weight in weights):
+        return [0, 0]
+    avrg = average(values, weights=weights)
+    variance = average((values - avrg) ** 2, weights=weights)  # Fast and numerically precise
+    return avrg, sqrt(variance)
+
+
+def make_ufloat(tup):
+    if type(tup) in [Variable, AffineScalarFunc]:
+        return tup
+    return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
