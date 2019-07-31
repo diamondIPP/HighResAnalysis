@@ -62,13 +62,13 @@ class RunAnalysis(Analysis):
         self.format_histo(h, x_tit=title, y_tit='Number of Entries', y_off=1.2, x_range=x_range)
         self.draw_histo(h)
 
-    def draw_signal_distribution(self, x_range=None, cut=None, threshold=80 * 46.5):
+    def draw_signal_distribution(self, x_range=None, cut=None, threshold=80 * 46.5, show=True):
         h = TH1F('hph', 'Pulse Height Distribution', 50000 / 200, -5000, 45000)
         self.Tree.Draw('ClusterVcal * 46.5 >> hph', self.Cut() if cut is None else cut, 'goff')
         self.format_statbox(all_stat=True)
         self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505, fill_color=self.FillColor)
-        self.draw_histo(h, lm=.12)
-        if threshold:
+        self.draw_histo(h, lm=.12, show=show)
+        if threshold and show:
             self.draw_y_axis(threshold, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(int(round_down_to(threshold, 100))), off=.3, line=True, opt='-L')
         return h
 
@@ -167,7 +167,7 @@ class RunAnalysis(Analysis):
                 break
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
-        h = self.draw_signal_distribution() if h is None and hasattr(self, 'draw_signal_distribution') else h
+        h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
         h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv, fit_range)
         fit.langaufit()
@@ -184,6 +184,20 @@ class RunAnalysis(Analysis):
         self.count = 0
         self.Objects.append(fit)
         return fit
+
+    def estimate_mean(self, n=10, fit_range=None):
+        fit_range = [8000, 30000] if fit_range is None else fit_range
+        self.fit_langau(show=False, fit_range=fit_range)
+        values = []
+        self.start_pbar(n)
+        for i in xrange(n):
+            h = TH1F('hph{}'.format(i), 'Pulse Height Distribution', 200, -5000, 70000)
+            h.FillRandom('Fitfcn_hph', 25000)
+            values.append(h.GetMean())
+            self.ProgressBar.update(i + 1)
+        self.ProgressBar.finish()
+        return mean_sigma(values)
+
 
 
 if __name__ == '__main__':
