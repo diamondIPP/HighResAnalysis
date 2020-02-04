@@ -1,12 +1,10 @@
+from draw import *
 from glob import glob
 from os.path import realpath, basename
 from shutil import copyfile
 from sys import stdout
 from time import time
 
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-
-from draw import *
 from Cut import Cut
 
 # global test campaign
@@ -40,12 +38,10 @@ class Analysis(Draw):
         self.Cut = Cut(self)
 
         # progress bar
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = None
+        self.PBar = PBar()
 
-    # ============================================
-    # region init
-
+    # ----------------------------------------
+    # region INIT
     def load_config(self):
         parser = ConfigParser()
         config_file_path = join(self.Dir, 'config', 'main.ini')
@@ -78,12 +74,8 @@ class Analysis(Draw):
     def print_testcampaign(self):
         if self.Verbose:
             print 'TESTCAMPAIGN: {}'.format(self.generate_tc_str())
-
-    # endregion
-
-    def start_pbar(self, n):
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
-        self.ProgressBar.start()
+    # endregion INIT
+    # ----------------------------------------
 
     def info(self, msg, next_line=True, prnt=True):
         if prnt and self.Verbose:

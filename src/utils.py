@@ -3,6 +3,9 @@
 # created on June 19th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
+
 from os.path import isfile, exists
 from os import makedirs, _exit
 from ConfigParser import ConfigParser
@@ -13,6 +16,7 @@ from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from numpy import average, sqrt, array
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 
 type_dict = {'int32': 'I',
@@ -189,3 +193,20 @@ def make_ufloat(tup):
     if type(tup) in [Variable, AffineScalarFunc]:
         return tup
     return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
+
+
+class PBar:
+    def __init__(self):
+        self.PBar = None
+        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+
+    def start(self, n):
+        self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+
+    def update(self, i):
+        self.PBar.update(i + 1)
+        if i == self.PBar.maxval - 1:
+            self.finish()
+
+    def finish(self):
+        self.PBar.finish()
