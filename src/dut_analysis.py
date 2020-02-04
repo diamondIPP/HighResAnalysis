@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
-#       small script to read simple text files written by pxar
+#       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from Analysis import *
+from analysis import *
 from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TF1, TH1F
 from argparse import ArgumentParser
-from Run import Run
+from run import Run
 from pickle import load as pload
-from Langaus import Langau
+from langaus import Langau
 
 
-class RunAnalysis(Analysis):
+class DUTAnalysis(Analysis):
 
-    def __init__(self, run_number, plane, test_campaign, single_mode=True, verbose=True):
+    def __init__(self, run_number, dut, test_campaign, single_mode=True, verbose=True):
 
         self.RunNumber = run_number
         Analysis.__init__(self, test_campaign, verbose)
 
-        self.Run = Run(run_number, plane, self.TCDir, self.Config, single_mode)
+        self.Run = Run(run_number, dut, self.TCDir, self.Config, single_mode)
         self.Tree = self.Run.Tree
 
         self.NEntries = self.Tree.GetEntries()
@@ -35,21 +35,21 @@ class RunAnalysis(Analysis):
         self.Tree.Draw('NHits>>hnh', '', 'goff')
         self.format_statbox(entries=True)
         x_range = [0, h.GetBinCenter(h.FindLastBinAbove(0)) + 1]
-        self.format_histo(h, x_tit='Number of Hits', y_tit='Number of Entries', y_off=1.3, x_range=x_range)
+        format_histo(h, x_tit='Number of Hits', y_tit='Number of Entries', y_off=1.3, x_range=x_range)
         self.draw_histo(h, draw_opt='colz', logy=True)
 
     def draw_occupancy(self, start=0, n=1e9, cluster=True, res=1, cut=''):
         h = TH2I('hhm', 'Hit Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
         self.Tree.Draw('{0}Y:{0}X>>hhm'.format('Cluster' if cluster else 'Pix'), TCut(cut), 'goff', int(n), start)
         self.format_statbox(entries=True, x=.78)
-        self.format_histo(h, x_tit='Column', y_tit='Row', z_tit='Number of Entries', y_off=1.2, z_off=1.5)
+        format_histo(h, x_tit='Column', y_tit='Row', z_tit='Number of Entries', y_off=1.2, z_off=1.5)
         self.draw_histo(h, draw_opt='colz', rm=.18)
 
     def draw_charge_map(self, res=1, cut=''):
         h = TProfile2D('pam', 'Charge Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
         self.Tree.Draw('ClusterVcal:ClusterY:ClusterX>>pam', TCut(cut), 'goff')
         self.format_statbox(entries=1, x=.78)
-        self.format_histo(h, x_tit='Column', y_tit='Row', z_tit='Charge [vcal]', y_off=1.2, z_off=1.5)
+        format_histo(h, x_tit='Column', y_tit='Row', z_tit='Charge [vcal]', y_off=1.2, z_off=1.5)
         self.draw_histo(h, draw_opt='colz', rm=.18)
 
     def draw_charge_distribution(self, vcal=True, cut='', x_range=None):
@@ -59,14 +59,14 @@ class RunAnalysis(Analysis):
         self.Tree.Draw('{}>>had'.format('ClusterVcal' if vcal else 'Value'), TCut(cut), 'goff')
         self.format_statbox(entries=1)
         x_range = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0) - 1, h.FindLastBinAbove(0) + 1]] if x_range is None else x_range
-        self.format_histo(h, x_tit=title, y_tit='Number of Entries', y_off=1.2, x_range=x_range)
+        format_histo(h, x_tit=title, y_tit='Number of Entries', y_off=1.2, x_range=x_range)
         self.draw_histo(h)
 
     def draw_signal_distribution(self, x_range=None, cut=None, threshold=80 * 46.5, show=True):
         h = TH1F('hph', 'Pulse Height Distribution', 50000 / 200, -5000, 45000)
         self.Tree.Draw('ClusterVcal * 46.5 >> hph', self.Cut() if cut is None else cut, 'goff')
         self.format_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505, fill_color=self.FillColor)
+        format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.6, x_range=x_range, ndivx=505, fill_color=self.FillColor)
         self.draw_histo(h, lm=.12, show=show)
         if threshold and show:
             self.draw_y_axis(threshold, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(int(round_down_to(threshold, 100))), off=.3, line=True, opt='-L')
@@ -75,54 +75,54 @@ class RunAnalysis(Analysis):
     def draw_cluster_size(self):
         h = TH1I('hcs', 'Cluster Size', 20, 0, 20)
         self.Tree.Draw('ClusterSize>>hcs', '', 'goff')
-        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=2, stats=0)
+        format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=2, stats=0)
         self.draw_histo(h, lm=.14)
 
     def draw_trigger_phase(self):
         h = TH1I('htp', 'Trigger Phase', 10, 0, 10)
         self.Tree.Draw('Timing>>htp', '', 'goff')
-        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.2, stats=0, fill_color=self.FillColor, x_range=[0, h.GetMaximum() * 1.2])
+        format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.2, stats=0, fill_color=self.FillColor, x_range=[0, h.GetMaximum() * 1.2])
         self.draw_histo(h)
 
     def draw_charge_vs_trigger_phase(self):
         prof = TProfile('pctp', 'Charge @ Trigger Phase', 10, 0, 10)
         self.Tree.Draw('ClusterVcal:Timing>>pctp', '', 'goff')
-        self.format_histo(prof, x_tit='Trigger Phase', y_tit='Charge [vcal]', y_off=1.2, stats=0)
+        format_histo(prof, x_tit='Trigger Phase', y_tit='Charge [vcal]', y_off=1.2, stats=0)
         self.draw_histo(prof)
 
     def draw_charge_vs_time(self, bin_width=30, y_range=None, show=True):
         prof = TProfile('pct', 'Charge vs. Time - Run {}'.format(self.RunNumber), int((self.EndTime - self.StartTime) / bin_width), self.StartTime, self.EndTime)
         self.Tree.Draw('ClusterVcal:TimeStamp / 1000>>pct', '', 'goff')
         y_range = [0, 1.2 * prof.GetMaximum()] if y_range is None else y_range
-        self.format_histo(prof, x_tit='Time [hh:mm]', y_tit='Charge [vcal]', y_off=1.4, stats=0, fill_color=self.FillColor, t_ax_off=0, y_range=y_range)
+        format_histo(prof, x_tit='Time [hh:mm]', y_tit='Charge [vcal]', y_off=1.4, stats=0, fill_color=self.FillColor, t_ax_off=0, y_range=y_range)
         self.draw_histo(prof, lm=.11, show=show)
         return prof
 
     def fit_charge(self, bin_width=30, y_range=None):
-        set_statbox(only_fit=True, y=.5)
+        self.format_statbox(only_fit=True, y=.5)
         h = self.draw_charge_vs_time(bin_width=bin_width, y_range=y_range)
-        self.format_histo(h, stats=1, name='Fit Result')
+        format_histo(h, stats=1, name='Fit Result')
         fit = h.Fit('pol0', 'sq')
         return fit
 
     def draw_efficiency(self, bin_width=30, cut='', show=True):
         prof = TProfile('pet', 'Trigger Efficiency - Run {}'.format(self.RunNumber), int((self.EndTime - self.StartTime) / bin_width), self.StartTime, self.EndTime)
         self.Tree.Draw('(NHits>0)*100.:TimeStamp / 1000>>pet', TCut(cut), 'goff')
-        self.format_histo(prof, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, stats=0, fill_color=self.FillColor, t_ax_off=0, y_range=[0, 105])
+        format_histo(prof, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, stats=0, fill_color=self.FillColor, t_ax_off=0, y_range=[0, 105])
         self.draw_histo(prof, lm=.11, show=show)
         return prof
 
     def fit_efficiency(self, bin_width=30, cut=''):
-        set_statbox(only_fit=True, y=.3)
+        self.format_statbox(only_fit=True, y=.3)
         h = self.draw_efficiency(bin_width=bin_width, cut=cut)
-        self.format_histo(h, stats=1, name='Fit Result')
+        format_histo(h, stats=1, name='Fit Result')
         fit = h.Fit('pol0', 'sq')
         return fit
 
     def draw_efficiency_vs_trigger_phase(self):
         prof = TProfile('petp', 'Trigger Efficiency @ Trigger Phase', 10, 0, 10)
         self.Tree.Draw('(NHits>0)*100.:Timing>>petp', '', 'goff')
-        self.format_histo(prof, x_tit='Trigger Phase', y_tit='Trigger Efficiency [%]', y_off=1.2, stats=0, y_range=[0, 105])
+        format_histo(prof, x_tit='Trigger Phase', y_tit='Trigger Efficiency [%]', y_off=1.2, stats=0, y_range=[0, 105])
         self.draw_histo(prof)
 
     def get_start_time(self):
@@ -161,7 +161,7 @@ class RunAnalysis(Analysis):
             if col == icol and row == irow:
                 y = [ufloat(int(val), 1) for val in data[0].split()]
                 g = self.make_tgrapherrors('gcal', 'Calibration Fit for Pix {} {}'.format(col, row), x=x, y=y)
-                self.format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4)
+                format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4)
                 self.draw_histo(g)
                 self.Fit.Draw('same')
                 break
@@ -189,15 +189,13 @@ class RunAnalysis(Analysis):
         fit_range = [8000, 30000] if fit_range is None else fit_range
         self.fit_langau(show=False, fit_range=fit_range)
         values = []
-        self.start_pbar(n)
+        self.PBar.start(n)
         for i in xrange(n):
             h = TH1F('hph{}'.format(i), 'Pulse Height Distribution', 200, -5000, 70000)
             h.FillRandom('Fitfcn_hph', 25000)
             values.append(h.GetMean())
-            self.ProgressBar.update(i + 1)
-        self.ProgressBar.finish()
+            self.PBar.update(i)
         return mean_sigma(values)
-
 
 
 if __name__ == '__main__':
@@ -209,4 +207,4 @@ if __name__ == '__main__':
     p.add_argument('--single_mode', '-s', action='store_true')
     args = p.parse_args()
     tc = None if not args.testcampaign else args.testcampaign
-    z = RunAnalysis(args.run, args.plane, test_campaign=tc, single_mode=args.single_mode, verbose=args.verbose)
+    z = DUTAnalysis(args.run, args.plane, test_campaign=tc, single_mode=args.single_mode, verbose=args.verbose)

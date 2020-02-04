@@ -5,7 +5,7 @@ from shutil import copyfile
 from sys import stdout
 from time import time
 
-from Cut import Cut
+from cut import Cut
 
 # global test campaign
 g_test_campaign = None

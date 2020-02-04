@@ -6,9 +6,9 @@
 
 from utils import *
 from os.path import join, basename
-from Analysis import Analysis
+from analysis import Analysis
 from subprocess import call
-from Converter import Converter
+from converter import Converter
 from os import environ, remove, devnull
 from collections import OrderedDict
 
