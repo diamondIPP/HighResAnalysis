@@ -11,45 +11,43 @@ from subprocess import call
 from converter import Converter
 from os import environ, remove, devnull
 from collections import OrderedDict
+from run import Run
 
 
-class Run:
+class CERNRun(Run):
     """ Run class containing all the information for a single run from the tree and the json file. """
 
     def __init__(self, run_number, dut_nr, tc_dir, config, single_mode=False):
 
-        # Main Info
-        self.RunNumber = run_number
-        self.Config = config
-        self.TCDir = tc_dir
-        self.SingleMode = single_mode
-
-        # Files
-        self.RawFileName = self.load_raw_file_name()
-        self.FileName = self.load_file_name()
-        self.File = self.load_file()
-
-        # Info
-        self.RunInfo = self.load_run_info()
-        self.RunLogs = self.load_run_logs()
-        self.DUTNr = dut_nr
-        self.DUTName = self.load_dut_name()
-        self.Bias = self.RunLogs['hv{}'.format(self.DUTNr)]
-
+        Run.__init__(self, run_number, dut_nr, tc_dir, config, single_mode)
+        self.Tree = self.File.Get('Hits')
+        
     def load_run_info(self):
-        pass
+        if self.SingleMode:
+            info('Using single raw files')
+            return None
+        data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))
+        data = data.values()[self.DUTNr][str(self.RunNumber)]
+        data['Batches'] = data['Batches'].split(',')
+        return data
 
     def load_run_logs(self):
-        pass
+        data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
+        data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/', '\\', '']}
+        if self.RunInfo is None:
+            return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.RunNumber)
+        return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.RunInfo['Batches']]))
 
     def load_dut_name(self):
-        pass
+        return load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))['Plane{}'.format(self.DUTNr)]['Name']
 
     def load_raw_file_name(self):
-        pass
-
+        if self.SingleMode:
+            return join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(str(self.RunNumber).zfill(3)))
+        return join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
+    
     def load_file_name(self):
-        pass
+        join(self.TCDir, self.DUTName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(3 if self.SingleMode else 2)))
 
     def load_file(self):
         if not file_exists(self.FileName):
