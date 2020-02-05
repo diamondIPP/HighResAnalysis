@@ -2,6 +2,7 @@
 #       UTILITY FUNCTIONS
 # created on June 19th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from __future__ import print_function
 
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
@@ -37,15 +38,15 @@ def get_t_str():
 
 def info(msg, overlay=False, prnt=True):
     if prnt:
-        print '{ov}{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(GREEN, ENDC), ov='\033[1A\r' if overlay else '')
+        print('{ov}{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(GREEN, ENDC), ov='\033[1A\r' if overlay else ''))
 
 
 def warning(msg):
-    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}WARNING:{}'.format(YELLOW, ENDC))
+    print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}WARNING:{}'.format(YELLOW, ENDC)))
 
 
 def critical(msg):
-    print '{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head='{}CRITICAL:{}'.format(RED, ENDC))
+    print('{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head='{}CRITICAL:{}'.format(RED, ENDC)))
     _exit(1)
 
 
@@ -72,7 +73,7 @@ def is_num(string):
 
 
 def print_banner(msg, symbol='=', new_lines=True):
-    print '{n}{delim}\n{msg}\n{delim}{n}'.format(delim=(len(str(msg)) + 10) * symbol, msg=msg, n='\n' if new_lines else '')
+    print('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=(len(str(msg)) + 10) * symbol, msg=msg, n='\n' if new_lines else ''))
 
 
 def do_nothing():
