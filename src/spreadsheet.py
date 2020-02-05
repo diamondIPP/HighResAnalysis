@@ -50,15 +50,17 @@ def make_desy_run_log():
                     'stop': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[3]), '%Y%a, %b %d %H:%M:%S').timetuple()),
                     'events': int(float(row[5]) * 1e6),
                     'dut1': row[7],
-                    'hv1': int(row[8]),
-                    'current1': float(row[9]) if row[9] else '?',
-                    'dut2': row[10],
-                    'hv2': int(row[11]),
-                    'current2': float(row[12]) if row[12] else '?',
-                    'angle': 0 if row[13] == '-' or '/' in row[13] else int(row[13]),
-                    'runplan': row[15],
-                    'batch': row[16],
-                    'comment': row[17]
+                    'hvname1': row[8],
+                    'hv1': int(row[9]),
+                    'current1': float(row[10]) if row[10] else '?',
+                    'dut2': row[11],
+                    'hvname2': row[12],
+                    'hv2': int(row[13]),
+                    'current2': float(row[14]) if row[14] else '?',
+                    'angle': 0 if row[15] == '-' or '/' in row[15] else int(row[15]),
+                    'runplan': row[17],
+                    'batch': row[18],
+                    'comment': row[19]
                     }
     with open('runlog.json', 'w') as f:
         dump(dic, f, indent=2)
