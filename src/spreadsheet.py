@@ -35,7 +35,7 @@ def colnum_string(n):
     return string
 
 
-col2num = lambda col: reduce(lambda x, y: x*26 + y, [ord(c.upper()) - ord('A') + 1 for c in col])
+col2num = lambda col: reduce(lambda x, y: x * 26 + y, [ord(c.upper()) - ord('A') + 1 for c in col])
 
 
 def make_desy_run_log():
