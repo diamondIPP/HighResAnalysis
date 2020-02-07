@@ -11,7 +11,7 @@ from datetime import datetime
 from json import dump
 from time import mktime
 
-year = '2020'
+year = '2019'
 
 # use credentials to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds']
@@ -47,7 +47,7 @@ def make_desy_run_log():
             continue
         row[3] += ':00' if row[3].count(':') == 1 else ''
         dic[run] = {'start': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[2]), '%Y%a, %b %d %H:%M').timetuple()),
-                    'stop': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[3]), '%Y%a, %b %d %H:%M:%S').timetuple()),
+                    'end': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[3]), '%Y%a, %b %d %H:%M:%S').timetuple()),
                     'events': int(float(row[5]) * 1e6),
                     'dut1': row[7],
                     'hvsupply1': row[8],
