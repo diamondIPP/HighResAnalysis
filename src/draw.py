@@ -219,7 +219,7 @@ class Draw:
     # ----------------------------------------
     # region SAVING
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, save=True):
+    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, save=True, ftype=None):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
         canvas = get_last_canvas() if canvas is None else canvas
@@ -227,18 +227,18 @@ class Draw:
         canvas.Update()
         if save:
             try:
-                self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
+                self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, ftype=ftype)
                 self.Objects.append(canvas)
             except Exception as inst:
                 warning('Error in save_canvas:\n{0}'.format(inst))
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, ftype=None):
         """ Saves the provided canvas into all the FileTypes. """
         sub_dir = self.SaveDir if sub_dir is None else sub_dir
         file_name = canvas.GetName() if name is None else name
         file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         set_root_output(False)
-        for ext in self.FileTypes:
+        for ext in (self.FileTypes if ftype is None else [ftype]):
             ensure_dir(dirname(file_path.format(typ=ext)))
             canvas.SaveAs('{f}.{ext}'.format(f=file_path, ext=ext).format(typ=ext))
         if print_names:
