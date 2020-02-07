@@ -7,7 +7,7 @@ from __future__ import print_function
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
-from os.path import isfile, exists
+from os.path import isfile, exists, isdir
 from os import makedirs, _exit
 from ConfigParser import ConfigParser
 from datetime import datetime
@@ -16,7 +16,7 @@ from json import load
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array
+from numpy import average, sqrt, array, arange, mean
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 
@@ -54,6 +54,19 @@ def file_exists(filename):
     return isfile(filename)
 
 
+def dir_exists(path):
+    return isdir(path)
+
+
+def time_stamp(dt, off=None):
+    t = float(dt.strftime('%s'))
+    return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
+
+
+def average_list(lst, n):
+    return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
+
+
 def round_down_to(num, val):
     return int(num) / val * val
 
@@ -72,8 +85,13 @@ def is_num(string):
         return False
 
 
-def print_banner(msg, symbol='=', new_lines=True):
-    print('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=(len(str(msg)) + 10) * symbol, msg=msg, n='\n' if new_lines else ''))
+def colored(string, color):
+    return '{}{}{}'.format(color, string, ENDC)
+
+
+def print_banner(msg, symbol='~', new_lines=1, color=None):
+    msg = '{} |'.format(msg)
+    print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
 
 
 def do_nothing():
@@ -120,6 +138,10 @@ def get_object(name):
 
 def remove_letters(string):
     return filter(lambda x: x.isdigit(), string)
+
+
+def remove_digits(string):
+    return filter(lambda x: not x.isdigit(), string)
 
 
 def get_last_canvas():
