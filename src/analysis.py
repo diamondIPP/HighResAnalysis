@@ -4,8 +4,7 @@ from os.path import realpath, basename
 from shutil import copyfile
 from sys import stdout
 from time import time
-
-from cut import Cut
+from json import loads
 
 # global test campaign
 g_test_campaign = None
@@ -23,19 +22,18 @@ class Analysis(Draw):
         self.Verbose = verbose
         self.Dir = get_program_dir()
         self.Config = self.load_config()
-
-        # Directories
-        self.DataDir = self.Config.get('MAIN', 'data directory')
-        self.PickleDir = join(self.Dir, self.Config.get('SAVE', 'pickle directory'))
-        self.ResultsDir = self.generate_results_directory()
+        self.Locations = loads(self.Config.get('MAIN', 'locations'))
 
         # test campaign
         self.TestCampaign = self.load_test_campaign(testcampaign)
+        self.Location = self.get_test_campaigns()[self.TestCampaign]
         self.TCString = self.generate_tc_str()
-        self.TCDir = self.generate_tc_directory()
 
-        # subclasses
-        self.Cut = Cut(self)
+        # Directories
+        self.DataDir = join(self.get_raw_data_dir(), str(self.Location.lower()))
+        self.TCDir = self.generate_tc_directory()
+        self.PickleDir = join(self.Dir, self.Config.get('SAVE', 'pickle directory'))
+        self.ResultsDir = join(self.Dir, 'results')
 
         # progress bar
         self.PBar = PBar()
@@ -51,8 +49,8 @@ class Analysis(Draw):
         parser.read(config_file_path)
         return parser
 
-    def generate_results_directory(self):
-        return join(self.Dir, 'results')
+    def get_raw_data_dir(self):
+        return self.Config.get('MAIN', 'data directory')
 
     def generate_tc_str(self):
         return datetime.strptime(self.TestCampaign, '%Y%m').strftime('%b %Y')
@@ -69,7 +67,7 @@ class Analysis(Draw):
         return g_test_campaign
 
     def get_test_campaigns(self):
-        return [basename(path).replace('-', '') for path in glob(join(self.DataDir, '*'))]
+        return {basename(path).replace('-', ''): loc for loc in self.Locations for path in glob(join(self.get_raw_data_dir(), loc.lower(),  '*'))}
 
     def print_testcampaign(self):
         if self.Verbose:
@@ -99,6 +97,13 @@ class Analysis(Draw):
         suf = '_{s}'.format(s=suf) if suf is not None else ''
         name = '{n}_'.format(n=name) if name is not None else ''
         return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=campaign, run=run, ch=ch, suf=suf)
+
+    def print_start(self, run=None, prnt=True, tc=True):
+        if prnt:
+            ana_name = self.__class__.__name__.replace('Analysis', '')
+            run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
+            tc = ' OF {}'.format(self.TCString) if tc else ''
+            print_banner('STARTING {} ANALYSIS{}{}'.format(ana_name.upper(), run, tc), symbol='~', color=GREEN)
 
 
 def get_program_dir():
