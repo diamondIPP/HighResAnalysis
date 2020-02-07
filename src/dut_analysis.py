@@ -3,13 +3,18 @@
 #       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from __future__ import print_function
 
 from analysis import *
-from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TF1, TH1F
+from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TH1F, TF1
 from argparse import ArgumentParser
-from run import Run
+from cern_run import CERNRun
+from desy_run import DESYRun
 from pickle import load as pload
 from langaus import Langau
+from currents import Currents
+from desy_converter import DESYConverter
+from converter import Converter
 
 
 class DUTAnalysis(Analysis):
@@ -19,16 +24,66 @@ class DUTAnalysis(Analysis):
         self.RunNumber = run_number
         Analysis.__init__(self, test_campaign, verbose)
 
-        self.Run = Run(run_number, dut, self.TCDir, self.Config, single_mode)
-        self.Tree = self.Run.Tree
+        self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
+        self.DUTNr = self.Run.DUTNr
+        self.DUTName = self.Run.DUTName
 
-        self.NEntries = self.Tree.GetEntries()
+        self.Converter = self.init_converter()(self.Run.RawFileName, self.Config)
+
+        self.NEntries = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
 
+        # Subclasses
+        self.Currents = Currents(self)
+
+        # TODO add calibration in hdf5 file (no charge for MIMOSA anyway
+        # Calibration
         self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-        self.FitParameters = None
-        self.get_calibration_data()
+        # self.FitParameters = None
+        # self.get_calibration_data()
+        self.print_start(self.RunNumber)
+
+    # ----------------------------------------
+    # region INIT
+    def init_run(self):
+        return DESYRun if self.Location == 'DESY' else CERNRun
+
+    def init_converter(self):
+        return DESYConverter if self.Location == 'DESY' else Converter
+
+    def get_entries(self):
+        pass
+    # endregion INIT
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region GET
+    def get_start_time(self):
+        return self.Run.StartTime
+
+    def get_end_time(self):
+        return self.Run.EndTime
+
+    def get_calibration_number(self):
+        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.Run.DUTName, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
+        first_run = int(self.Run.RunLogs.keys()[0])
+        if first_run > numbers[-1]:
+            return numbers[-1]
+        next_number = next(nr for nr in numbers if nr >= first_run)
+        return numbers[numbers.index(next_number) - 1]
+
+    def get_calibration_data(self):
+        pickle_name = join(self.TCDir, self.Run.DUTName, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
+        with open(pickle_name, 'r') as f:
+            self.FitParameters = pload(f)
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region DRAW
+    def draw_current(self, v_range=None, f_range=None, c_range=None, show=True, draw_opt='al'):
+        self.Currents.draw_indep_graphs(v_range=v_range, f_range=f_range, c_range=c_range, show=show, draw_opt=draw_opt)
 
     def draw_number_of_hits(self):
         h = TH1I('hnh', 'Number of Hits', 4180, 0, 4180)
@@ -124,31 +179,11 @@ class DUTAnalysis(Analysis):
         self.Tree.Draw('(NHits>0)*100.:Timing>>petp', '', 'goff')
         format_histo(prof, x_tit='Trigger Phase', y_tit='Trigger Efficiency [%]', y_off=1.2, stats=0, y_range=[0, 105])
         self.draw_histo(prof)
-
-    def get_start_time(self):
-        self.Tree.GetEntry(0)
-        return self.Tree.TimeStamp / 1000
-
-    def get_end_time(self):
-        self.Tree.GetEntry(self.NEntries - 1)
-        t = self.Tree.TimeStamp / 1000
-        return t
-
-    def get_calibration_number(self):
-        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.Run.DutName, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
-        first_run = int(self.Run.RunLogs.keys()[0])
-        if first_run > numbers[-1]:
-            return numbers[-1]
-        next_number = next(nr for nr in numbers if nr >= first_run)
-        return numbers[numbers.index(next_number) - 1]
-
-    def get_calibration_data(self):
-        pickle_name = join(self.TCDir, self.Run.DutName, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
-        with open(pickle_name, 'r') as f:
-            self.FitParameters = pload(f)
+    # endregion DRAW
+    # ----------------------------------------
 
     def draw_calibration_fit(self, col=31, row=55):
-        f = open(join(self.TCDir, self.Run.DutName, 'calibrations', 'phCal{}.dat'.format(self.get_calibration_number())))
+        f = open(join(self.TCDir, self.Run.DUTName, 'calibrations', 'phCal{}.dat'.format(self.get_calibration_number())))
         f.readline()
         low_range = [int(val) for val in f.readline().split(':')[-1].split()]
         high_range = [int(val) for val in f.readline().split(':')[-1].split()]
@@ -180,7 +215,7 @@ class DUTAnalysis(Analysis):
             self.count += 5
             self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
             fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh, show=show)
-        print 'MPV:', fit.Parameters[1]
+        print('MPV:', fit.Parameters[1])
         self.count = 0
         self.Objects.append(fit)
         return fit
@@ -200,11 +235,10 @@ class DUTAnalysis(Analysis):
 
 if __name__ == '__main__':
     p = ArgumentParser()
-    p.add_argument('run', nargs='?', default='', type=int)
-    p.add_argument('plane', nargs='?', default=0, type=int)
-    p.add_argument('--testcampaign', '-tc', nargs='?', default='')
+    p.add_argument('run', nargs='?', default=11, type=int)
+    p.add_argument('dut', nargs='?', default=1, type=int)
+    p.add_argument('--testcampaign', '-tc', nargs='?', default=None)
     p.add_argument('--verbose', '-v', action='store_true')
-    p.add_argument('--single_mode', '-s', action='store_true')
+    p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
-    tc = None if not args.testcampaign else args.testcampaign
-    z = DUTAnalysis(args.run, args.plane, test_campaign=tc, single_mode=args.single_mode, verbose=args.verbose)
+    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
