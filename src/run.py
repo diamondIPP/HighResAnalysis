@@ -19,7 +19,7 @@ class Run:
     def __init__(self, run_number, dut_nr, tc_dir, config, single_mode=False):
 
         # Main Info
-        self.RunNumber = run_number
+        self.RunNumber = int(run_number)
         self.Config = config
         self.TCDir = tc_dir
         self.SingleMode = single_mode
@@ -35,6 +35,11 @@ class Run:
         self.DUTNr = dut_nr
         self.DUTName = self.load_dut_name()
         self.Bias = self.RunLogs['hv{}'.format(self.DUTNr)]
+
+        # Times
+        # TODO: Fix later with real timestamps from the data
+        self.StartTime = self.RunLogs['start']
+        self.EndTime = self.RunLogs['end']
 
     def load_run_info(self):
         pass
