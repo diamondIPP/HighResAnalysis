@@ -218,6 +218,16 @@ def make_ufloat(tup):
     return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
 
 
+def get_root_vec(tree, n, ind=0, dtype=None):
+    vec = tree.GetVal(ind)
+    vec.SetSize(n)
+    return array(vec, dtype=dtype)
+
+
+def get_root_vecs(tree, n, n_ind, dtype=None):
+    return [get_root_vec(tree, n, i, dtype) for i in xrange(n_ind)]
+
+
 class PBar:
     def __init__(self):
         self.PBar = None
