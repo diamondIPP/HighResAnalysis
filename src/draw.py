@@ -319,12 +319,14 @@ class Draw:
         self.Objects.append(legend)
         return legend
 
-    def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None):
+    def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
         set_root_output(show)
         c = TCanvas(name, title, int(x * self.Res), int(y * self.Res))
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
+        if divide is not None:
+            c.Divide(*(divide if type(divide) in [list, tuple] else [divide]))
         self.Objects.append(c)
         return c
 
