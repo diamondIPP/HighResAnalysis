@@ -1,7 +1,9 @@
 [MAIN]
 data directory = /data
 run plan file = Runinfos/run_plans.json
-default test campaign = 201807
+run log file = runlog.json
+default test campaign = 201912
+locations = ["CERN", "DESY"]
 
 [DRAW]
 fill color = 821
@@ -11,3 +13,8 @@ activate title = True
 git hash = True
 info legend = True
 file types = ["pdf"]
+
+[SOFTWARE]
+dir = ~/software
+eudaq2 = eudaq-2
+proteus = proteus
