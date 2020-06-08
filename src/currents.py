@@ -47,7 +47,7 @@ class Currents(Analysis):
         self.Begin, self.End = self.load_times(begin, end)
 
         # DUT
-        self.DUTNumber = dut if self.Ana is None else self.Ana.DUTNr
+        self.DUTNumber = choose(self.Run.DUT.Number, dut, self.Ana)
         self.DUTName = self.get_dut_name()
 
         # HV Device Info
@@ -63,9 +63,9 @@ class Currents(Analysis):
         # data
         self.LogNames = None
         self.IgnoreJumps = True
-        self.Currents = []
-        self.Voltages = []
-        self.Time = []
+        self.Currents = zeros(0)
+        self.Voltages = zeros(0)
+        self.Time = zeros(0)
         self.MeanCurrent = 0
         self.MeanVoltage = 0
         self.NAveragedEvents = 0
@@ -85,7 +85,7 @@ class Currents(Analysis):
     # ----------------------------------------
     # region INIT
     def load_bias(self):
-        return self.Run.Bias if hasattr(self.Run, 'Bias') else None
+        return self.Run.DUT.Bias if hasattr(self.Run, 'Bias') else None
 
     def load_run_number(self):
         return None if self.Ana is None else self.Ana.RunNumber if not self.IsCollection else self.Ana.RunPlan
@@ -113,7 +113,7 @@ class Currents(Analysis):
 
     def get_dut_name(self):
         if self.Ana is not None:
-            return self.Ana.DUTName
+            return self.Ana.DUT.Name
         elif self.Collection.has_selected_runs():
             return self.Collection.get_diamond_names(sel=True)[0]
         return next(log['dia{}'.format(self.DUTNumber)] for log in self.RunLogs.itervalues() if (log['starttime0']) > self.Begin)
@@ -187,7 +187,7 @@ class Currents(Analysis):
             self.Time = concatenate([self.Time, data['f0'].astype('i4') + self.Begin.utcoffset().seconds])  # in local start time
             self.Voltages = concatenate([self.Voltages, data['f1']])
             self.Currents = concatenate([self.Currents, data['f2'] * 1e9])  # unit nA
-        if not self.Currents.size:
+        if self.Currents.size == 0:
             self.Time = array([time_stamp(self.Begin), time_stamp(self.End)])
             self.Currents = zeros(2)
             self.Voltages = zeros(2)
