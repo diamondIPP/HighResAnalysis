@@ -25,8 +25,7 @@ class DUTAnalysis(Analysis):
         Analysis.__init__(self, test_campaign, verbose)
 
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
-        self.DUTNr = self.Run.DUTNr
-        self.DUTName = self.Run.DUTName
+        self.DUT = self.Run.DUT
 
         self.Converter = self.init_converter()(self.Run.RawFileName, self.Config)
 
@@ -37,7 +36,7 @@ class DUTAnalysis(Analysis):
         # Subclasses
         self.Currents = Currents(self)
 
-        # TODO add calibration in hdf5 file (no charge for MIMOSA anyway
+        # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
         # Calibration
         self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
         # self.FitParameters = None
@@ -242,3 +241,4 @@ if __name__ == '__main__':
     p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
+    c = z.Currents

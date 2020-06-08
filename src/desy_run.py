@@ -22,9 +22,6 @@ class DESYRun(Run):
         if self.SingleMode:
             return data[str(self.RunNumber)]
 
-    def load_dut_name(self):
-        return self.RunLogs['dut{}'.format(self.DUTNr)]
-
     def load_raw_file_name(self):
         names = glob(join(self.TCDir, 'raw', 'run{:06d}*.raw'.format(self.RunNumber)))
         return names[0] if names else None
