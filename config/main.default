@@ -8,3 +8,4 @@ pickle directory = pickles
 activate title = True
 git hash = True
 info legend = True
+file types = ["pdf"]
