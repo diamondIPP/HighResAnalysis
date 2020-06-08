@@ -4,3 +4,4 @@
 - numpy
 - screeninfo
 - progressbar
+- h5py
