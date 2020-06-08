@@ -7,7 +7,7 @@ from __future__ import print_function
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
-from os.path import isfile, exists, isdir
+from os.path import isfile, exists, isdir, dirname, realpath
 from os import makedirs, _exit, remove
 from ConfigParser import ConfigParser
 from datetime import datetime
@@ -72,6 +72,10 @@ def round_down_to(num, val):
     return int(num) / val * val
 
 
+def get_base_dir():
+    return dirname(dirname(realpath(__file__)))
+
+
 def ensure_dir(path):
     if not exists(path):
         info('Creating directory: {d}'.format(d=path))
@@ -127,6 +131,7 @@ def read_root_file(filename):
 
 def load_json(filename, ordered=None):
     if not file_exists(filename):
+        warning('json file does not exist: {}'.format(filename))
         return {}
     with open(filename) as f:
         return load(f, object_hook=None if ordered is None else OrderedDict)
@@ -139,10 +144,11 @@ def do(fs, pars, exe=-1):
         f(p) if e is not None else do_nothing()
 
 
-def choose(v, default, *args, **kwargs):
-    if callable(default) and v is None:
+def choose(v, default, decider='None', *args, **kwargs):
+    use_default = decider is None if decider != 'None' else v is None
+    if callable(default) and use_default:
         default = default(*args, **kwargs)
-    return default if v is None else v
+    return default if use_default else v
 
 
 def get_object(name):
