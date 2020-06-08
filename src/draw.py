@@ -34,8 +34,8 @@ class Draw:
         gStyle.SetLegendFont(42)
         self.Config = self.init_config(config)
         self.FileTypes = self.get_config('file types', default='["pdf", "root"]', lst=True)
-        self.ActivateTitle = self.get_config('activate title', True, typ=bool)
-        self.HasLegend = self.get_config('info legend', False, typ=bool)
+        self.ActivateTitle = self.get_config('activate title', default=True, typ=bool)
+        self.HasLegend = self.get_config('info legend', default=False, typ=bool)
         gStyle.SetOptTitle(self.ActivateTitle)
 
         self.Objects = []
@@ -80,7 +80,7 @@ class Draw:
 
     def set_pad_margins(self, c=None, lm=None, r=None, b=None, t=None):
         do(c.SetLeftMargin, lm)
-        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03 )
+        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
         do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not self.HasLegend else 0))
         do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if self.ActivateTitle else .07))
     # endregion
