@@ -30,6 +30,7 @@ class Analysis(Draw):
         self.DataDir = join(self.get_raw_data_dir(), str(self.Location.lower()))
         self.TCDir = self.generate_tc_directory()
         self.PickleDir = join(self.Dir, self.Config.get('SAVE', 'pickle directory'))
+        self.PickleSubDir = ''
         self.ResultsDir = join(self.Dir, 'results')
 
         # progress bar
@@ -86,14 +87,21 @@ class Analysis(Draw):
         if self.Verbose:
             print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
 
-    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
-        ensure_dir(join(self.PickleDir, sub_dir))
-        campaign = self.TestCampaign if camp is None else camp
-        run = '_{r}'.format(r=run) if run is not None else ''
-        ch = '_{c}'.format(c=ch) if ch is not None else ''
-        suf = '_{s}'.format(s=suf) if suf is not None else ''
-        name = '{n}_'.format(n=name) if name is not None else ''
-        return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=campaign, run=run, ch=ch, suf=suf)
+    def set_pickle_sub_dir(self, name):
+        self.PickleSubDir = name
+
+    def make_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
+        directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
+        ensure_dir(directory)
+        campaign = self.TCString if camp is None else camp
+        run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
+        run_str = run_str if run is not None or run_str else str(self.RunNumber) if hasattr(self, 'RunNumber') else ''
+        # noinspection PyUnresolvedReferences
+        dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
+        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, str(suf)] if v])))
+
+    def make_hdf5_path(self, *args, **kwargs):
+        return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
 
     def print_start(self, run=None, prnt=True, tc=True):
         if prnt:

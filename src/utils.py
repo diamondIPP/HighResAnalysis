@@ -8,7 +8,7 @@ import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
 from os.path import isfile, exists, isdir
-from os import makedirs, _exit
+from os import makedirs, _exit, remove
 from ConfigParser import ConfigParser
 from datetime import datetime
 from ROOT import TFile, gROOT
@@ -18,6 +18,7 @@ from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from numpy import average, sqrt, array, arange, mean
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+import h5py
 
 
 type_dict = {'int32': 'I',
@@ -75,6 +76,12 @@ def ensure_dir(path):
     if not exists(path):
         info('Creating directory: {d}'.format(d=path))
         makedirs(path)
+
+
+def remove_file(file_path):
+    if file_exists(file_path):
+        warning('removing {}'.format(file_path))
+        remove(file_path)
 
 
 def is_num(string):
@@ -232,6 +239,18 @@ def get_root_vec(tree, n, ind=0, dtype=None):
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
     return [get_root_vec(tree, n, i, dtype) for i in xrange(n_ind)]
+
+
+def do_hdf5(path, func, redo=False, *args, **kwargs):
+    if file_exists(path) and redo:
+        remove_file(path)
+    if file_exists(path) and not redo:
+        return h5py.File(path, 'r')['data']
+    else:
+        data = func(*args, **kwargs)
+        f = h5py.File(path, 'w')
+        f.create_dataset('data', data=data)
+        return f['data']
 
 
 class PBar:
