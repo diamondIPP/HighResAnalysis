@@ -6,12 +6,13 @@
 
 from utils import *
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats
-from ROOT import gROOT, gStyle, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal
+from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
-from numpy import ndarray, zeros, array
+from numpy import ndarray, zeros, array, ones, linspace
 from uncertainties.core import Variable, ufloat
 from screeninfo import get_monitors
 from argparse import ArgumentParser
+from json import loads
 
 
 resolution = None
@@ -19,27 +20,36 @@ resolution = None
 
 class Draw:
 
-    def __init__(self, verbose=True, titles=True, save_dir=''):
+    def __init__(self, verbose=True, config=None, save_dir=''):
 
         # BASICS
         self.Verbose = verbose
         self.Res = load_resolution()
         self.ResultsDir = 'Results'
         self.SaveDir = save_dir
-        self.FileTypes = ['root', 'png', 'pdf']
 
         # COLORS/SETTINGS
-        self.count = 0
-        self.colors = create_colorlist()
+        self.Count = 0
         self.FillColor = 821
         gStyle.SetLegendFont(42)
-        self.ActivateTitle = titles
-        gStyle.SetOptTitle(titles)
+        self.Config = self.init_config(config)
+        self.FileTypes = self.get_config('file types', default='["pdf", "root"]', lst=True)
+        self.ActivateTitle = self.get_config('activate title', True, typ=bool)
+        self.HasLegend = self.get_config('info legend', False, typ=bool)
+        gStyle.SetOptTitle(self.ActivateTitle)
 
         self.Objects = []
 
     # ----------------------------------------
     # region BASIC
+    @staticmethod
+    def init_config(config):
+        return config if isinstance(config, ConfigParser) else load_config(config) if config is not None else None
+
+    def get_config(self, option, default, lst=False, typ=None):
+        cfg = self.Config.get('SAVE', option) if self.Config is not None and self.Config.has_option('SAVE', option) else default
+        return loads(cfg) if lst else typ(cfg) if cfg is not None else cfg
+
     def set_save_directory(self, name):
         self.ResultsDir = name
 
@@ -49,17 +59,30 @@ class Draw:
         pol = 'm' if bias < 0 else 'p'
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
 
-    def get_color(self):
-        self.count %= 20
-        color = self.colors[self.count]
-        self.count += 1
+    def get_color(self, n, i=None):
+        color = get_color_gradient(n)[choose(i, self.Count)]
+        self.Count = self.Count + 1 if self.Count < n - 1 else 0
         return color
 
-    def get_colors(self, n):
-        return array([self.get_color() for _ in xrange(n)], 'i')
-
     def reset_colors(self):
-        self.count = 0
+        self.Count = 0
+
+    def add(self, *args):
+        for obj in args:
+            if obj not in self.Objects:
+                self.Objects.append(obj)
+        self.clean()
+
+    def clean(self):
+        n_none = sum(str(obj) == 'None' for obj in self.Objects)
+        for _ in range(n_none):
+            self.Objects.remove(None)
+
+    def set_pad_margins(self, c=None, lm=None, r=None, b=None, t=None):
+        do(c.SetLeftMargin, lm)
+        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03 )
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not self.HasLegend else 0))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if self.ActivateTitle else .07))
     # endregion
     # ----------------------------------------
 
@@ -88,7 +111,7 @@ class Draw:
         a.SetNdivisions(0) if line else do_nothing()
         a.SetLabelOffset(l_off)
         a.Draw()
-        self.Objects.append(a)
+        self.add(a)
         return a
 
     def draw_y_axis(self, x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
@@ -103,7 +126,7 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw('same')
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_tline(self, x1, x2, y1, y2, color=1, width=1, style=1):
@@ -112,7 +135,7 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw()
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
@@ -124,7 +147,7 @@ class Draw:
         box.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
         if show:
             box.Draw('same')
-        self.Objects.append(box)
+        self.add(box)
         return box
 
     def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
@@ -137,7 +160,7 @@ class Draw:
         latex = TLatex(x, y, text)
         format_text(latex, name, align, color, size, angle, ndc, font)
         latex.Draw()
-        self.Objects.append(latex)
+        self.add(latex)
         return latex
 
     def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
@@ -146,7 +169,7 @@ class Draw:
         ar.SetLineColor(col)
         ar.SetFillColor(col)
         ar.Draw()
-        self.Objects.append(ar)
+        self.add(ar)
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
         margins = [.1, .1, .1, .1] if margins is None else margins
@@ -159,7 +182,7 @@ class Draw:
         make_transparent(p) if transparent else do_nothing()
         p.Draw()
         p.cd()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
@@ -171,7 +194,7 @@ class Draw:
         t = p.AddText(text)
         format_text(t, 'pave', align, color, size, angle, ndc=True, font=font)
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_preliminary(self, canvas=None, height=.06):
@@ -201,7 +224,7 @@ class Draw:
         for i in xrange(fit.NPars):
             ls.Add(self.draw_tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_frame(self, pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
@@ -212,8 +235,22 @@ class Draw:
         do(fr.GetYaxis().CenterTitle, y_cent)
         fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         format_frame(fr)
-        self.Objects.append(fr)
-    # endregion
+        self.add(fr)
+
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
+        values = array(values, dtype='d')
+        if bins is None:
+            b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+            bins = [b.size - 1, b]
+        kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
+        h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
+        h.FillN(values.size, values, ones(values.size))
+        format_histo(h, **kwargs)
+        self.draw_histo(h, lm=lm, rm=rm, show=show)
+        return h
+    # endregion DRAWING
     # ----------------------------------------
 
     # ----------------------------------------
@@ -228,7 +265,7 @@ class Draw:
         if save:
             try:
                 self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, ftype=ftype)
-                self.Objects.append(canvas)
+                self.add(canvas)
             except Exception as inst:
                 warning('Error in save_canvas:\n{0}'.format(inst))
 
@@ -253,7 +290,7 @@ class Draw:
         h = histo
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        c.SetMargin(lm, rm, bm, tm)
+        self.set_pad_margins(c, lm, rm, bm, tm)
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
         do([c.SetPhi, c.SetTheta], [phi, theta])
@@ -263,7 +300,7 @@ class Draw:
                 i.Draw()
         self.save_plots(save_name, sub_dir=sub_dir, prnt=prnt, save=save)
         set_root_output(True)
-        self.Objects.append([c, h, leg] if leg is not None else [c, h])
+        self.add(c, h, leg)
         return c
     # endregion
     # ----------------------------------------
@@ -284,9 +321,8 @@ class Draw:
         gStyle.SetStatH(h)
 
     # ----------------------------------------
-    # region MAKING
-    @staticmethod
-    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None, ex=None, ey=None):
+    # region CREATE
+    def make_tgrapherrors(self, name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None, ex=None, ey=None):
         x = list(x) if type(x) == ndarray else x
         if x is None:
             gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
@@ -300,24 +336,30 @@ class Draw:
         gr.SetMarkerSize(marker_size)
         gr.SetLineWidth(width)
         gr.SetLineStyle(style)
+        self.add(gr)
         return gr
 
-    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None):
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
         x2 = .95 if x2 is None else x2
-        y1 = y2 - nentries * .05 * scale if y1 is None else y1
-        legend = TLegend(x1, y1, x2, y2)
-        legend.SetName(name)
-        legend.SetTextFont(42)
-        legend.SetTextSize(0.03 * scale)
-        legend.SetMargin(margin)
+        x1 = x2 - w if w is not None else x1
+        h = nentries * .05 * scale
+        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
+        y += .07 if not self.ActivateTitle and y[1] > .7 else 0
+        y -= .07 if not self.HasLegend and y[1] < .7 else 0
+        leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
+        leg.SetName(name)
+        leg.SetTextFont(42)
+        leg.SetTextSize(0.03 * scale)
+        leg.SetMargin(margin)
+        do(leg.SetNColumns, cols)
         if clean:
-            legend.SetLineWidth(2)
-            legend.SetBorderSize(0)
-            legend.SetFillColor(0)
-            legend.SetFillStyle(0)
-            legend.SetTextAlign(12)
-        self.Objects.append(legend)
-        return legend
+            leg.SetLineWidth(2)
+            leg.SetBorderSize(0)
+            leg.SetFillColor(0)
+            leg.SetFillStyle(0)
+            leg.SetTextAlign(12)
+        self.add(leg)
+        return leg
 
     def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
         set_root_output(show)
@@ -327,15 +369,15 @@ class Draw:
         do(make_transparent, c, transp)
         if divide is not None:
             c.Divide(*(divide if type(divide) in [list, tuple] else [divide]))
-        self.Objects.append(c)
+        self.add(c)
         return c
 
     def make_graph_from_profile(self, p):
-        x_range = [i for i in xrange(p.GetNbinsX()) if p.GetBinContent(i)]
+        x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
         x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
-    # endregion
+    # endregion CREATE
     # ----------------------------------------
     # END OF CLASS ---------------------------
 
@@ -344,7 +386,8 @@ class Draw:
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                  fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
-                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None):
+                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None,
+                 y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -374,7 +417,8 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     try:
         h.SetLineColor(line_color) if line_color is not None else h.SetLineColor(color) if color is not None else do_nothing()
         h.SetLineWidth(lw)
-        h.SetFillColor(fill_color) if fill_color is not None else do_nothing()
+        h.SetFillColor(fill_color) if fill_color is not None and opacity is None else do_nothing()
+        h.SetFillColorAlpha(fill_color, opacity) if fill_color is not None and opacity is not None else do_nothing()
         h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
         h.SetFillStyle(style) if style is not None else do_nothing()
         h.SetContour(ncont) if ncont is not None else do_nothing()
@@ -382,9 +426,9 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     # axes
     try:
-        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, tick_size, ]
-        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, tick_size, yax_col]
-        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, tick_size]
+        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, max(tick_size, x_ticks), ]
+        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, max(tick_size, y_ticks), yax_col]
+        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, max(tick_size, z_ticks)]
         for i, name in enumerate(['X', 'Y', 'Z']):
             format_axis(getattr(h, 'Get{}axis'.format(name))(), is_graph(h), *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
@@ -442,14 +486,14 @@ def format_frame(frame):
 # ----------------------------------------
 
 
-def create_colorlist():
-    col_names = [kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal]
-    colors = []
-    for color in col_names:
-        colors.append(color + (1 if color != 632 else -7))
-    for color in col_names:
-        colors.append(color + (3 if color != 800 else 9))
-    return colors
+def increased_range(ran, fac_bot=0., fac_top=0.):
+    return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
+
+
+def find_range(values, lfac=.2, rfac=.2, thresh=.02):
+    v = array(sorted(values))
+    xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
+    return increased_range([xmin, xmax], lfac, rfac)
 
 
 def make_graph_args(x, y, ex=None, ey=None):
@@ -517,8 +561,19 @@ def load_resolution():
     return resolution
 
 
+def get_color_gradient(n):
+    stops = array([0., .5, 1], 'd')
+    green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
+    blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
+    red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
+    color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
+    print(color_gradient)
+    color_table = [color_gradient + ij for ij in xrange(255)]
+    return array(color_table[0::(len(color_table) + 1) / n], 'i8')
+
+
 if __name__ == '__main__':
     aparser = ArgumentParser()
     aparser.add_argument('-t', action='store_false')
-    args = aparser.parse_args()
-    z = Draw(titles=args.t)
+    pargs = aparser.parse_args()
+    z = Draw(config=join('config', 'main'))
