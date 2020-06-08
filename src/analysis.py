@@ -11,10 +11,7 @@ g_test_campaign = None
 
 
 class Analysis(Draw):
-    """
-    The Elementary class provides default behaviour objects in the analysis framework and is the Mother of all myPadAnalysis objects.
-    It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
-    """
+    """ The analysis class provides default behaviour objects in the analysis framework and is the parent of all other analysis objects. """
 
     def __init__(self, testcampaign=None, verbose=False):
         Draw.__init__(self)
