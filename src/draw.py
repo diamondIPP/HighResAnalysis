@@ -29,15 +29,15 @@ class Draw:
         self.SaveDir = save_dir
 
         # COLORS/SETTINGS
-        self.Count = 0
-        self.FillColor = 821
-        gStyle.SetLegendFont(42)
         self.Config = self.init_config(config)
+        self.FillColor = self.get_config('fill color', default=821, typ=int)
         self.FileTypes = self.get_config('file types', default='["pdf", "root"]', lst=True)
         self.ActivateTitle = self.get_config('activate title', default=True, typ=bool)
         self.HasLegend = self.get_config('info legend', default=False, typ=bool)
+        gStyle.SetLegendFont(self.get_config('legend font', default=42, typ=int))
         gStyle.SetOptTitle(self.ActivateTitle)
 
+        self.Count = 0
         self.Objects = []
 
     # ----------------------------------------
@@ -47,8 +47,8 @@ class Draw:
         return config if isinstance(config, ConfigParser) else load_config(config) if config is not None else None
 
     def get_config(self, option, default, lst=False, typ=None):
-        cfg = self.Config.get('SAVE', option) if self.Config is not None and self.Config.has_option('SAVE', option) else default
-        return loads(cfg) if lst else typ(cfg) if cfg is not None else cfg
+        cfg = self.Config.get('DRAW', option) if self.Config is not None and self.Config.has_option('DRAW', option) else default
+        return loads(cfg) if lst else typ(cfg) if typ is not None else cfg
 
     def set_save_directory(self, name):
         self.ResultsDir = name

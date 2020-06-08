@@ -3,7 +3,9 @@ data directory = /data
 run plan file = Runinfos/run_plans.json
 default test campaign = 201807
 
-[SAVE]
+[DRAW]
+fill color = 821
+legend font = 42
 pickle directory = pickles
 activate title = True
 git hash = True
