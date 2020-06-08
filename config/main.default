@@ -4,11 +4,11 @@ run plan file = Runinfos/run_plans.json
 run log file = runlog.json
 default test campaign = 201912
 locations = ["CERN", "DESY"]
+pickle directory = pickles
 
 [DRAW]
 fill color = 821
 legend font = 42
-pickle directory = pickles
 activate title = True
 git hash = True
 info legend = True

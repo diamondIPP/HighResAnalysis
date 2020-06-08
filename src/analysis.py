@@ -1,6 +1,6 @@
 from draw import *
 from glob import glob
-from os.path import realpath, basename
+from os.path import realpath, basename, expanduser
 from shutil import copyfile
 from sys import stdout
 from time import time
@@ -47,7 +47,7 @@ class Analysis(Draw):
         return parser
 
     def get_raw_data_dir(self):
-        return self.Config.get('MAIN', 'data directory')
+        return expanduser(self.Config.get('MAIN', 'data directory'))
 
     def generate_tc_str(self):
         return datetime.strptime(self.TestCampaign, '%Y%m').strftime('%b %Y')
