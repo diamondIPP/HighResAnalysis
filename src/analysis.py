@@ -51,10 +51,10 @@ class Analysis(Draw):
         return expanduser(self.Config.get('MAIN', 'data directory'))
 
     def generate_tc_str(self):
-        return datetime.strptime(self.TestCampaign, '%Y%m').strftime('%b %Y')
+        return self.TestCampaign.strftime('%b %Y')
 
     def generate_tc_directory(self):
-        return join(self.DataDir, datetime.strptime(self.TestCampaign, '%Y%m').strftime('%Y-%m'))
+        return join(self.DataDir, self.TestCampaign.strftime('%Y-%m'))
 
     def load_test_campaign(self, testcampaign):
         global g_test_campaign
@@ -62,7 +62,7 @@ class Analysis(Draw):
             g_test_campaign = self.Config.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
         if g_test_campaign not in self.get_test_campaigns():
             critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
-        return g_test_campaign
+        return datetime.strptime(g_test_campaign, '%Y%m')
 
     def get_test_campaigns(self):
         return {basename(path).replace('-', ''): loc for loc in self.Locations for path in glob(join(self.get_raw_data_dir(), loc.lower(),  '*'))}
