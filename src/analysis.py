@@ -59,13 +59,13 @@ class Analysis(Draw):
     def load_test_campaign(self, testcampaign):
         global g_test_campaign
         if g_test_campaign is None:
-            g_test_campaign = self.Config.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
+            g_test_campaign = datetime.strptime(self.Config.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign, '%Y%m')
         if g_test_campaign not in self.get_test_campaigns():
             critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
-        return datetime.strptime(g_test_campaign, '%Y%m')
+        return g_test_campaign
 
     def get_test_campaigns(self):
-        return {basename(path).replace('-', ''): loc for loc in self.Locations for path in glob(join(self.get_raw_data_dir(), loc.lower(),  '*'))}
+        return {datetime.strptime(basename(path), '%Y-%m'): loc for loc in self.Locations for path in glob(join(self.get_raw_data_dir(), loc.lower(),  '*'))}
 
     def print_testcampaign(self):
         if self.Verbose:
