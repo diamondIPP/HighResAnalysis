@@ -74,7 +74,7 @@ class CERNRun(Run):
 
     def print_run_info(self):
         for key, value in sorted(load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file'))).values()[self.DUTNr].iteritems(), key=lambda k: int(k[0])):
-            print key, value
+            print(key, value)
 
 
 if __name__ == '__main__':

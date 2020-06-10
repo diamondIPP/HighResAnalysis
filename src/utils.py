@@ -2,21 +2,19 @@
 #       UTILITY FUNCTIONS
 # created on June 19th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from __future__ import print_function
-
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
 from os.path import isfile, exists, isdir, dirname, realpath
 from os import makedirs, _exit, remove
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 from datetime import datetime
 from ROOT import TFile, gROOT
 from json import load
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean
+from numpy import average, sqrt, array, arange, mean, exp
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 
@@ -244,7 +242,11 @@ def get_root_vec(tree, n, ind=0, dtype=None):
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
-    return [get_root_vec(tree, n, i, dtype) for i in xrange(n_ind)]
+    return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
+
+
+def gauss(x, scale, mean_, sigma, off=0):
+    return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
 
 
 def do_hdf5(path, func, redo=False, *args, **kwargs):
