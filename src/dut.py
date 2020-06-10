@@ -17,6 +17,7 @@ class DUT:
         self.Number = number
         self.Name = run_log['dut{}'.format(self.Number)]
         self.Bias = run_log['hv{}'.format(self.Number)]
+        self.Plane = Plane(config, section='DUT')
 
         # Specs
         self.Specs = load_json(join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json'))[self.Name.upper()]
@@ -51,3 +52,18 @@ class DUT:
 
     def set_number(self, value):
         self.Number = value
+
+
+class Plane:
+    """ Class with all information about a single pixel plane. """
+    def __init__(self, config, section='TELESCOPE'):
+
+        self.Name = config.get(section, 'name')
+        self.NCols, self.NRows = loads(config.get(section, 'pixel'))
+        self.PX, self.PY = loads(config.get(section, 'pitch'))
+
+    def __str__(self):
+        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Name.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
+
+    def __repr__(self):
+        return self.__str__()
