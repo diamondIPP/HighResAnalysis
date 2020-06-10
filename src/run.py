@@ -10,7 +10,7 @@ from analysis import Analysis
 from subprocess import call
 from converter import Converter
 from os import environ, remove, devnull
-from dut import DUT
+from dut import DUT, Plane
 
 
 class Run:
@@ -26,12 +26,13 @@ class Run:
 
         # Files
         self.FileName = self.load_file_name()
-        self.File = self.load_file()
+        self.Data = self.load_file()
 
         # Info
         self.RunInfo = self.load_run_info()
         self.RunLogs = self.load_run_logs()
         self.DUT = DUT(dut_nr, self.RunLogs, config)
+        self.Plane = Plane(config)
 
         # Times
         # TODO: Fix later with real timestamps from the data
@@ -52,8 +53,9 @@ class Run:
 
     def load_file(self):
         if not file_exists(self.FileName):
-            self.convert_file()
-        return TFile(self.FileName)
+            warning('The data file "{}" does not exist'.format(self.FileName))
+            # self.convert_file()
+        return h5py.File(self.FileName, 'r')
 
     # TODO: move to converter
     def convert_file(self):
