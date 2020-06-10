@@ -88,7 +88,7 @@ class Draw:
 
     # ----------------------------------------
     # region DRAWING
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.1, tm=None, draw_opt='', x=None, y=None, leg=None, logy=False, logx=False, logz=False,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=False, logx=False, logz=False,
                    canvas=None, grid=False, gridy=False, gridx=False, prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, prnt, phi, theta)
 
@@ -237,7 +237,7 @@ class Draw:
         format_frame(fr)
         self.add(fr)
 
-    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=.12, rm=None, show=True, **kwargs):
         values = array(values, dtype='d')
         if bins is None:
             b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
@@ -282,7 +282,7 @@ class Draw:
             info('Saving plots: {nam}'.format(nam=file_name), prnt=self.Verbose)
         set_root_output(True)
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.1, tm=None, draw_opt='', x_fac=None, y_fac=None, leg=None, logy=None, logx=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x_fac=None, y_fac=None, leg=None, logy=None, logx=None,
                    logz=None, canvas=None, grid=False, gridx=False, gridy=False, save=True, prnt=True, phi=None, theta=None):
         tm = (.1 if self.ActivateTitle else .03) if tm is None else tm
         x = self.Res if x_fac is None else int(x_fac * self.Res)
@@ -426,9 +426,9 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     # axes
     try:
-        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, max(tick_size, x_ticks), ]
-        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, max(tick_size, y_ticks), yax_col]
-        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, max(tick_size, z_ticks)]
+        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, choose(x_ticks, tick_size), ]
+        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, choose(y_ticks, tick_size), yax_col]
+        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, choose(z_ticks, tick_size)]
         for i, name in enumerate(['X', 'Y', 'Z']):
             format_axis(getattr(h, 'Get{}axis'.format(name))(), is_graph(h), *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
@@ -607,6 +607,19 @@ def get_color_gradient(n):
     print(color_gradient)
     color_table = [color_gradient + ij for ij in range(255)]
     return array(color_table[0::(len(color_table) + 1) / n], 'i8')
+
+
+def fill_hist(h, x, y=None, zz=None):
+    x, y, zz = array(x).astype('d'), array(y).astype('d'), array(zz).astype('d')
+    if h.ClassName == 'TProfile2D':
+        for i in range(x.size):
+            h.Fill(x[i], y[i], zz[i])
+    elif 'TH1' in h.ClassName():
+        h.FillN(x.size, x, ones(x.size))
+    elif any(name in h.ClassName() for name in ['TH2', 'TProfile']):
+        h.FillN(x.size, x, y, ones(x.size))
+    else:
+        h.FillN(x.size, x, y, zz, ones(x.size))
 
 
 if __name__ == '__main__':
