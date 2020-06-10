@@ -6,7 +6,6 @@
 from utils import *
 from run import Run
 from os.path import join
-from glob import glob
 
 
 class DESYRun(Run):
@@ -20,11 +19,7 @@ class DESYRun(Run):
     def load_run_logs(self):
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')), ordered=True)
         if self.SingleMode:
-            return data[str(self.RunNumber)]
-
-    def load_raw_file_name(self):
-        names = glob(join(self.TCDir, 'raw', 'run{:06d}*.raw'.format(self.RunNumber)))
-        return names[0] if names else None
+            return data[str(self.Number)]
 
     def load_file(self):
         return

@@ -27,7 +27,7 @@ class CERNRun(Run):
             info('Using single raw files')
             return None
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))
-        data = data.values()[self.DUTNr][str(self.RunNumber)]
+        data = data.values()[self.DUTNr][str(self.Number)]
         data['Batches'] = data['Batches'].split(',')
         return data
 
@@ -35,7 +35,7 @@ class CERNRun(Run):
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
         data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/', '\\', '']}
         if self.RunInfo is None:
-            return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.RunNumber)
+            return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.Number)
         return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.RunInfo['Batches']]))
 
     def load_dut_name(self):
@@ -43,11 +43,11 @@ class CERNRun(Run):
 
     def load_raw_file_name(self):
         if self.SingleMode:
-            return join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(str(self.RunNumber).zfill(3)))
-        return join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
+            return join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(str(self.Number).zfill(3)))
+        return join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.Number).zfill(2)))
     
     def load_file_name(self):
-        join(self.TCDir, self.DUTName, 'Clustered_{}.root'.format(str(self.RunNumber).zfill(3 if self.SingleMode else 2)))
+        join(self.TCDir, self.DUTName, 'Clustered_{}.root'.format(str(self.Number).zfill(3 if self.SingleMode else 2)))
 
     def load_file(self):
         if not file_exists(self.FileName):
@@ -67,7 +67,7 @@ class CERNRun(Run):
     def merge_root_files(self):
         warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
         single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.RunLogs.keys()]
-        new_file = join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
+        new_file = join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.Number).zfill(2)))
         with open(devnull, 'w') as f:
             call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file] + single_files, stdout=f)
         info('successfully merged the single files to "{}"'.format(basename(new_file)))

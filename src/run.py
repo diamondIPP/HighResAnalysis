@@ -19,13 +19,12 @@ class Run:
     def __init__(self, run_number, dut_nr, tc_dir, config, single_mode=False):
 
         # Main Info
-        self.RunNumber = int(run_number)
+        self.Number = int(run_number)
         self.Config = config
         self.TCDir = tc_dir
         self.SingleMode = single_mode
 
         # Files
-        self.RawFileName = self.load_raw_file_name()
         self.FileName = self.load_file_name()
         self.File = self.load_file()
 
@@ -48,9 +47,6 @@ class Run:
     def load_dut_name(self):
         pass
 
-    def load_raw_file_name(self):
-        pass
-
     def load_file_name(self):
         pass
 
@@ -59,6 +55,7 @@ class Run:
             self.convert_file()
         return TFile(self.FileName)
 
+    # TODO: move to converter
     def convert_file(self):
         if not file_exists(self.RawFileName) and not self.SingleMode:
             self.merge_root_files()
@@ -72,7 +69,7 @@ class Run:
     def merge_root_files(self):
         warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
         single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.RunLogs.keys()]
-        new_file = join(self.TCDir, self.DUT.Name, 'run_{}.root'.format(str(self.RunNumber).zfill(2)))
+        new_file = join(self.TCDir, self.DUT.Name, 'run_{}.root'.format(str(self.Number).zfill(2)))
         with open(devnull, 'w') as f:
             call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file] + single_files, stdout=f)
         info('successfully merged the single files to "{}"'.format(basename(new_file)))

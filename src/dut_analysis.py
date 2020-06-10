@@ -27,7 +27,7 @@ class DUTAnalysis(Analysis):
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
 
-        self.Converter = self.init_converter()(self.Run.RawFileName, self.Config)
+        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
 
         self.NEntries = self.get_entries()
         self.StartTime = self.get_start_time()
@@ -65,7 +65,7 @@ class DUTAnalysis(Analysis):
         return self.Run.EndTime
 
     def get_calibration_number(self):
-        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.Run.DUTName, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
+        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.DUT.Name, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
         first_run = int(self.Run.RunLogs.keys()[0])
         if first_run > numbers[-1]:
             return numbers[-1]
@@ -73,7 +73,7 @@ class DUTAnalysis(Analysis):
         return numbers[numbers.index(next_number) - 1]
 
     def get_calibration_data(self):
-        pickle_name = join(self.TCDir, self.Run.DUTName, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
+        pickle_name = join(self.TCDir, self.DUT.Name, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
         with open(pickle_name, 'r') as f:
             self.FitParameters = pload(f)
     # endregion GET
@@ -240,5 +240,5 @@ if __name__ == '__main__':
     p.add_argument('--verbose', '-v', action='store_true')
     p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
-    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
-    c = z.Currents
+    y = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
+    z = y.Converter
