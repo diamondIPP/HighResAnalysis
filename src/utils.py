@@ -26,6 +26,7 @@ type_dict = {'int32': 'I',
 
 
 GREEN = '\033[92m'
+WHITE = '\033[98m'
 ENDC = '\033[0m'
 YELLOW = '\033[93m'
 RED = '\033[91m'
@@ -67,7 +68,7 @@ def average_list(lst, n):
 
 
 def round_down_to(num, val):
-    return int(num) / val * val
+    return int(num) // val * val
 
 
 def get_base_dir():
@@ -98,7 +99,7 @@ def colored(string, color):
     return '{}{}{}'.format(color, string, ENDC)
 
 
-def print_banner(msg, symbol='~', new_lines=1, color=None):
+def print_banner(msg, symbol='~', new_lines=1, color=WHITE):
     msg = '{} |'.format(msg)
     print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
 
@@ -235,14 +236,20 @@ def make_ufloat(tup):
     return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
 
 
-def get_root_vec(tree, n, ind=0, dtype=None):
+def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
+    if var is not None:
+        n = tree.Draw(var, cut, 'goff')
     vec = tree.GetVal(ind)
     vec.SetSize(n)
-    return array(vec, dtype=dtype)
+    return array(list(vec), dtype=dtype)
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
     return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
+
+
+def make_list(value):
+    return array([value]).flatten()
 
 
 def gauss(x, scale, mean_, sigma, off=0):
