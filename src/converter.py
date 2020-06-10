@@ -3,28 +3,25 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-
-from ROOT import TFile, vector, TF1
 from utils import *
-from os.path import basename, join, dirname, expanduser
+from os.path import expanduser
 from argparse import ArgumentParser
-from collections import OrderedDict
-from numpy import array, average, zeros
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from pickle import load, dump
-from draw import Draw, ufloat
-from glob import glob
+from numpy import average
 
 
 class Converter:
 
-    def __init__(self, filepath, config):
+    def __init__(self, data_dir, run_number, config):
 
-        self.RawFilePath = filepath
-        self.TCDir = dirname(dirname(filepath))
+        self.RunNumber = run_number
+        self.DataDir = data_dir
         self.Config = config
+        self.RawFilePath = self.load_raw_file_name()
         self.SoftDir = expanduser(self.Config.get('SOFTWARE', 'dir'))
         self.PBar = PBar()
+
+    def load_raw_file_name(self):
+        pass
 
     # TODO think about general methods for calibration...
 
