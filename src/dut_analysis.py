@@ -7,7 +7,7 @@ from __future__ import print_function
 
 from analysis import *
 from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TH1F, TF1
-from argparse import ArgumentParser
+from ROOT import TBrowser
 from cern_run import CERNRun
 from desy_run import DESYRun
 from pickle import load as pload
@@ -15,6 +15,8 @@ from currents import Currents
 from desy_converter import DESYConverter
 from converter import Converter
 from fit import *
+from binning import *
+from tracks import TrackAnalysis
 
 
 class DUTAnalysis(Analysis):
@@ -26,6 +28,8 @@ class DUTAnalysis(Analysis):
 
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
+        self.Data = self.Run.Data
+        self.Bins = Bins(self.Config)
 
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
 
@@ -34,6 +38,7 @@ class DUTAnalysis(Analysis):
         self.EndTime = self.get_end_time()
 
         # Subclasses
+        self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
 
         # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
@@ -239,3 +244,4 @@ if __name__ == '__main__':
     args = p.parse_args()
     y = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
     z = y.Converter
+    t = y.Tracks
