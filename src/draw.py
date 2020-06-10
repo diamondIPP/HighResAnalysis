@@ -221,7 +221,7 @@ class Draw:
         latex.SetTextFont(42)
         ls = p.GetListOfLines()
         ls.Add(self.draw_tlatex(0, 0, '#chi^{{2}} / ndf  = {chi2:{p}} / {ndf}'.format(ndf=fit.Ndf(), chi2=fit.Chi2(), p=prec), size=0, align=0, font=42))
-        for i in xrange(fit.NPars):
+        for i in range(fit.NPars):
             ls.Add(self.draw_tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
         p.Draw()
         self.add(p)
@@ -561,6 +561,43 @@ def load_resolution():
     return resolution
 
 
+def get_graph_vecs(g):
+    return get_graph_x(g), get_graph_y(g)
+
+
+def get_graph_x(g):
+    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
+
+
+def get_graph_y(g):
+    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
+
+
+def get_hist_vec(p, err=True):
+    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_hist_args(p, err=True):
+    return array([make_ufloat([p.GetBinCenter(ibin), p.GetBinWidth(ibin) / 2]) if err else p.GetBinCenter(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_hist_vecs(p, err=True):
+    return get_hist_args(p, err), get_hist_vec(p, err)
+
+
+def get_h_values(h):
+    return get_graph_y(h) if 'Graph' in h.ClassName() else get_hist_vec(h)
+
+
+def get_h_args(h):
+    return get_graph_x(h) if 'Graph' in h.ClassName() else get_hist_args(h)
+
+
+def get_2d_hist_vec(h):
+    xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
+    return array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
+
+
 def get_color_gradient(n):
     stops = array([0., .5, 1], 'd')
     green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
@@ -568,7 +605,7 @@ def get_color_gradient(n):
     red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
     color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
     print(color_gradient)
-    color_table = [color_gradient + ij for ij in xrange(255)]
+    color_table = [color_gradient + ij for ij in range(255)]
     return array(color_table[0::(len(color_table) + 1) / n], 'i8')
 
 
