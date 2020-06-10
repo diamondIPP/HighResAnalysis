@@ -21,8 +21,8 @@ class DESYRun(Run):
         if self.SingleMode:
             return data[str(self.Number)]
 
-    def load_file(self):
-        return
+    def load_file_name(self):
+        return join(self.TCDir, 'data', 'run{:04d}.hdf5'.format(self.Number))
 
 
 if __name__ == '__main__':
