@@ -68,8 +68,7 @@ class Analysis(Draw):
         return {datetime.strptime(basename(path), '%Y-%m'): loc for loc in self.Locations for path in glob(join(self.get_raw_data_dir(), loc.lower(),  '*'))}
 
     def print_testcampaign(self):
-        if self.Verbose:
-            print 'TESTCAMPAIGN: {}'.format(self.generate_tc_str())
+        self.info('TESTCAMPAIGN: {}'.format(self.generate_tc_str()))
     # endregion INIT
     # ----------------------------------------
 
@@ -77,15 +76,15 @@ class Analysis(Draw):
         if prnt and self.Verbose:
             t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
-            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
+            print('INFO: {t} --> {msg}'.format(t=t, msg=msg),)
             stdout.flush()
             if next_line:
-                print
+                print()
             return t1
 
     def add_info(self, t, msg='Done'):
         if self.Verbose:
-            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
+            print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
 
     def set_pickle_sub_dir(self, name):
         self.PickleSubDir = name
