@@ -11,10 +11,10 @@ from argparse import ArgumentParser
 from cern_run import CERNRun
 from desy_run import DESYRun
 from pickle import load as pload
-from langaus import Langau
 from currents import Currents
 from desy_converter import DESYConverter
 from converter import Converter
+from fit import *
 
 
 class DUTAnalysis(Analysis):
@@ -202,21 +202,18 @@ class DUTAnalysis(Analysis):
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
-        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv, fit_range)
-        fit.langaufit()
-        if show:
-            fit.Fit.Draw('lsame')
-            c = get_last_canvas()
-            c.Modified()
-            c.Update()
-        if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
-            self.count += 5
-            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
-            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh, show=show)
-        print('MPV:', fit.Parameters[1])
-        self.count = 0
-        self.Objects.append(fit)
+        fit.get_parameters()
+        fit(show=show)
+        get_last_canvas().Modified()
+        get_last_canvas().Update()
+        if fit.get_chi2() > chi_thresh and nconv < 80:
+            self.Count += 5
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
+            fit = self.fit_langau(h, nconv + self.Count, chi_thresh=chi_thresh, show=show)
+        print('MPV: {:1.1f}'.format(fit.get_mpv()))
+        self.Count = 0
+        self.add(fit)
         return fit
 
     def estimate_mean(self, n=10, fit_range=None):
@@ -224,7 +221,7 @@ class DUTAnalysis(Analysis):
         self.fit_langau(show=False, fit_range=fit_range)
         values = []
         self.PBar.start(n)
-        for i in xrange(n):
+        for i in range(n):
             h = TH1F('hph{}'.format(i), 'Pulse Height Distribution', 200, -5000, 70000)
             h.FillRandom('Fitfcn_hph', 25000)
             values.append(h.GetMean())
