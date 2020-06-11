@@ -20,6 +20,14 @@ class TrackAnalysis(Analysis):
         self.Data = self.Ana.Data
         self.Bins = self.Ana.Bins
 
+    def draw_n(self, show=True):
+        self.format_statbox(all_stat=True)
+        return self.draw_disto(self.Data['NTracks'], 'Number of Tracks', make_bins(0, 10, 1), show=show, x_tit='Number of Tracks', y_off=2.1, lm=.14)
+
+    def draw_dof(self, show=True):
+        self.format_statbox(all_stat=True)
+        return self.draw_disto(self.Data['Dof'], 'Track Degrees of Freedom', make_bins(0, 20, 1), show=show, x_tit='Degrees of Freedom', y_off=2.1, lm=.14)
+
     def draw_occupancy(self, scale=4):
         h = TH2F('hto', 'Track Occupancy', *self.Bins.get_global(scale))
         fill_hist(h, self.Data['X'], self.Data['Y'])
