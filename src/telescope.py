@@ -9,6 +9,7 @@ from draw import fill_hist, format_histo, array
 from ROOT import TH2F
 import toml
 from numpy import in1d, where
+from binning import make_bins
 
 
 class TelescopeAnalysis(Analysis):
@@ -58,3 +59,25 @@ class TelescopeAnalysis(Analysis):
         format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, fill_color=1)
         self.format_statbox(entries=True)
         self.draw_histo(h, show=show, lm=.12, draw_opt='box')
+
+    def draw_occupancy(self, plane=0, cluster=True, show=True):
+        h = TH2F('hto', '{} Occupancy in Plane {}'.format('Cluster' if cluster else 'Hit', plane), *self.Bins.get_pixel())
+        cut = self.get_mask(plane) if not cluster else None
+        fill_hist(h, *(self.get_clusters(plane, cut) if cluster else self.get_hits(plane, cut)))
+        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.5, z_tit='Number of Entries', z_off=1.2)
+        self.format_statbox(all_stat=True, x=.83)
+        self.draw_histo(h, show=show, lm=.12, draw_opt='colz', rm=.15)
+
+    def draw_n(self, plane, name, show=True):
+        self.format_statbox(all_stat=True)
+        n = name
+        self.draw_disto(self.get_data(plane, n, 'N{}'.format(n)), 'Number of {} in Plane {}'.format(n, plane), make_bins(0, 30), show=show, x_tit='Number of {}'.format(n), y_off=1.8)
+
+    def draw_n_hits(self, plane=0, show=True):
+        self.draw_n(plane, 'Hits', show)
+
+    def draw_n_clusters(self, plane=0, show=True):
+        self.draw_n(plane, 'Clusters', show)
+
+    def draw_n_intercepts(self, plane=0, show=True):
+        self.draw_n(plane, 'Intercepts', show)
