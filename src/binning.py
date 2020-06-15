@@ -37,15 +37,15 @@ class Bins:
     def get_additional_pixel(self, mode='x'):
         """ Get number of extra pixels so that the aspect ratio is fine for a sqare picture. """
         w = max(self.get_w('x'), self.get_w('y'))
-        return (w - self.get_w(mode)) / (self.PX if mode == 'x' else self.PY) / 2 - .5
+        return (w - self.get_w(mode)) / (self.PX if mode == 'x' else self.PY) / 2
 
     def get_pixel_x(self):
         a = self.get_additional_pixel('x')
-        return make_bins(-a, self.NCols + a)
+        return make_bins(-a - .5, self.NCols + a - .5)
 
     def get_pixel_y(self):
         a = self.get_additional_pixel('y')
-        return make_bins(-a, self.NRows + a)
+        return make_bins(-a - .5, self.NRows + a - .5)
 
     def get_global(self, scale=1):
         return self.get_global_x(scale) + self.get_global_y(scale)
