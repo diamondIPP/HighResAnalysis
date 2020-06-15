@@ -9,9 +9,9 @@ from dut import Plane
 
 
 class Bins:
-    def __init__(self, config):
+    def __init__(self, config, section='TELESCOPE'):
 
-        self.Plane = Plane(config)
+        self.Plane = Plane(config, section)
 
         self.NCols, self.NRows = self.Plane.NCols, self.Plane.NRows
         self.PX, self.PY = self.Plane.PX, self.Plane.PY
@@ -31,11 +31,21 @@ class Bins:
     def get_pixel(self):
         return self.get_pixel_x() + self.get_pixel_y()
 
+    def get_w(self, mode='x'):
+        return self.PX * self.NCols if mode == 'x' else self.PY * self.NRows
+
+    def get_additional_pixel(self, mode='x'):
+        """ Get number of extra pixels so that the aspect ratio is fine for a sqare picture. """
+        w = max(self.get_w('x'), self.get_w('y'))
+        return (w - self.get_w(mode)) / (self.PX if mode == 'x' else self.PY) / 2 - .5
+
     def get_pixel_x(self):
-        return [self.NCols, arange(-.5, self.NCols)]
+        a = self.get_additional_pixel('x')
+        return make_bins(-a, self.NCols + a)
 
     def get_pixel_y(self):
-        return [self.NRows, arange(-.5, self.NRows)]
+        a = self.get_additional_pixel('y')
+        return make_bins(-a, self.NRows + a)
 
     def get_global(self, scale=1):
         return self.get_global_x(scale) + self.get_global_y(scale)
@@ -73,6 +83,6 @@ class Bins:
     # ----------------------------------------
 
 
-def make_bins(min_val, max_val, bin_width):
+def make_bins(min_val, max_val, bin_width=1):
     bins = arange(min_val, max_val + bin_width / 100., bin_width, dtype='d')
     return [bins.size - 1, bins]
