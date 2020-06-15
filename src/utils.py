@@ -257,8 +257,9 @@ def get_root_vecs(tree, n, n_ind, dtype=None):
     return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
 
 
-def make_list(value):
-    return array([value]).flatten()
+def make_list(value, dtype=None):
+    v = array([choose(value, [])]).flatten()
+    return v.tolist() if dtype == list else v.astype(dtype) if dtype is not None else v
 
 
 def gauss(x, scale, mean_, sigma, off=0):
