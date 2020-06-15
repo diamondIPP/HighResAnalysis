@@ -17,6 +17,7 @@ from converter import Converter
 from fit import *
 from binning import *
 from tracks import TrackAnalysis
+from telescope import TelescopeAnalysis
 
 
 class DUTAnalysis(Analysis):
@@ -38,6 +39,7 @@ class DUTAnalysis(Analysis):
         self.EndTime = self.get_end_time()
 
         # Subclasses
+        self.Telescope = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
 
@@ -244,4 +246,4 @@ if __name__ == '__main__':
     args = p.parse_args()
     y = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
     z = y.Converter
-    t = y.Tracks
+    t = y.Telescope
