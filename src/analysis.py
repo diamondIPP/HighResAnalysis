@@ -72,19 +72,11 @@ class Analysis(Draw):
     # endregion INIT
     # ----------------------------------------
 
-    def info(self, msg, next_line=True, prnt=True):
-        if prnt and self.Verbose:
-            t1 = time()
-            t = datetime.now().strftime('%H:%M:%S')
-            print('INFO: {t} --> {msg}'.format(t=t, msg=msg),)
-            stdout.flush()
-            if next_line:
-                print()
-            return t1
+    def info(self, msg, overlay=False, prnt=None):
+        return info(msg, overlay, choose(prnt, self.Verbose))
 
-    def add_info(self, t, msg='Done'):
-        if self.Verbose:
-            print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
+    def add_info(self, t, msg='Done', prnt=None):
+        add_to_info(t, msg, choose(prnt, self.Verbose))
 
     def set_pickle_sub_dir(self, name):
         self.PickleSubDir = name
