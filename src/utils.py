@@ -17,6 +17,8 @@ from uncertainties.core import Variable, AffineScalarFunc
 from numpy import average, sqrt, array, arange, mean, exp
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
+from time import time
+from sys import stdout
 
 
 type_dict = {'int32': 'I',
@@ -39,6 +41,13 @@ def get_t_str():
 def info(msg, overlay=False, prnt=True):
     if prnt:
         print('{ov}{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(GREEN, ENDC), ov='\033[1A\r' if overlay else ''))
+        stdout.flush()
+    return time()
+
+
+def add_to_info(t, msg='Done', prnt=True):
+    if prnt:
+        print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
 
 
 def warning(msg):
