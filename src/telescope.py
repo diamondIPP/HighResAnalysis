@@ -22,28 +22,27 @@ class TelescopeAnalysis(Analysis):
         self.Mask = None
         self.NPlanes = self.Config.getint('TELESCOPE', 'planes')
 
-    def draw_occupancy(self, plane=0, show=True):
-        h = TH2F('hto', 'Hit Occupancy in Plane {}'.format(plane), *self.Bins.get_pixel())
-        m = self.get_mask(plane)
-        fill_hist(h, self.get_x(plane)[m], self.get_y(plane)[m])
-        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, z_tit='Number of Entries', z_off=1.2)
-        self.format_statbox(all_stat=True, x=.83)
-        self.draw_histo(h, show=show, lm=.12, draw_opt='colz', rm=.15)
-
     def load_mask(self):
         if self.Mask is None:
             d = toml.load(self.Ana.Converter.FileNames[1])['sensors']
             self.Mask = [array(d[i]['masked_pixels']) for i in range(self.NPlanes)]
         return self.Mask
 
-    def get_x(self, plane=0):
-        return array(self.Data['Plane{}'.format(plane)]['X'])
+    def get_data(self, plane, grp, key, cut=None):
+        data = array(self.Data['Plane{}'.format(plane)][grp][key])
+        return data if cut is None else data[cut]
 
-    def get_y(self, plane=0):
-        return array(self.Data['Plane{}'.format(plane)]['Y'])
+    def get_x(self, plane=0, cluster=False, cut=None):
+        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'X')
 
-    def get_hits(self, plane=0):
-        return array([self.get_x(plane), self.get_y(plane)])
+    def get_y(self, plane=0, cluster=False, cut=None):
+        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'Y')
+
+    def get_hits(self, plane=0, cut=None):
+        return array([self.get_x(plane, cluster=False, cut=cut), self.get_y(plane, cluster=False, cut=cut)])
+
+    def get_clusters(self, plane=0, cut=None):
+        return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
 
     def get_mask(self, plane=0):
         x, y = self.get_hits(plane)
