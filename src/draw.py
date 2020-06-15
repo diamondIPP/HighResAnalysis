@@ -245,7 +245,8 @@ class Draw:
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
+        name = ''.join([title.lower()[i] for i in [int(j) for j in len(title) * array([0, .3, .6, (len(title) - 1) / len(title)])]])
+        h = TH1F('h{}'.format(name), title, *bins)
         h.FillN(values.size, values, ones(values.size))
         format_histo(h, **kwargs)
         self.draw_histo(h, lm=lm, rm=rm, show=show)
