@@ -30,3 +30,4 @@ pixel = [52, 80]
 name = mimosa
 pitch = [0.0184, 0.0184]
 pixel = [1152, 576]
+planes = 6
