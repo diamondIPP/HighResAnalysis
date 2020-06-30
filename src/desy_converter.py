@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
-#       convert eudaq-2 raw files to hdf5
+#       convert EUDAQ-2 raw files to hdf5
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from __future__ import print_function
@@ -13,6 +13,7 @@ from converter import Converter
 from subprocess import check_call
 from glob import glob
 from numpy import concatenate
+import toml
 
 
 class DESYConverter(Converter):
@@ -75,6 +76,10 @@ class DESYConverter(Converter):
         if not version.startswith('6'):
             warning('you require ROOT6 to run proteus! Current version: {}'.format(version))
         return version.startswith('6')
+
+    def load_mask(self):
+        d = toml.load(self.FileNames[1])['sensors']
+        return {dic['id']: array(dic['masked_pixels']) for dic in d}
     # endregion INIT
     # ----------------------------------------
 
@@ -135,6 +140,7 @@ class DESYConverter(Converter):
         plane_types = {'X': 'f4', 'Y': 'f4', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
         intercept_types = {'X': 'f4', 'Y': 'f4', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
         self.PBar.start(sum(len(lst) for lst in [hit_types, plane_types, intercept_types]) * len(names))
+        mask = self.load_mask()
         for i, name in enumerate(names):
             g = f.create_group(name)
 
@@ -146,6 +152,10 @@ class DESYConverter(Converter):
 
             # intercepts
             self.convert_plane_data(root_file, g, name, 'Intercepts', intercept_types)  # adc doesn't make sense for clusters
+
+            # mask
+            if i in mask:
+                g.create_dataset('Mask', data=mask[i].astype('u2'))
 
         add_to_info(start_time, 'Finished conversion in')
 
@@ -163,8 +173,6 @@ class DESYConverter(Converter):
             if branch_name == 'ADC' and mean(data) == 1:  # don't save empty data... not all planes have pulse height information
                 continue
             g0.create_dataset(branch_name, data=data)
-
-
 
     def run_proteus(self, prog, out, geo=None, sub_section=None, f=None):
         if not self.check_root_version():
