@@ -77,7 +77,11 @@ def average_list(lst, n):
 
 
 def round_down_to(num, val):
-    return int(num) // val * val
+    return int(num) / val * val
+
+
+def round_up_to(num, val):
+    return int(num) / val * val + val
 
 
 def get_base_dir():
