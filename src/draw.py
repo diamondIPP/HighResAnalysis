@@ -10,15 +10,14 @@ from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
 from numpy import ndarray, zeros, array, ones, linspace
 from uncertainties.core import Variable, ufloat
-from screeninfo import get_monitors
 from argparse import ArgumentParser
 from json import loads
 
 
-resolution = None
-
-
 class Draw:
+
+    Count = 0
+    Res = None
 
     def __init__(self, verbose=True, config=None, save_dir=''):
 
@@ -30,6 +29,7 @@ class Draw:
 
         # COLORS/SETTINGS
         self.Config = self.init_config(config)
+        self.Color = 0
         self.FillColor = self.get_config('fill color', default=821, typ=int)
         self.FileTypes = self.get_config('file types', default='["pdf", "root"]', lst=True)
         self.ActivateTitle = self.get_config('activate title', default=True, typ=bool)
@@ -37,11 +37,15 @@ class Draw:
         gStyle.SetLegendFont(self.get_config('legend font', default=42, typ=int))
         gStyle.SetOptTitle(self.ActivateTitle)
 
-        self.Count = 0
         self.Objects = []
 
     # ----------------------------------------
     # region BASIC
+    @staticmethod
+    def load_resolution(default=800):
+        if Draw.Res is None:
+            Draw.Res = load_resolution(default)
+
     @staticmethod
     def init_config(config):
         return config if isinstance(config, ConfigParser) else load_config(config) if config is not None else None
@@ -60,12 +64,9 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
 
     def get_color(self, n, i=None):
-        color = get_color_gradient(n)[choose(i, self.Count)]
-        self.Count = self.Count + 1 if self.Count < n - 1 else 0
+        color = get_color_gradient(n)[choose(i, self.Color)]
+        self.Color = self.Color + 1 if self.Color < n - 1 else 0
         return color
-
-    def reset_colors(self):
-        self.Count = 0
 
     def add(self, *args):
         for obj in args:
@@ -83,14 +84,24 @@ class Draw:
         do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
         do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not self.HasLegend else 0))
         do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if self.ActivateTitle else .07))
+
+    @staticmethod
+    def make_bins(values, thresh=.02):
+        bins = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+        return [bins.size - 1, bins]
+
+    @staticmethod
+    def get_count():
+        Draw.Count += 1
+        return Draw.Count
     # endregion
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAWING
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=False, logx=False, logz=False,
+    def draw_histo(self, histo, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=False, logx=False, logz=False,
                    canvas=None, grid=False, gridy=False, gridx=False, prnt=True, phi=None, theta=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, prnt, phi, theta)
+        return self.save_histo(histo, '', show, '', lm, rm, bm, tm, draw_opt, x, y, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, prnt, phi, theta)
 
     def draw_axis(self, x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
         limits = ([y1, y2] if x1 == x2 else [x1, x2]) if limits is None else limits
@@ -237,26 +248,31 @@ class Draw:
         format_frame(fr)
         self.add(fr)
 
-    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=.12, rm=None, show=True, **kwargs):
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
         values = array(values, dtype='d')
-        if bins is None:
-            b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
-            bins = [b.size - 1, b]
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        name = ''.join([title.lower()[i] for i in [int(j) for j in len(title) * array([0, .3, .6, (len(title) - 1) / len(title)])]])
-        h = TH1F('h{}'.format(name), title, *bins)
-        h.FillN(values.size, values, ones(values.size))
+        h = TH1F('h{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=values, thresh=thresh))
+        fill_hist(h, values)
         format_histo(h, **kwargs)
-        self.draw_histo(h, lm=lm, rm=rm, show=show)
+        self.draw_histo(h, show, lm, rm)
         return h
+
+    def draw_prof(self, x, y, bins=None, title='', thresh=.02, lm=None, rm=None, show=True, **kwargs):
+        x, y = array(x, dtype='d'), array(y, dtype='d')
+        kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        p = TProfile('p{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=x, thresh=thresh))
+        fill_hist(p, x, y)
+        format_histo(p, **kwargs)
+        self.draw_histo(p, show, lm, rm)
+        return p
     # endregion DRAWING
     # ----------------------------------------
 
     # ----------------------------------------
     # region SAVING
-
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, save=True, ftype=None):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
@@ -303,7 +319,7 @@ class Draw:
         set_root_output(True)
         self.add(c, h, leg)
         return c
-    # endregion
+    # endregion SAVING
     # ----------------------------------------
 
     def format_statbox(self, x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
@@ -551,15 +567,13 @@ def set_z_range(zmin, zmax):
     h.GetZaxis().SetRangeUser(zmin, zmax)
 
 
-def load_resolution():
-    global resolution
-    if resolution is None:
-        try:
-            resolution = round_down_to(get_monitors()[0].height, 500)
-        except Exception as err:
-            warning(err)
-            return 1000
-    return resolution
+def load_resolution(default=800):
+    try:
+        from screeninfo import get_monitors
+        return int(round_up_to(get_monitors()[0].height / 2, 100))
+    except Exception as err:
+        warning(err)
+        return default
 
 
 def get_graph_vecs(g):
