@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from utils import *
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile
 from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
 from numpy import ndarray, zeros, array, ones, linspace
@@ -259,14 +259,14 @@ class Draw:
         self.draw_histo(h, show, lm, rm)
         return h
 
-    def draw_prof(self, x, y, bins=None, title='', thresh=.02, lm=None, rm=None, show=True, **kwargs):
+    def draw_prof(self, x, y, bins=None, title='', thresh=.02, lm=None, rm=None, cx=None, cy=None, show=True, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         p = TProfile('p{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
-        self.draw_histo(p, show, lm, rm)
+        self.draw_histo(p, show, lm, rm, x=cx, y=cy)
         return p
     # endregion DRAWING
     # ----------------------------------------
@@ -299,11 +299,11 @@ class Draw:
             info('Saving plots: {nam}'.format(nam=file_name), prnt=self.Verbose)
         set_root_output(True)
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x_fac=None, y_fac=None, leg=None, logy=None, logx=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=None, logx=None,
                    logz=None, canvas=None, grid=False, gridx=False, gridy=False, save=True, prnt=True, phi=None, theta=None):
         tm = (.1 if self.ActivateTitle else .03) if tm is None else tm
-        x = self.Res if x_fac is None else int(x_fac * self.Res)
-        y = self.Res if y_fac is None else int(y_fac * self.Res)
+        x = self.Res if x is None else int(x * self.Res)
+        y = self.Res if y is None else int(y * self.Res)
         h = histo
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
