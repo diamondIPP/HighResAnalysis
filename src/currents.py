@@ -57,35 +57,26 @@ class Currents(Analysis):
         self.Precision = .005 if '237' in self.Name else .05
 
         # data
-        self.DataFile = join(self.DataDir, 'data.hdf5')
-        self.Data = self.load_data()
-        self.LogNames = None
         self.IgnoreJumps = True
-        self.Currents = zeros(0)
-        self.Voltages = zeros(0)
-        self.Time = zeros(0)
-        self.MeanCurrent = 0
-        self.MeanVoltage = 0
-        self.NAveragedEvents = 0
-        self.FoundStop = False
+        self.Data = self.load_data()
 
         # plotting
-        self.CurrentGraph = None
-        self.VoltageGraph = None
-        self.Margins = None
-        # graph pads
-        self.VoltagePad = None
-        self.CurrentPad = None
-        self.TitlePad = None
-        self.Histos = {}
-        self.Stuff = []
+        self.Graphs = []
 
     # ----------------------------------------
     # region INIT
     def load_data(self):
-        if not file_exists(self.DataFile):
+        data_file = join(self.DataDir, 'data.hdf5')
+        if not file_exists(data_file):
             self.convert_data()
-        return h5py.File(self.DataFile, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+        data = h5py.File(data_file, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+        data = data[where((data['timestamps'] >= time_stamp(self.Begin, off=True)) & (data['timestamps'] <= time_stamp(self.End, off=True)))]
+        if self.IgnoreJumps:  # filter out jumps
+            data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
+        data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
+        if self.Ana is not None:
+            data['timestamps'] -= uint32(data['timestamps'][0] - self.Ana.StartTime)  # synchronise time vectors
+        return data
 
     def load_bias(self):
         return self.Run.DUT.Bias if hasattr(self.Run, 'Bias') else None
@@ -154,11 +145,6 @@ class Currents(Analysis):
     def load_ana_end_time(self):
         ana = self.Ana if not self.IsCollection else self.Ana.LastAnalysis
         return self.load_time(ana.Run.EndTime if hasattr(ana.Run, 'EndTime') else None, ana.Run.LogEnd)
-
-    def reset_data(self):
-        self.Currents = []
-        self.Voltages = []
-        self.Time = []
     # endregion INIT
     # ----------------------------------------
 
@@ -188,33 +174,22 @@ class Currents(Analysis):
             if len(arrays):
                 f.create_dataset(basename(d), data=concatenate(arrays))
 
-    def get_data(self):
-        data = self.Data[where((self.Data['timestamps'] >= time_stamp(self.Begin, off=True)) & (self.Data['timestamps'] <= time_stamp(self.End, off=True)))]
-        if self.IgnoreJumps:  # filter out jumps
-            data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
-        data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
-        if self.Ana is not None:
-            data['timestamps'] -= uint32(data['timestamps'][0] - self.Ana.StartTime)  # synchronise time vectors
-        return data
-
     # endregion DATA ACQUISITION
     # ----------------------------------------
 
     # ----------------------------------------
     # region PLOTTING
     def draw_profile(self, bin_width=5, show=True):
-        data = self.get_data()
-        x, y = data['timestamps'], data['currents']
+        x, y = self.Data['timestamps'], self.Data['currents']
         self.format_statbox(entries=True)
         return self.draw_prof(x, y, bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, cx=1.5,
                               cy=.75, lm=.08, y_off=.8, show=show)
 
     def draw_distribution(self, show=True):
-        currents = self.get_data()['currents']
-        m, s = mean_sigma(currents)
+        m, s = mean_sigma(self.Data['currents'])
         xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
         self.format_statbox(all_stat=True)
-        return self.draw_disto(currents, 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
+        return self.draw_disto(self.Data['currents'], 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
 
     def get_current(self):
         if self.Ana is not None and not self.Ana.DUT.Bias:
@@ -234,8 +209,7 @@ class Currents(Analysis):
         return current
 
     def draw_iv(self, show=True):
-        data = self.get_data()
-        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.DUTName), x=data['voltages'], y=data['currents'])
+        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.DUTName), x=self.Data['voltages'], y=self.Data['currents'])
         format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
         self.draw_histo(g, show, .12)
         return g
