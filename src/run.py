@@ -10,7 +10,7 @@ from analysis import Analysis
 from subprocess import call
 from converter import Converter
 from os import environ, remove, devnull
-from dut import DUT, Plane
+from dut import DUT
 
 
 class Run:
@@ -32,7 +32,6 @@ class Run:
         self.RunInfo = self.load_run_info()
         self.RunLogs = self.load_run_logs()
         self.DUT = DUT(dut_nr, self.RunLogs, config)
-        self.Plane = Plane(config)
 
         # Times
         # TODO: Fix later with real timestamps from the data

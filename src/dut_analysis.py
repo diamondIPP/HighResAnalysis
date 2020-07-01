@@ -3,11 +3,7 @@
 #       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from __future__ import print_function
-
-from analysis import *
-from ROOT import TH2I, TH1I, TProfile2D, TCut, TProfile, TH1F, TF1
-from ROOT import TBrowser
+from ROOT import TH1I, TProfile2D, TCut, TProfile, TH1F, TF1, TH2F
 from cern_run import CERNRun
 from desy_run import DESYRun
 from pickle import load as pload
@@ -15,9 +11,12 @@ from currents import Currents
 from desy_converter import DESYConverter
 from converter import Converter
 from fit import *
-from binning import *
+import bins
 from tracks import TrackAnalysis
 from telescope import TelescopeAnalysis
+from analysis import *
+from numpy import in1d
+from dut import Plane
 
 
 class DUTAnalysis(Analysis):
@@ -27,21 +26,22 @@ class DUTAnalysis(Analysis):
         self.RunNumber = run_number
         Analysis.__init__(self, test_campaign, verbose)
 
+        # MAIN
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Data = self.Run.Data
-        self.Bins = Bins(self.Config)
 
+        # SUBCLASSES
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
-
-        self.NEntries = self.get_entries()
-        self.StartTime = self.get_start_time()
-        self.EndTime = self.get_end_time()
-
-        # Subclasses
         self.Telescope = TelescopeAnalysis(self)
+        self.Plane = Plane(self.DUT.Number + self.Telescope.NPlanes, self.Config, 'DUT')
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
+
+        # INFO
+        self.NEvents = self.get_entries()
+        self.StartTime = self.get_start_time()
+        self.EndTime = self.get_end_time()
 
         # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
         # Calibration
@@ -59,7 +59,8 @@ class DUTAnalysis(Analysis):
         return DESYConverter if self.Location == 'DESY' else Converter
 
     def get_entries(self):
-        pass
+        return self.Data['NTracks'].size
+
     # endregion INIT
     # ----------------------------------------
 
@@ -70,6 +71,33 @@ class DUTAnalysis(Analysis):
 
     def get_end_time(self):
         return self.Run.EndTime
+
+    def get_data(self, plane, grp, key=None, cut=None):
+        data = self.Data['Plane{}'.format(self.get_plane(plane).Number)][grp]
+        data = array(data) if key is None else array(data[key])
+        return data if cut is None else data[cut]
+
+    def get_x(self, plane=None, cluster=False, cut=None):
+        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'X', cut)
+
+    def get_y(self, plane=None, cluster=False, cut=None):
+        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'Y', cut)
+
+    def get_hits(self, plane=None, cut=None):
+        return array([self.get_x(plane, cluster=False, cut=cut), self.get_y(plane, cluster=False, cut=cut)])
+
+    def get_clusters(self, plane=None, cut=None):
+        return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
+
+    def get_mask(self, plane):
+        return self.get_data(plane, 'Mask')
+
+    def get_mask_cut(self, plane=None):
+        x, y = self.get_hits(plane)
+        data = x.astype('i') * 10000 + y  # make unique number out of the tuple... Is there a way to compare tuples?
+        mx, my = self.get_mask(plane).T.astype('i')
+        mask = mx * 10000 + my
+        return where(in1d(data, mask, invert=True))[0]
 
     def get_calibration_number(self):
         numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.DUT.Name, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
@@ -83,28 +111,47 @@ class DUTAnalysis(Analysis):
         pickle_name = join(self.TCDir, self.DUT.Name, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
         with open(pickle_name, 'r') as f:
             self.FitParameters = pload(f)
+
+    def get_plane(self, plane):
+        return choose(plane, self.Plane)
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
+    def draw_n(self, plane, name, show=True):
+        self.format_statbox(all_stat=True)
+        n, pl = name, self.get_plane(plane)
+        self.draw_disto(self.get_data(pl, n, 'N{}'.format(n)), 'Number of {} in {}'.format(n, pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
+
+    def draw_mask(self, plane=None, show=True):
+        plane = self.get_plane(plane)
+        h = TH2F('htm', 'Masked Pixels in {}'.format(plane), *bins.get_local(self.Plane))
+        fill_hist(h, *self.get_mask(plane).T)
+        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, fill_color=1)
+        self.format_statbox(entries=True)
+        self.draw_histo(h, show=show, lm=.12, draw_opt='box')
+
+    def draw_occupancy(self, plane=None, cluster=True, show=True):
+        plane = self.get_plane(plane)
+        h = TH2F('hto', '{} Occupancy in {}'.format('Cluster' if cluster else 'Hit', plane), *bins.get_local(plane))
+        cut = self.get_mask_cut(plane) if not cluster else None
+        fill_hist(h, *(self.get_clusters(plane, cut) if cluster else self.get_hits(plane, cut)))
+        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.5, z_tit='Number of Entries', z_off=1.2)
+        self.format_statbox(entries=True, x=.83, m=True)
+        self.draw_histo(h, show=show, lm=.12, draw_opt='colz', rm=.15)
+
+    def draw_n_hits(self, plane=None, show=True):
+        self.draw_n(plane, 'Hits', show)
+
+    def draw_n_clusters(self, plane=None, show=True):
+        self.draw_n(plane, 'Clusters', show)
+
+    def draw_n_intercepts(self, plane=None, show=True):
+        self.draw_n(plane, 'Intercepts', show)
+
     def draw_current(self, v_range=None, f_range=None, c_range=None, show=True, draw_opt='al'):
         self.Currents.draw_indep_graphs(v_range=v_range, f_range=f_range, c_range=c_range, show=show, draw_opt=draw_opt)
-
-    def draw_number_of_hits(self):
-        h = TH1I('hnh', 'Number of Hits', 4180, 0, 4180)
-        self.Tree.Draw('NHits>>hnh', '', 'goff')
-        self.format_statbox(entries=True)
-        x_range = [0, h.GetBinCenter(h.FindLastBinAbove(0)) + 1]
-        format_histo(h, x_tit='Number of Hits', y_tit='Number of Entries', y_off=1.3, x_range=x_range)
-        self.draw_histo(h, draw_opt='colz', logy=True)
-
-    def draw_occupancy(self, start=0, n=1e9, cluster=True, res=1, cut=''):
-        h = TH2I('hhm', 'Hit Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
-        self.Tree.Draw('{0}Y:{0}X>>hhm'.format('Cluster' if cluster else 'Pix'), TCut(cut), 'goff', int(n), start)
-        self.format_statbox(entries=True, x=.78)
-        format_histo(h, x_tit='Column', y_tit='Row', z_tit='Number of Entries', y_off=1.2, z_off=1.5)
-        self.draw_histo(h, draw_opt='colz', rm=.18)
 
     def draw_charge_map(self, res=1, cut=''):
         h = TProfile2D('pam', 'Charge Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
@@ -140,16 +187,10 @@ class DUTAnalysis(Analysis):
         self.draw_histo(h, lm=.14)
 
     def draw_trigger_phase(self):
-        h = TH1I('htp', 'Trigger Phase', 10, 0, 10)
-        self.Tree.Draw('Timing>>htp', '', 'goff')
-        format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.2, stats=0, fill_color=self.FillColor, x_range=[0, h.GetMaximum() * 1.2])
-        self.draw_histo(h)
+        pass
 
     def draw_charge_vs_trigger_phase(self):
-        prof = TProfile('pctp', 'Charge @ Trigger Phase', 10, 0, 10)
-        self.Tree.Draw('ClusterVcal:Timing>>pctp', '', 'goff')
-        format_histo(prof, x_tit='Trigger Phase', y_tit='Charge [vcal]', y_off=1.2, stats=0)
-        self.draw_histo(prof)
+        pass
 
     def draw_charge_vs_time(self, bin_width=30, y_range=None, show=True):
         prof = TProfile('pct', 'Charge vs. Time - Run {}'.format(self.RunNumber), int((self.EndTime - self.StartTime) / bin_width), self.StartTime, self.EndTime)
@@ -244,6 +285,4 @@ if __name__ == '__main__':
     p.add_argument('--verbose', '-v', action='store_true')
     p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
-    y = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
-    z = y.Converter
-    t = y.Telescope
+    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
