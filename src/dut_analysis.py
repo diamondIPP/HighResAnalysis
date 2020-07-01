@@ -31,17 +31,17 @@ class DUTAnalysis(Analysis):
         self.DUT = self.Run.DUT
         self.Data = self.Run.Data
 
+        # INFO
+        self.NEvents = self.get_entries()
+        self.StartTime = self.get_start_time()
+        self.EndTime = self.get_end_time()
+
         # SUBCLASSES
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Telescope = TelescopeAnalysis(self)
         self.Plane = Plane(self.DUT.Number + self.Telescope.NPlanes, self.Config, 'DUT')
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
-
-        # INFO
-        self.NEvents = self.get_entries()
-        self.StartTime = self.get_start_time()
-        self.EndTime = self.get_end_time()
 
         # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
         # Calibration
@@ -154,9 +154,6 @@ class DUTAnalysis(Analysis):
 
     def draw_n_intercepts(self, plane=None, show=True):
         self.draw_n(plane, 'Intercepts', show)
-
-    def draw_current(self, v_range=None, f_range=None, c_range=None, show=True, draw_opt='al'):
-        self.Currents.draw_indep_graphs(v_range=v_range, f_range=f_range, c_range=c_range, show=show, draw_opt=draw_opt)
 
     def draw_charge_map(self, res=1, cut=''):
         h = TProfile2D('pam', 'Charge Map', int(52 * res), .5, 52.5, int(80 * res), .5, 80.5)
@@ -277,6 +274,7 @@ class DUTAnalysis(Analysis):
 
 
 if __name__ == '__main__':
+    t = time()
     p = ArgumentParser()
     p.add_argument('run', nargs='?', default=11, type=int)
     p.add_argument('dut', nargs='?', default=1, type=int)
@@ -285,3 +283,5 @@ if __name__ == '__main__':
     p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
+    c = z.Currents
+    z.add_info(t, prnt=True)

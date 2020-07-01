@@ -1,21 +1,9 @@
 from os.path import getsize
-from time import sleep
-from ROOT import TGraph
 from numpy import genfromtxt, isnan, datetime64, invert, where, concatenate, char, sign, uint32
 from pytz import timezone
 import bins
 from analysis import *
 from utils import *
-
-# ====================================
-# CONSTANTS
-axis_title_size = 0.06
-label_size = .05
-title_offset = 0.8
-col_vol = 602  # 807
-col_cur = 899  # 418
-pad_margins = [.065, .09, .15, .1]
-marker_size = .3
 
 
 class Currents(Analysis):
@@ -77,6 +65,11 @@ class Currents(Analysis):
         if self.Ana is not None:
             data['timestamps'] -= uint32(data['timestamps'][0] - self.Ana.StartTime)  # synchronise time vectors
         return data
+
+    def reload_data(self, ignore_jumps):
+        if ignore_jumps != self.IgnoreJumps:
+            self.IgnoreJumps = ignore_jumps
+            self.Data = self.load_data()
 
     def load_bias(self):
         return self.Run.DUT.Bias if hasattr(self.Run, 'Bias') else None
@@ -145,6 +138,12 @@ class Currents(Analysis):
     def load_ana_end_time(self):
         ana = self.Ana if not self.IsCollection else self.Ana.LastAnalysis
         return self.load_time(ana.Run.EndTime if hasattr(ana.Run, 'EndTime') else None, ana.Run.LogEnd)
+
+    def get_title(self):
+        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
+        run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
+        return 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
+
     # endregion INIT
     # ----------------------------------------
 
@@ -214,91 +213,23 @@ class Currents(Analysis):
         self.draw_histo(g, show, .12)
         return g
 
-    def set_graphs(self, averaging=1):
-        self.find_data()
-        sleep(.1)
-        self.make_graphs(averaging)
-        self.set_margins()
+    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', show=True):
+        self.reload_data(ignore_jumps)
+        t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
+        gv = self.make_tgrapherrors('gv', self.get_title(), x=t, y=v)
+        gc = self.make_tgrapherrors('gc', '', x=t, y=c)
+        format_histo(gv, y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0, ttit_size=.6)
+        format_histo(gc, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=c_range)
+        for g in [gc, gv]:
+            format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=.3)
+        m = [.09, .09, .2, .1]
+        self.draw_histo(gv, show, m[0], m[1], m[2], m[3], x=1.5, y=.75, draw_opt='{}y+'.format(draw_opt))
+        self.draw_tpad('pc', transparent=True, margins=m)
+        gc.Draw(draw_opt)
+        update_canvas()
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, draw_opt='ap', show=True):
-        self.IgnoreJumps = ignore_jumps
-        self.set_graphs(averaging)
-        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75, show=show)
-        self.draw_flux_pad(f_range, rel_time, draw_opt) if with_flux else self.draw_voltage_pad(v_range, draw_opt)
-        self.draw_title_pad()
-        self.draw_current_pad(rel_time, c_range, draw_opt)
-        self.Stuff.append(c)
-        run = self.Ana.RunPlan if self.IsCollection else self.RunNumber
-        save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUTNumber)
-        self.save_plots(save_name, canvas=c, ftype='png')
-
-    def zoom_pads(self, low, high):
-        self.VoltageGraph.GetXaxis().SetRangeUser(low, high)
-        self.CurrentGraph.GetXaxis().SetRangeUser(low, high)
-
-    def draw_current_pad(self, rel_t, c_range, draw_opt):
-        self.draw_tpad('p3', gridx=True, margins=pad_margins, transparent=True)
-        g = self.CurrentGraph
-        format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
-                     y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur, markersize=marker_size)
-        self.CurrentGraph.Draw(draw_opt)
-
-    def draw_voltage_pad(self, v_range, draw_opt='ap'):
-        self.draw_tpad('p1', gridy=True, margins=pad_margins, transparent=True)
-        g = self.VoltageGraph
-        v_range = [-1100, 1100] if v_range is None else v_range
-        format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
-                     color=col_vol, y_off=title_offset, markersize=marker_size, yax_col=col_vol, lw=3, lab_size=label_size)
-        g.Draw('{}y+'.format(draw_opt))
-
-    def draw_flux_pad(self, f_range, rel_t=False, draw_opt='ap'):
-        pad = self.draw_tpad('p1', margins=pad_margins, transparent=True, logy=True)
-        h = self.Ana.draw_flux(rel_time=rel_t, show=False)
-        pad.cd()
-        f_range = [1, 20000] if f_range is None else f_range
-        format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, x_off=99, l_off_x=99, tick_size=0,
-                     center_y=True, tit_size=axis_title_size, y_off=.7)
-        h.Draw('{}y+'.format(draw_opt) if 'TGraph' in h.Class_Name() else 'histy+')
-
-    def draw_title_pad(self):
-        self.draw_tpad('p2', transparent=True)
-        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
-        run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
-        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
-        self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
-
-    def find_margins(self):
-        x = [min(self.Time), max(self.Time)]
-        dx = .05 * (x[1] - x[0])
-        y = [min(self.Currents), max(self.Currents)]
-        dy = .01 * (y[1] - y[0])
-        return {'x': [x[0] - dx, x[1] + dx], 'y': [y[0] - dy, y[1] + dy]}
-
-    def set_margins(self):
-        self.Margins = self.find_margins()
-
-    def make_graphs(self, averaging=1):
-        xv = array(self.Time)
-        xc = array(average_list(self.Time, averaging))
-        # current
-        y = array(average_list(self.Currents, averaging))
-        g1 = TGraph(len(xc), xc, y)
-        format_histo(g1, 'Current', '', color=col_cur, markersize=.5)
-        g1.SetTitle('')
-        # voltage
-        y = array(self.Voltages)
-        g2 = TGraph(len(xv), xv, y)
-        format_histo(g2, 'Voltage', '', color=col_vol, markersize=.5)
-        self.CurrentGraph = g1
-        self.VoltageGraph = g2
-
-    def draw_time_axis(self, y, opt=''):
-        x = self.Margins['x']
-        a1 = self.draw_x_axis(y, x[0], x[1], 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
-        a1.SetTimeFormat("%H:%M")
-        a1.SetTimeOffset(-3600)
-
-    # endregion
+    # endregion PLOTTING
+    # ----------------------------------------
 
     def run_exists(self, run):
         if run in self.RunLogs:
@@ -320,7 +251,6 @@ class Currents(Analysis):
 
 
 if __name__ == '__main__':
-
     aparser = ArgumentParser()
     aparser.add_argument('dut', nargs='?', default=1, type=int, help='dut number [default: 1] (choose from 1,2,...)')
     aparser.add_argument('begin', nargs='?', default=12)
