@@ -2,8 +2,6 @@ from draw import *
 from glob import glob
 from os.path import realpath, basename, expanduser
 from shutil import copyfile
-from sys import stdout
-from time import time
 from json import loads
 
 # global test campaign

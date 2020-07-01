@@ -1,13 +1,10 @@
-from __future__ import print_function
-from glob import glob
-
-from analysis import Analysis, format_histo, join, basename
-from ROOT import TGraph, TProfile, TH1F, TH2F
-from numpy import genfromtxt, isnan, datetime64, vectorize, invert, zeros, where, concatenate
-from pytz import timezone
+from os.path import getsize
 from time import sleep
-from argparse import ArgumentParser
-
+from ROOT import TGraph
+from numpy import genfromtxt, isnan, datetime64, invert, where, concatenate, char, sign, uint32
+from pytz import timezone
+import bins
+from analysis import *
 from utils import *
 
 # ====================================
@@ -30,6 +27,7 @@ class Currents(Analysis):
         # Settings
         self.Averaging = averaging
         self.TimeZone = timezone('Europe/Zurich')
+        self.DataDir = join(self.TCDir, 'hvdata')
 
         # Config
         self.Ana = analysis
@@ -39,7 +37,7 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.RunLogs = self.Ana.Run.RunLogs
         self.Run = self.Ana.Run
-        self.HVConfig = load_config(join(self.Run.TCDir, 'HVClient', 'config'))
+        self.HVConfig = load_config(join(self.DataDir, 'config'))
         self.set_save_directory('currents')
         self.Bias = self.load_bias()
 
@@ -58,9 +56,9 @@ class Currents(Analysis):
         self.Model = self.HVConfig.get('HV{}'.format(self.Number), 'model')
         self.Precision = .005 if '237' in self.Name else .05
 
-        self.DataPath = self.find_data_path()
-
         # data
+        self.DataFile = join(self.DataDir, 'data.hdf5')
+        self.Data = self.load_data()
         self.LogNames = None
         self.IgnoreJumps = True
         self.Currents = zeros(0)
@@ -84,6 +82,11 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region INIT
+    def load_data(self):
+        if not file_exists(self.DataFile):
+            self.convert_data()
+        return h5py.File(self.DataFile, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+
     def load_bias(self):
         return self.Run.DUT.Bias if hasattr(self.Run, 'Bias') else None
 
@@ -95,7 +98,7 @@ class Currents(Analysis):
 
     def load_parser(self):
         parser = ConfigParser()
-        file_path = join(self.Run.TCDir, 'HVClient', 'config.ini')
+        file_path = join(self.DataDir, 'config.ini')
         if not file_exists(file_path):
             critical('HV info file "{f}" does not exist'.format(f=file_path))
         parser.read(file_path)
@@ -135,7 +138,7 @@ class Currents(Analysis):
         return words[1] if len(words) > 1 else '0'
 
     def find_data_path(self):
-        data_dir = join(self.Run.TCDir, 'HVClient', '{}_CH{}'.format(self.Name, self.Channel))
+        data_dir = join(self.Run.TCDir, 'hvdata', '{}_CH{}'.format(self.Name, self.Channel))
         if not dir_exists(data_dir):
             critical('HV data path "{}" does not exist!'.format(data_dir))
         return data_dir
@@ -161,69 +164,81 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region DATA ACQUISITION
-    def get_log_names(self):
-        log_names = sorted([name for name in glob(join(self.DataPath, '*.log'))])
-        start_log = next((i for i, log_name in enumerate(log_names) if self.get_log_date(log_name) >= self.Begin), 1) - 1
-        end_log = next((i for i, log_name in enumerate(log_names) if self.get_log_date(log_name) >= self.End), -1)
-        return log_names[start_log:end_log]
-
     def get_log_date(self, name):
         log_date = ''.join(basename(name).split('_')[-6:])
         return self.TimeZone.localize(datetime.strptime(log_date, '%Y%m%d%H%M%S.log'))
 
-    def find_data(self):
-        if len(self.Currents) > 0:
-            return
-        f = vectorize(time_stamp)
-        for i, log_file_name in enumerate(self.get_log_names()):
-            data = genfromtxt(log_file_name, usecols=arange(3), dtype=[object, float, float])
-            data = data[where(invert(isnan(data['f1'])))[0]]  # remove text entries
-            log_date = self.get_log_date(log_file_name)
-            data['f0'] = f((log_date.strftime('%Y-%m-%d ') + data['f0']).astype(datetime64).astype(datetime), log_date.utcoffset().seconds)
-            data = data[where((data['f0'] >= time_stamp(self.Begin, off=True)) & (data['f0'] <= time_stamp(self.End, off=True)))]
-            data = data[where(abs(data['f2']) < 1e-3)]  # filter our very high unphysical currents > 3mA
-            if self.IgnoreJumps:  # filter out jumps
-                data = data[where(abs(data['f2'][:-1]) * 100 > abs(data['f2'][1:]))[0] + 1]
-            self.Time = concatenate([self.Time, data['f0'].astype('i4') + self.Begin.utcoffset().seconds])  # in local start time
-            self.Voltages = concatenate([self.Voltages, data['f1']])
-            self.Currents = concatenate([self.Currents, data['f2'] * 1e9])  # unit nA
-        if self.Currents.size == 0:
-            self.Time = array([time_stamp(self.Begin), time_stamp(self.End)])
-            self.Currents = zeros(2)
-            self.Voltages = zeros(2)
-        if mean(self.Currents) < 0:
-            self.Currents *= -1
+    def convert_data(self):
+        info('converting hv text files to hdf5 ...')
+        self.PBar.start(len(glob(join(self.DataDir, '*', '*.log'))))
+        f = h5py.File(join(self.DataDir, 'data.hdf5'), 'w')
+        for d in glob(join(self.DataDir, '*_*')):
+            arrays = []
+            for file_name in glob(join(d, '*.log')):
+                if getsize(file_name) == 0:
+                    remove_file(file_name)
+                log_date = self.get_log_date(file_name)
+                data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', object), ('voltages', 'f2'), ('currents', 'f4')])
+                data = data[where(invert(isnan(data['voltages'])))[0]]  # remove text entries
+                date_times = array(log_date.strftime('%Y-%m-%d ') + char.array(data['timestamps'].astype('U'))).astype(datetime64).astype(datetime)
+                data['timestamps'] = (array([time_stamp(dt, log_date.utcoffset().seconds) for dt in date_times]).astype('u4'))
+                data = data.astype([('timestamps', 'u4'), ('voltages', 'f2'), ('currents', 'f4')])
+                arrays.append(data)
+                self.PBar.update()
+            if len(arrays):
+                f.create_dataset(basename(d), data=concatenate(arrays))
+
+    def get_data(self):
+        data = self.Data[where((self.Data['timestamps'] >= time_stamp(self.Begin, off=True)) & (self.Data['timestamps'] <= time_stamp(self.End, off=True)))]
+        if self.IgnoreJumps:  # filter out jumps
+            data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
+        data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
         if self.Ana is not None:
-            self.Time -= self.Time[0] - self.Ana.Run.StartTime  # synchronise time vectors
+            data['timestamps'] -= uint32(data['timestamps'][0] - self.Ana.StartTime)  # synchronise time vectors
+        return data
+
     # endregion DATA ACQUISITION
     # ----------------------------------------
 
     # ----------------------------------------
     # region PLOTTING
-    def get_x_bins(self, bw=5):
-        bins = arange(self.Time[0], self.Time[-1], bw) if self.Ana is None else self.Ana.get_raw_time_bins(bw)[1] if self.IsCollection else self.Ana.Bins.get_raw_time(bw)[1]
-        return [bins.size - 1, bins]
-
     def draw_profile(self, bin_width=5, show=True):
-        self.find_data()
-        p = TProfile('hpr', 'Leakage Current', *self.get_x_bins(bin_width))
-        for t, c in zip(self.Time, self.Currents):
-            p.Fill(t, c)
-        format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, markersize=.7, stats=0, t_ax_off=0)
-        self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
-        return p
+        data = self.get_data()
+        x, y = data['timestamps'], data['currents']
+        self.format_statbox(entries=True)
+        return self.draw_prof(x, y, bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, cx=1.5,
+                              cy=.75, lm=.08, y_off=.8, show=show)
 
-    def draw_flux_correlation(self, bin_fac=1, show=True):
-        p1 = self.draw_profile(show=False)
-        p2 = self.Ana.draw_flux(show=False)
-        ybins = log_bins(int(sqrt(p1.GetNbinsX()) * bin_fac) * 3, .1, p1.GetMaximum() * 2)
-        xbins = log_bins(int(sqrt(p1.GetNbinsX()) * bin_fac), .1, p2.GetMaximum() * 2)
-        h = TH2F('gfcc', 'Correlation of Flux and Current', *(xbins + ybins))
-        for i in xrange(p1.GetNbinsX()):
-            if p1.GetBinContent(i) and p2.GetBinContent(i):
-                h.Fill(p2.GetBinContent(i), p1.GetBinContent(i))
-        format_histo(h, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}', stats=0, y_off=1.2)
-        self.save_histo(h, 'FluxCurrent', draw_opt='colz', rm=.18, show=show, lm=.12, logy=True, logx=True)
+    def draw_distribution(self, show=True):
+        currents = self.get_data()['currents']
+        m, s = mean_sigma(currents)
+        xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
+        self.format_statbox(all_stat=True)
+        return self.draw_disto(currents, 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
+
+    def get_current(self):
+        if self.Ana is not None and not self.Ana.DUT.Bias:
+            warning('Bias of run {} is 0!'.format(self.Ana.RunNumber))
+            return ufloat(0, 0)
+        else:
+            h = self.draw_distribution(show=False)
+            if h.GetEntries() < 3:
+                return None
+            m, s = mean_sigma(*get_hist_vecs(h, err=False))
+            fit = h.Fit('gaus', 'sq0', '', m - 2 * s, m + 2 * s)
+            fm, fs = fit.Parameter(1), fit.Parameter(2)
+            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
+                current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
+            else:
+                current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
+        return current
+
+    def draw_iv(self, show=True):
+        data = self.get_data()
+        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.DUTName), x=data['voltages'], y=data['currents'])
+        format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
+        self.draw_histo(g, show, .12)
+        return g
 
     def set_graphs(self, averaging=1):
         self.find_data()
@@ -231,50 +246,7 @@ class Currents(Analysis):
         self.make_graphs(averaging)
         self.set_margins()
 
-    def draw_distribution(self, show=True):
-        self.find_data()
-        m, s = mean_sigma(self.Currents)
-        s = .1 if not s else s
-        set_root_output(False)
-        xmin, xmax = m - 3 * s, m + 3 * s
-        max_bins = int((xmax - xmin) * 100 if '237' in self.Name else 10)
-        h = TH1F('hcd', 'Current Distribution', min(5 * int(sqrt(len(self.Currents))), max_bins), xmin, xmax)
-        for current in self.Currents:
-            h.Fill(current)
-        format_histo(h, x_tit='Current [nA]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.draw_histo(h, '', show, lm=.13)
-        return h
-
-    def get_current(self):
-        if self.Ana is not None and not self.Ana.Bias:
-            warning('Bias of run {} is 0!'.format(self.Ana.RunNumber))
-            current = make_ufloat((0, 0))
-        else:
-            h = self.draw_distribution(show=False)
-            if h.GetEntries() < 3:
-                return None
-            values = [h.GetBinCenter(i) for i in xrange(h.GetNbinsX())]
-            weights = [h.GetBinContent(i) for i in xrange(h.GetNbinsX())]
-            m, s = mean_sigma(values, weights)
-            fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
-            fm, fs = fit.Parameter(1), fit.Parameter(2)
-            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
-                current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
-            else:
-                current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
-        self.Ana.server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DUTNumber), current)
-        return current
-
-    def draw_iv(self, show=True):
-        self.find_data()
-        x = [v for v, c in zip(self.Voltages, self.Currents) if c != 590]
-        y = [c for c in self.Currents if c != 590]
-        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Ana.DUTName), x=x, y=y)
-        format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
-        self.draw_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
-        return g
-
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, draw_opt='ap', show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
         c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75, show=show)
@@ -358,7 +330,7 @@ class Currents(Analysis):
         if run in self.RunLogs:
             return True
         else:
-            warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.print_testcampaign(pr=False)))
+            warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.TCString))
             return False
 
     def print_run_times(self, run):
