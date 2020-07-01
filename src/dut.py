@@ -17,7 +17,6 @@ class DUT:
         self.Number = number
         self.Name = run_log['dut{}'.format(self.Number)]
         self.Bias = run_log['hv{}'.format(self.Number)]
-        self.Plane = Plane(config, section='DUT')
 
         # Specs
         self.Specs = load_json(join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json'))[self.Name.upper()]
@@ -56,14 +55,32 @@ class DUT:
 
 class Plane:
     """ Class with all information about a single pixel plane. """
-    def __init__(self, config, section='TELESCOPE'):
+    def __init__(self, n, config, section='TELESCOPE'):
 
+        self.IsDUT = 'DUT' in section
+        self.Number = n
         self.Name = config.get(section, 'name')
         self.NCols, self.NRows = loads(config.get(section, 'pixel'))
         self.PX, self.PY = loads(config.get(section, 'pitch'))
 
     def __str__(self):
-        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Name.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
+        return 'DUT Plane' if self.IsDUT else 'Plane {}'.format(self.Number)
 
     def __repr__(self):
-        return self.__str__()
+        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Name.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
+
+    def __call__(self, number=0):
+        self.set_number(number)
+        return self
+
+    def get_max_width(self):
+        return max(self.get_x_width(), self.get_y_width())
+
+    def get_x_width(self):
+        return self.PX * self.NCols
+
+    def get_y_width(self):
+        return self.PY * self.NRows
+
+    def set_number(self, n):
+        self.Number = n
