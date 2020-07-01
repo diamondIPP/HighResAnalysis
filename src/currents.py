@@ -218,7 +218,7 @@ class Currents(Analysis):
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
         gv = self.make_tgrapherrors('gv', self.get_title(), x=t, y=v)
         gc = self.make_tgrapherrors('gc', '', x=t, y=c)
-        format_histo(gv, y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0, ttit_size=.6)
+        format_histo(gv, y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0)
         format_histo(gc, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=c_range)
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=.3)
