@@ -182,12 +182,11 @@ class Draw:
         ar.Draw()
         self.add(ar)
 
-    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
-        margins = [.1, .1, .1, .1] if margins is None else margins
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None):
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
-        p.SetMargin(*margins)
+        self.set_pad_margins(p, *(margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]))
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
@@ -559,6 +558,12 @@ def make_ufloat(tup):
 
 def is_graph(h):
     return 'Graph' in h.ClassName()
+
+
+def update_canvas(c=None):
+    c = choose(c, get_last_canvas())
+    c.Modified()
+    c.Update()
 
 
 def set_z_range(zmin, zmax):
