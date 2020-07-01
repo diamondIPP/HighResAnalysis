@@ -147,6 +147,11 @@ class DUTAnalysis(Analysis):
     def draw_n_clusters(self, plane=None, show=True):
         self.draw_n(plane, 'Clusters', show)
 
+    def draw_cluster_size(self, plane=None, show=True):
+        self.format_statbox(all_stat=True)
+        v = self.get_data(plane, 'Clusters', 'NClusters')
+        self.draw_disto(v[v > 0], 'Cluster Size in {}'.format(self.get_plane(plane)), bins.make(0, 10), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
+
     def draw_n_intercepts(self, plane=None, show=True):
         self.draw_n(plane, 'Intercepts', show)
 
@@ -179,12 +184,6 @@ class DUTAnalysis(Analysis):
         if threshold and show:
             self.draw_y_axis(threshold, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(int(round_down_to(threshold, 100))), off=.3, line=True, opt='-L')
         return h
-
-    def draw_cluster_size(self):
-        h = TH1I('hcs', 'Cluster Size', 20, 0, 20)
-        self.Tree.Draw('ClusterSize>>hcs', '', 'goff')
-        format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=2, stats=0)
-        self.draw_histo(h, lm=.14)
 
     def draw_trigger_phase(self):
         pass

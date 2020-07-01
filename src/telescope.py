@@ -30,3 +30,7 @@ class TelescopeAnalysis(Analysis):
 
     def draw_n_intercepts(self, plane=0, show=True):
         self.Ana.draw_n(self.Plane(plane), 'Intercepts', show)
+
+    def draw_cluster_size(self, plane=0, show=True):
+        self.Ana.draw_cluster_size(self.Plane(plane), show)
+
