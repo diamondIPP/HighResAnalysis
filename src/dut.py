@@ -69,8 +69,9 @@ class Plane:
     def __repr__(self):
         return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Name.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
 
-    def __call__(self, number=0):
-        self.set_number(number)
+    def __call__(self, number=None):
+        if number is not None:
+            self.set_number(number)
         return self
 
     def get_max_width(self):
