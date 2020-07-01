@@ -16,26 +16,39 @@ MinVcal = -100
 MaxVcal = 1250
 VcalToEl = 47.
 
-# Miscellaneous
-GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
-
-
-def get_pixel(self, plane):
-    return self.get_pixel_x(plane) + self.get_pixel_y(plane)
-
-
-def get_pixel_x(plane):
-    extra_pixel = (plane.get_max_width() - plane.get_x_width()) / plane.PX / 2  # keep aspect ratio
-    return make(-extra_pixel - .5, plane.NCols + extra_pixel - .5)
-
-
-def get_pixel_y(plane):
-    extra_pixel = (plane.get_max_width() - plane.get_y_width()) / plane.PY / 2  # keep aspect ratio
-    return make(-extra_pixel - .5, plane.NRows + extra_pixel - .5)
-
 
 # ----------------------------------------
 # region PIXEL
+def get_local(plane, bin_width=1):
+    return get_local_x(plane, bin_width) + get_local_y(plane, bin_width)
+
+
+def get_local_x(plane, bin_width=1):
+    extra_pixel = (plane.get_max_width() - plane.get_x_width()) / plane.PX / 2  # keep aspect ratio
+    return make(-extra_pixel - .5, plane.NCols + extra_pixel - .5, bin_width)
+
+
+def get_local_y(plane, bin_width=1):
+    extra_pixel = (plane.get_max_width() - plane.get_y_width()) / plane.PY / 2  # keep aspect ratio
+    return make(-extra_pixel - .5, plane.NRows + extra_pixel - .5, bin_width)
+
+
+def get_global(plane, res=1):
+    return get_global_x(plane, res) + get_global_y(plane, res)
+
+
+def get_global_x(plane, res=1):
+    """ calculates the global telescope bins
+    :return: [nbins, bin_array] """
+    xmax = plane.get_max_width() * .6  # to keep the aspect ratio
+    return make(-xmax, xmax, res * plane.PX)
+
+
+def get_global_y(plane, res=1):
+    ymax = plane.get_max_width() * .6
+    return make(-ymax, ymax, res * plane.PY)
+
+
 def get_adc():
     return make(0, MaxADC)
 
