@@ -28,14 +28,14 @@ class Run:
         self.FileName = self.load_file_name()
 
         # Info
-        self.RunInfo = self.load_run_info()
-        self.RunLogs = self.load_run_logs()
-        self.DUT = DUT(dut_nr, self.RunLogs, config)
+        self.Info = self.load_run_info()
+        self.Logs = self.load_run_logs()
+        self.DUT = DUT(dut_nr, self.Logs, config)
 
         # Times
         # TODO: Fix later with real timestamps from the data
-        self.StartTime = self.RunLogs['start']
-        self.EndTime = self.RunLogs['end']
+        self.StartTime = self.Logs['start']
+        self.EndTime = self.Logs['end']
 
     def load_run_info(self):
         pass
@@ -54,7 +54,7 @@ class Run:
         if not file_exists(self.RawFileName) and not self.SingleMode:
             self.merge_root_files()
         warning('final root file "{}" does not exist. Starting Converter!'.format(self.FileName))
-        converter = Converter(self.RawFileName, self.DUT.Number, join(self.TCDir, self.DUT.Name), first_run=int(self.RunLogs.keys()[0]))
+        converter = Converter(self.RawFileName, self.DUT.Number, join(self.TCDir, self.DUT.Name), first_run=int(self.Logs.keys()[0]))
         converter.run()
         if not self.SingleMode:
             info('removing raw file "{}"'.format(self.RawFileName))
@@ -62,7 +62,7 @@ class Run:
 
     def merge_root_files(self):
         warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
-        single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.RunLogs.keys()]
+        single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.Logs.keys()]
         new_file = join(self.TCDir, self.DUT.Name, 'run_{}.root'.format(str(self.Number).zfill(2)))
         with open(devnull, 'w') as f:
             call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file] + single_files, stdout=f)

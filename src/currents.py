@@ -23,7 +23,7 @@ class Currents(Analysis):
         self.Collection = None
         self.RunNumber = self.load_run_number()
         self.RunPlan = self.load_run_plan()  # required for plotting
-        self.RunLogs = self.Ana.Run.RunLogs
+        self.RunLogs = self.Ana.Run.Logs
         self.Run = self.Ana.Run
         self.HVConfig = load_config(join(self.DataDir, 'config'))
         self.set_save_directory('currents')

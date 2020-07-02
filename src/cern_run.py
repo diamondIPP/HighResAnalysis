@@ -34,9 +34,9 @@ class CERNRun(Run):
     def load_run_logs(self):
         data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
         data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/', '\\', '']}
-        if self.RunInfo is None:
+        if self.Info is None:
             return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.Number)
-        return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.RunInfo['Batches']]))
+        return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.Info['Batches']]))
 
     def load_dut_name(self):
         return load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))['Plane{}'.format(self.DUTNr)]['Name']
@@ -58,7 +58,7 @@ class CERNRun(Run):
         if not file_exists(self.RawFileName) and not self.SingleMode:
             self.merge_root_files()
         warning('final root file "{}" does not exist. Starting Converter!'.format(self.FileName))
-        converter = Converter(self.RawFileName, self.DUTNr, join(self.TCDir, self.DUTName), first_run=int(self.RunLogs.keys()[0]))
+        converter = Converter(self.RawFileName, self.DUTNr, join(self.TCDir, self.DUTName), first_run=int(self.Logs.keys()[0]))
         converter.run()
         if not self.SingleMode:
             info('removing raw file "{}"'.format(self.RawFileName))
@@ -66,7 +66,7 @@ class CERNRun(Run):
 
     def merge_root_files(self):
         warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
-        single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.RunLogs.keys()]
+        single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.Logs.keys()]
         new_file = join(self.TCDir, self.DUTName, 'run_{}.root'.format(str(self.Number).zfill(2)))
         with open(devnull, 'w') as f:
             call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file] + single_files, stdout=f)
