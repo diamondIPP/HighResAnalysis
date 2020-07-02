@@ -35,9 +35,6 @@ def colnum_string(n):
     return string
 
 
-col2num = lambda col: reduce(lambda x, y: x * 26 + y, [ord(c.upper()) - ord('A') + 1 for c in col])
-
-
 def make_desy_run_log():
     data = sheet.get_all_values()[1:]
     dic = OrderedDict()
@@ -53,14 +50,16 @@ def make_desy_run_log():
                     'hvsupply1': row[8],
                     'hv1': int(row[9]),
                     'current1': float(row[10]) if row[10] else '?',
-                    'dut2': row[11],
-                    'hvsupply2': row[12],
-                    'hv2': int(row[13]),
-                    'current2': float(row[14]) if row[14] else '?',
-                    'angle': 0 if row[15] == '-' or '/' in row[15] else int(row[15]),
-                    'runplan': row[17],
-                    'batch': row[18],
-                    'comment': row[19]
+                    'phcal1': int(row[11]),
+                    'dut2': row[12],
+                    'hvsupply2': row[13],
+                    'hv2': int(row[14]),
+                    'current2': float(row[15]) if row[15] else '?',
+                    'phcal2': int(row[16]),
+                    'angle': 0 if row[17] == '-' else int(row[17]),
+                    'runplan': row[19],
+                    'batch': row[20],
+                    'comment': row[21]
                     }
     with open('runlog.json', 'w') as f:
         dump(dic, f, indent=2)
