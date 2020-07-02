@@ -76,11 +76,11 @@ def average_list(lst, n):
     return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
 
 
-def round_down_to(num, val):
+def round_down_to(num, val=1):
     return int(num) / val * val
 
 
-def round_up_to(num, val):
+def round_up_to(num, val=1):
     return int(num) / val * val + val
 
 
