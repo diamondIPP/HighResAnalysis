@@ -26,7 +26,6 @@ class Run:
 
         # Files
         self.FileName = self.load_file_name()
-        self.Data = self.load_file()
 
         # Info
         self.RunInfo = self.load_run_info()
@@ -49,12 +48,6 @@ class Run:
 
     def load_file_name(self):
         pass
-
-    def load_file(self):
-        if not file_exists(self.FileName):
-            warning('The data file "{}" does not exist'.format(self.FileName))
-            # self.convert_file()
-        return h5py.File(self.FileName, 'r')
 
     # TODO: move to converter
     def convert_file(self):

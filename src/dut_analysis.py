@@ -3,10 +3,9 @@
 #       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TH1I, TProfile2D, TCut, TProfile, TH1F, TF1, TH2F
+from ROOT import TH1I, TProfile2D, TCut, TProfile, TH1F, TH2F
 from cern_run import CERNRun
 from desy_run import DESYRun
-from pickle import load as pload
 from currents import Currents
 from desy_converter import DESYConverter
 from converter import Converter
@@ -29,7 +28,8 @@ class DUTAnalysis(Analysis):
         # MAIN
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
-        self.Data = self.Run.Data
+        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
+        self.Data = self.load_file()
 
         # INFO
         self.NEvents = self.get_entries()
@@ -37,17 +37,11 @@ class DUTAnalysis(Analysis):
         self.EndTime = self.get_end_time()
 
         # SUBCLASSES
-        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Telescope = TelescopeAnalysis(self)
         self.Plane = Plane(self.DUT.Number + self.Telescope.NPlanes, self.Config, 'DUT')
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
 
-        # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
-        # Calibration
-        self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-        # self.FitParameters = None
-        # self.get_calibration_data()
         self.print_start(self.RunNumber)
 
     # ----------------------------------------
@@ -61,6 +55,12 @@ class DUTAnalysis(Analysis):
     def get_entries(self):
         return self.Data['NTracks'].size
 
+    def load_file(self):
+        self.Converter.run()
+        return h5py.File(self.Run.FileName, 'r')
+
+    def reload_file(self):
+        self.Data = self.load_file()
     # endregion INIT
     # ----------------------------------------
 
@@ -98,19 +98,6 @@ class DUTAnalysis(Analysis):
         mx, my = self.get_mask(plane).T.astype('i')
         mask = mx * 10000 + my
         return where(in1d(data, mask, invert=True))[0]
-
-    def get_calibration_number(self):
-        numbers = sorted(int(remove_letters(basename(name))) for name in glob(join(self.TCDir, self.DUT.Name, 'calibrations', 'phCal*.dat')) if basename(name)[5].isdigit())
-        first_run = int(self.Run.RunLogs.keys()[0])
-        if first_run > numbers[-1]:
-            return numbers[-1]
-        next_number = next(nr for nr in numbers if nr >= first_run)
-        return numbers[numbers.index(next_number) - 1]
-
-    def get_calibration_data(self):
-        pickle_name = join(self.TCDir, self.DUT.Name, 'calibrations', 'fitpars{}.pickle'.format(self.get_calibration_number()))
-        with open(pickle_name, 'r') as f:
-            self.FitParameters = pload(f)
 
     def get_plane(self, plane):
         return choose(plane, self.Plane)
