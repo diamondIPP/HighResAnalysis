@@ -16,6 +16,7 @@ from telescope import TelescopeAnalysis
 from analysis import *
 from numpy import in1d
 from dut import Plane
+from calibration import Calibration
 
 
 class DUTAnalysis(Analysis):
@@ -30,6 +31,7 @@ class DUTAnalysis(Analysis):
         self.DUT = self.Run.DUT
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Data = self.load_file()
+        self.Calibration = Calibration(self.Run)
 
         # INFO
         self.NEvents = self.get_entries()
