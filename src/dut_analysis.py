@@ -29,7 +29,11 @@ class DUTAnalysis(Analysis):
         # MAIN
         self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
-        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
+        self.Plane = Plane(self.DUT.Number + self.Config.getint('TELESCOPE', 'planes'), self.Config, 'DUT')
+
+        # CONVERTER & CALIBRATION
+        self.Calibration = Calibration(self.Run, self.Plane)
+        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config, self.Calibration)
         self.Data = self.load_file()
 
         # INFO
@@ -39,10 +43,8 @@ class DUTAnalysis(Analysis):
 
         # SUBCLASSES
         self.Telescope = TelescopeAnalysis(self)
-        self.Plane = Plane(self.DUT.Number + self.Telescope.NPlanes, self.Config, 'DUT')
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
-        self.Calibration = Calibration(self.Run, self.Plane)
 
         self.print_start(self.RunNumber)
 
@@ -74,16 +76,16 @@ class DUTAnalysis(Analysis):
     def get_end_time(self):
         return self.Run.EndTime
 
-    def get_data(self, plane, grp, key=None, cut=None):
+    def get_data(self, grp, key=None, plane=None, cut=None):
         data = self.Data['Plane{}'.format(self.get_plane(plane).Number)][grp]
         data = array(data) if key is None else array(data[key])
         return data if cut is None else data[cut]
 
     def get_x(self, plane=None, cluster=False, cut=None):
-        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'X', cut)
+        return self.get_data('Clusters' if cluster else 'Hits', 'X', plane, cut)
 
     def get_y(self, plane=None, cluster=False, cut=None):
-        return self.get_data(plane, 'Clusters' if cluster else 'Hits', 'Y', cut)
+        return self.get_data('Clusters' if cluster else 'Hits', 'Y', plane, cut)
 
     def get_hits(self, plane=None, cut=None):
         return array([self.get_x(plane, cluster=False, cut=cut), self.get_y(plane, cluster=False, cut=cut)])
@@ -92,7 +94,7 @@ class DUTAnalysis(Analysis):
         return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
 
     def get_mask(self, plane):
-        return self.get_data(plane, 'Mask')
+        return self.get_data('Mask', plane=plane)
 
     def get_mask_cut(self, plane=None):
         x, y = self.get_hits(plane)
@@ -111,7 +113,7 @@ class DUTAnalysis(Analysis):
     def draw_n(self, plane, name, show=True):
         self.format_statbox(all_stat=True)
         n, pl = name, self.get_plane(plane)
-        self.draw_disto(self.get_data(pl, n, 'N{}'.format(n)), 'Number of {} in {}'.format(n, pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
+        self.draw_disto(self.get_data(n, 'N{}'.format(n), pl), 'Number of {} in {}'.format(n, pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
 
     def draw_mask(self, plane=None, show=True):
         plane = self.get_plane(plane)
@@ -138,7 +140,7 @@ class DUTAnalysis(Analysis):
 
     def draw_cluster_size(self, plane=None, show=True):
         self.format_statbox(all_stat=True)
-        v = self.get_data(plane, 'Clusters', 'NClusters')
+        v = self.get_data('Clusters', 'NClusters', plane)
         self.draw_disto(v[v > 0], 'Cluster Size in {}'.format(self.get_plane(plane)), bins.make(0, 10), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
 
     def draw_n_intercepts(self, plane=None, show=True):
