@@ -31,7 +31,6 @@ class DUTAnalysis(Analysis):
         self.DUT = self.Run.DUT
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Data = self.load_file()
-        self.Calibration = Calibration(self.Run)
 
         # INFO
         self.NEvents = self.get_entries()
@@ -43,6 +42,7 @@ class DUTAnalysis(Analysis):
         self.Plane = Plane(self.DUT.Number + self.Telescope.NPlanes, self.Config, 'DUT')
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
+        self.Calibration = Calibration(self.Run, self.Plane)
 
         self.print_start(self.RunNumber)
 
@@ -272,5 +272,5 @@ if __name__ == '__main__':
     p.add_argument('--single_mode', '-s', action='store_false')
     args = p.parse_args()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
-    c = z.Currents
+    c = z.Calibration
     z.add_info(t, prnt=True)
