@@ -243,6 +243,38 @@ def mean_sigma(values, weights=None):
     return avrg, sqrt(variance)
 
 
+def interpolate_two_points(x1, y1, x2, y2, name=''):
+    # f = p1*x + p0
+    p1 = (y1 - y2) / (x1 - x2)
+    p0 = y1 - x1 * p1
+    w = abs(x2 - x1)
+    fit_range = array(sorted([x1, x2])) + [-w / 3., w / 3.]
+    f = TF1('fpol1{}'.format(name), 'pol1', *fit_range)
+    f.SetParameters(p0, p1)
+    return f
+
+
+def interpolate_x(x1, x2, y1, y2, y):
+    p1 = get_p1(x1, x2, y1, y2)
+    p0 = get_p0(x1, y1, p1)
+    return (y - p0) / p1 if p1 else 0
+
+
+def interpolate(x1, x2, y1, y2, x):
+    x1, x2, y1, y2 = [float(i) for i in [x1, x2, y1, y2]]
+    p1 = get_p1(float(x1), x2, y1, y2)
+    p0 = get_p0(x1, y1, p1)
+    return p1 * x + p0
+
+
+def get_p1(x1, x2, y1, y2):
+    return (y1 - y2) / (x1 - x2) if x1 != x2 else 0
+
+
+def get_p0(x1, y1, p1):
+    return y1 - x1 * p1
+
+
 def make_ufloat(tup):
     if type(tup) in [Variable, AffineScalarFunc]:
         return tup
