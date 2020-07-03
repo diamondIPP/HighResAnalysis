@@ -80,6 +80,15 @@ class Calibration:
     # endregion INIT
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region GET
+    def read(self):
+        cols = arange(sum(a.size for a in self.get_vcals().values()))
+        return array(split(genfromtxt(self.get_file_name(), skip_header=3, usecols=cols, dtype='u2'), self.get_splits()))
+
+    def read_fit_pars(self):
+        return array(split(genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2'), self.get_splits()))
+
     def get(self):
         if self.Points is None:
             self.Points = self.read()
@@ -96,13 +105,8 @@ class Calibration:
 
     def get_vcal_vec(self):
         return concatenate([v * f for v, f in zip(self.get_vcals().values(), [1, self.HighRangeFactor])])
-
-    def read(self):
-        cols = arange(sum(a.size for a in self.get_vcals().values()))
-        return array(split(genfromtxt(self.get_file_name(), skip_header=3, usecols=cols, dtype='u2'), self.get_splits()))
-
-    def read_fit_pars(self):
-        return array(split(genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2'), self.get_splits()))
+    # endregion GET
+    # ----------------------------------------
 
     def draw(self, col=14, row=14, show=True):
         g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get()[col][row])
