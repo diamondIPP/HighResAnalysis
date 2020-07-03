@@ -108,6 +108,18 @@ class Calibration:
     # endregion GET
     # ----------------------------------------
 
+    def fit_erf(self, col=14, row=14, show=True):
+        data = self.read()[col][row]
+        x, y = self.get_vcal_vec()[data > 0], data[data > 0]  # take only non zero values
+        self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
+        g = TGraph(x.size, x.astype('d'), y.astype('d'))
+        g.Fit(self.Fit, 'q', '', 0, 255 * 7)
+        format_histo(g, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
+        self.Draw.draw_histo(g, draw_opt='ap', show=show, lm=.12)
+        return self.Fit
+
+    # ----------------------------------------
+    # region DRAW
     def draw(self, col=14, row=14, show=True):
         g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get()[col][row])
         format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4, markersize=.4)
@@ -118,13 +130,5 @@ class Calibration:
         self.Fit.SetParameters(*self.read_fit_pars()[col][row])
         self.draw(col, row, show).SetTitle('Calibration Fit for Pixel {} {}'.format(col, row))
         self.Fit.Draw('same')
-
-    def fit_erf(self, col=14, row=14, show=True):
-        data = self.read()[col][row]
-        x, y = self.get_vcal_vec()[data > 0], data[data > 0]  # take only non zero values
-        self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        g = TGraph(x.size, x.astype('d'), y.astype('d'))
-        g.Fit(self.Fit, 'q', '', 0, 255 * 7)
-        format_histo(g, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
-        self.Draw.draw_histo(g, draw_opt='ap', show=show, lm=.12)
-        return self.Fit
+    # endregion DRAW
+    # ----------------------------------------
