@@ -61,6 +61,7 @@ class Plane:
         self.Number = n
         self.Name = config.get(section, 'name')
         self.NCols, self.NRows = loads(config.get(section, 'pixel'))
+        self.NPixels = self.NCols * self.NRows
         self.PX, self.PY = loads(config.get(section, 'pitch'))
 
     def __str__(self):
