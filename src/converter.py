@@ -11,13 +11,16 @@ from numpy import average
 
 class Converter:
 
-    def __init__(self, data_dir, run_number, config):
+    def __init__(self, data_dir, run_number, config, calibration):
 
         self.RunNumber = run_number
         self.DataDir = data_dir
         self.Config = config
+        self.Calibration = calibration
+
         self.RawFilePath = self.load_raw_file_name()
         self.SoftDir = expanduser(self.Config.get('SOFTWARE', 'dir'))
+
         self.PBar = PBar()
 
     def load_raw_file_name(self):
@@ -76,5 +79,5 @@ if __name__ == '__main__':
     # noinspection PyTypeChecker
     p.add_argument('plane', nargs='?', default=0, type=int)
     args = p.parse_args()
-    z = Converter('/scratch2/cern/2018-10/cms-raw/ljutel_110.root', 0, '/scratch2/cern/2018-10/II6-B6')
+    z = Converter('/scratch2/cern/2018-10/cms-raw/ljutel_110.root', 0, '/scratch2/cern/2018-10/II6-B6', None)
     # z.run()
