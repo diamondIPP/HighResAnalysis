@@ -12,8 +12,9 @@ from argparse import ArgumentParser
 from converter import Converter
 from subprocess import check_call
 from glob import glob
-from numpy import concatenate
+from numpy import concatenate, cumsum
 import toml
+from calibration import Calibration
 
 
 class DESYConverter(Converter):
@@ -25,8 +26,8 @@ class DESYConverter(Converter):
         STEP 4: track-matching  (proteus)
         STEP 5: root -> hdf5    (python) """
 
-    def __init__(self, data_dir, run_number, config):
-        Converter.__init__(self, data_dir, run_number, config)
+    def __init__(self, data_dir, run_number, config, calibration: Calibration):
+        Converter.__init__(self, data_dir, run_number, config, calibration)
 
         # DIRECTORIES
         self.EUDAQDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'eudaq2'))
@@ -146,6 +147,8 @@ class DESYConverter(Converter):
 
             # hits: NHits, PixX, PixY, Timing, Value, HitInCluster
             self.convert_plane_data(root_file, g, name, branch_name='Hits', types=hit_types)
+            if name == 'Plane{}'.format(self.Calibration.Plane.Number):
+                self.add_hit_charge(g)
 
             # clusters:  NClusters, Col, Row, VarCol, VarRow, CovColRow, Timing, Value, Track
             self.convert_plane_data(root_file, g, name, 'Clusters', plane_types, exclude='Value')  # adc doesn't make sense for clusters
@@ -158,6 +161,21 @@ class DESYConverter(Converter):
                 g.create_dataset('Mask', data=mask[i].astype('u2'))
 
         add_to_info(start_time, 'Finished conversion in')
+
+    def add_hit_charge(self, group):
+        self.Calibration.load_fits(pbar=None)
+        charges = []
+        for j in range(group['Hits']['X'].size):
+            charges.append(self.Calibration.get_charge(group['Hits']['X'][j], group['Hits']['X'][j], group['Hits']['ADC'][j]))
+        group['Hits'].create_dataset('Charge', data=array(charges, dtype='f2'))
+        group.create_dataset('CalChiSquare', data=self.Calibration.get_chi2s())
+
+    def add_cluster_charge(self, group):
+        hs = cumsum(group['Hits']['NHits'])  # indices to sort hit array for events
+        cs = cumsum(group['Clusters']['NClusters'])
+        charges = []
+        for i in hs.size():
+            pass
 
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
@@ -245,6 +263,7 @@ class DESYConverter(Converter):
 if __name__ == '__main__':
     from analysis import Analysis
     from desy_run import DESYRun
+    from dut import Plane
 
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=11)
@@ -253,5 +272,5 @@ if __name__ == '__main__':
     pargs = parser.parse_args()
     a = Analysis()
     r = DESYRun(pargs.run, pargs.dut, a.TCDir, a.Config, single_mode=True)
-    z = DESYConverter(r.TCDir, r.Number, a.Config)
+    z = DESYConverter(r.TCDir, r.Number, a.Config, Calibration(r, Plane(7, a.Config, 'DUT')))
     # z.run()
