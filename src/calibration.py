@@ -9,14 +9,16 @@ from utils import *
 from analysis import glob, join
 from run import Run
 from dut import Plane
-from numpy import genfromtxt, split, all, delete, concatenate, round
-from draw import Draw, format_histo
+from numpy import genfromtxt, split, all, delete, concatenate, round, zeros
+from draw import Draw, format_histo, update_canvas
+from copy import deepcopy
 
 
 class Calibration:
 
     def __init__(self, run: Run, plane: Plane, n=None):
 
+        # INFO
         self.Run = run
         self.Plane = plane
         self.Draw = Draw(config=self.Run.Config)
@@ -27,9 +29,10 @@ class Calibration:
         self.Trim, self.Number = self.get_trim_number(n)
         self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
         self.Points = None
-        # self.FitParameters = None
-        # self.get_calibration_data()
-        # self.correct_file()
+        self.Fits = None
+
+        self.PBar = PBar()
+        self.correct_file()
 
     # ----------------------------------------
     # region INIT
@@ -89,7 +92,12 @@ class Calibration:
     def read_fit_pars(self):
         return array(split(genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2'), self.get_splits()))
 
-    def get(self):
+    def get(self, col, row):
+        if self.Points is None:
+            self.Points = self.read()
+        return self.Points[col][row]
+
+    def get_all(self):
         if self.Points is None:
             self.Points = self.read()
         return self.Points
@@ -105,23 +113,53 @@ class Calibration:
 
     def get_vcal_vec(self):
         return concatenate([v * f for v, f in zip(self.get_vcals().values(), [1, self.HighRangeFactor])])
+
+    def get_charge(self, col, row, adc):
+        fit = self.fit_erf(self.get_vcal_vec(), self.get(col, row)) if self.Fits is None else self.Fits[col][row]
+        return -1 if fit is None else fit.GetX(adc)
+
+    def get_chi2s(self):
+        chi2s = zeros(self.Fits.shape, dtype='f2')
+        for col, rows in enumerate(self.Fits):
+            for row, fit in enumerate(rows):
+                chi2s[col][row] = 1000 if fit is None else fit.GetChisquare() / fit.GetNDF()
+        return chi2s
     # endregion GET
     # ----------------------------------------
 
-    def fit_erf(self, col=14, row=14, show=True):
-        data = self.read()[col][row]
-        x, y = self.get_vcal_vec()[data > 0], data[data > 0]  # take only non zero values
+    def load_fits(self, pbar=True):
+        info('Fitting calibration points ...', prnt=pbar)
+        do(self.PBar.start, self.Plane.NPixels, pbar)
+        x = self.get_vcal_vec()
+        pars = zeros((self.Plane.NCols, self.Plane.NRows), dtype=object)
         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
+        for col, rows in enumerate(self.get_all()):
+            for row, y in enumerate(rows):
+                pars[col][row] = self.fit_erf(x, y)
+                if pbar:
+                    self.PBar.update()
+        self.Fits = array(pars)
+
+    def fit_erf(self, x, y):
+        x, y = x[y > 0], y[y > 0]  # take only non zero values
+        if x.size < 5:
+            return
         g = TGraph(x.size, x.astype('d'), y.astype('d'))
-        g.Fit(self.Fit, 'q', '', 0, 255 * 7)
-        format_histo(g, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
-        self.Draw.draw_histo(g, draw_opt='ap', show=show, lm=.12)
+        g.Fit(self.Fit, 'q0', '', 0, 255 * 7)
+        return deepcopy(self.Fit)
+
+    def draw_fit(self, col=14, row=14, show=True):
+        self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
+        self.fit_erf(self.get_vcal_vec(), self.get(col, row))
+        self.draw(col, row, show).SetTitle('Calibration Fit for Pix {} {}'.format(col, row))
+        self.Fit.Draw('same')
+        update_canvas()
         return self.Fit
 
     # ----------------------------------------
     # region DRAW
     def draw(self, col=14, row=14, show=True):
-        g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get()[col][row])
+        g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get(col, row))
         format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4, markersize=.4)
         self.Draw.draw_histo(g, show, .12, draw_opt='ap')
         return g
