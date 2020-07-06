@@ -24,12 +24,12 @@ def get_local(plane, bin_width=1):
 
 
 def get_local_x(plane, bin_width=1):
-    extra_pixel = (plane.get_max_width() - plane.get_x_width()) / plane.PX / 2  # keep aspect ratio
+    extra_pixel = round((plane.get_max_width() - plane.get_x_width()) / plane.PX / 2)  # keep aspect ratio
     return make(-extra_pixel - .5, plane.NCols + extra_pixel - .5, bin_width)
 
 
 def get_local_y(plane, bin_width=1):
-    extra_pixel = (plane.get_max_width() - plane.get_y_width()) / plane.PY / 2  # keep aspect ratio
+    extra_pixel = round((plane.get_max_width() - plane.get_y_width()) / plane.PY / 2)  # keep aspect ratio
     return make(-extra_pixel - .5, plane.NRows + extra_pixel - .5, bin_width)
 
 
@@ -53,8 +53,8 @@ def get_adc():
     return make(0, MaxADC)
 
 
-def get_vcal():
-    return make(MinVcal, MaxVcal, int(PHBinWidth / VcalToEl))
+def get_vcal(bin_width=1):
+    return make(MinVcal, MaxVcal, bin_width)
 
 
 def get_electrons(bin_width=None):
