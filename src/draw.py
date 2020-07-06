@@ -631,7 +631,7 @@ def get_color_gradient(n):
 
 def fill_hist(h, x, y=None, zz=None):
     x, y, zz = array(x).astype('d'), array(y).astype('d'), array(zz).astype('d')
-    if h.ClassName == 'TProfile2D':
+    if h.ClassName() == 'TProfile2D':
         for i in range(x.size):
             h.Fill(x[i], y[i], zz[i])
     elif 'TH1' in h.ClassName():
