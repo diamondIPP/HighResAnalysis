@@ -10,11 +10,10 @@ from numpy import arange
 # Pixel
 MaxADC = 2**8 - 1
 MinPH = -5000
-MaxPH = 100000
+MaxPH = 50000
 PHBinWidth = 200
 MinVcal = -100
 MaxVcal = 1250
-VcalToEl = 47.
 
 
 # ----------------------------------------
@@ -57,8 +56,8 @@ def get_vcal(bin_width=1):
     return make(MinVcal, MaxVcal, bin_width)
 
 
-def get_electrons(bin_width=None):
-    return make(MinPH, MaxPH, PHBinWidth if bin_width is None else bin_width)
+def get_electrons(bin_width=200):
+    return make(MinPH, MaxPH, bin_width)
 
 
 def get_ph(vcal=False, adc=False, bin_width=None):
