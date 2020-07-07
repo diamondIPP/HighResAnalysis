@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from converter import Converter
 from subprocess import check_call
 from glob import glob
-from numpy import concatenate, cumsum
+from numpy import concatenate, cumsum, split, delete, append, sum, average, in1d, where, argmax
 import toml
 from calibration import Calibration
 
@@ -138,12 +138,16 @@ class DESYConverter(Converter):
         names = [n.GetName() for n in root_file.GetListOfKeys() if n.GetName().startswith('Plane')]
         info('reading branches for {} planes'.format(len(names)))
         hit_types = {'X': 'u2', 'Y': 'u2', 'ADC': 'u1', 'HitInCluster': 'u1'}
-        plane_types = {'X': 'f4', 'Y': 'f4', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
-        intercept_types = {'X': 'f4', 'Y': 'f4', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
+        plane_types = {'X': 'f2', 'Y': 'f2', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
+        intercept_types = {'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
         self.PBar.start(sum(len(lst) for lst in [hit_types, plane_types, intercept_types]) * len(names))
         mask = self.load_mask()
         for i, name in enumerate(names):
             g = f.create_group(name)
+
+            # mask
+            if i in mask:
+                g.create_dataset('Mask', data=mask[i].astype('u2'))
 
             # hits: NHits, PixX, PixY, Timing, Value, HitInCluster
             self.convert_plane_data(root_file, g, name, branch_name='Hits', types=hit_types)
@@ -152,13 +156,11 @@ class DESYConverter(Converter):
 
             # clusters:  NClusters, Col, Row, VarCol, VarRow, CovColRow, Timing, Value, Track
             self.convert_plane_data(root_file, g, name, 'Clusters', plane_types, exclude='Value')  # adc doesn't make sense for clusters
+            if name == 'Plane{}'.format(self.Calibration.Plane.Number):
+                self.add_cluster_charge(g)
 
             # intercepts
             self.convert_plane_data(root_file, g, name, 'Intercepts', intercept_types)  # adc doesn't make sense for clusters
-
-            # mask
-            if i in mask:
-                g.create_dataset('Mask', data=mask[i].astype('u2'))
 
         add_to_info(start_time, 'Finished conversion in')
 
@@ -170,12 +172,49 @@ class DESYConverter(Converter):
         group['Hits'].create_dataset('Charge', data=array(charges, dtype='f2'))
         group.create_dataset('CalChiSquare', data=self.Calibration.get_chi2s())
 
-    def add_cluster_charge(self, group):
+    @staticmethod
+    def get_hits(group):
+        data = array([array(group['Hits'][s]) for s in ['X', 'Y', 'Charge']]).T
+        mask = group['Mask']
+        keys = data[:, 0].astype('i') * 10000 + data[:, 1].astype('i')
+        mask_keys = mask[:, 0].astype('i') * 10000 + mask[:, 1]
+        i_mask = where(in1d(keys, mask_keys))[0]
+        data = data[in1d(keys, mask_keys, invert=True)]
         hs = cumsum(group['Hits']['NHits'])  # indices to sort hit array for events
-        cs = cumsum(group['Clusters']['NClusters'])
-        charges = []
-        for i in hs.size():
-            pass
+        i_sub = zeros(hs.size, dtype='i')
+        for i in i_mask:
+            i_sub[argmax(hs == i + 1):] += 1
+        return split(data, (hs - i_sub)[:-1].astype('i'))
+
+    def add_cluster_charge(self, group):
+        clusters = concatenate([self.clusterise(hit_list) for hit_list in self.get_hits(group)])
+        group['Clusters'].create_dataset('Charge', data=array([cluster.get_charge() for cluster in clusters], dtype='f2'))
+        group['Clusters']['X'][...] = array([cluster.get_x() for cluster in clusters], dtype='f2')
+        group['Clusters']['Y'][...] = array([cluster.get_y() for cluster in clusters], dtype='f2')
+        group['Clusters'].create_dataset('Size', data=array([cluster.get_size() for cluster in clusters], dtype='u1'))
+
+    @staticmethod
+    def clusterise(hits):
+        if not hits.size:
+            return []
+        # sort hits into clusters
+        clusters = [Cluster(hits[0])]
+        hits = delete(hits, 0, axis=0)
+        while hits.size:
+            in_existing_cluster = False
+            n_deleted = 0
+            for i, hit in enumerate(hits):
+                for cluster in clusters:
+                    if cluster.hit_is_adjacent(hit):
+                        cluster.add_hit(hit)
+                        hits = delete(hits, i - n_deleted, axis=0)
+                        n_deleted += 1
+                        in_existing_cluster = True
+                        break
+            if not in_existing_cluster:  # make a new cluster if none of the hits is adjacent to any of the existing Clusters
+                clusters.append(Cluster(hits[0]))
+                hits = delete(hits, 0, axis=0)
+        return clusters
 
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
