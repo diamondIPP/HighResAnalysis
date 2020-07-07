@@ -238,6 +238,7 @@ def mean_sigma(values, weights=None):
         values = array([v.n for v in values], 'd')
     if all(weight == 0 for weight in weights):
         return [0, 0]
+    values = values.astype('d')
     avrg = average(values, weights=weights)
     variance = average((values - avrg) ** 2, weights=weights)  # Fast and numerically precise
     return avrg, sqrt(variance)
