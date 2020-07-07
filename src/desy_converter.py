@@ -39,9 +39,9 @@ class DESYConverter(Converter):
         self.ROOTFileName = join(self.SaveDir, 'run{:06d}.root'.format(self.RunNumber))
         self.NoiseName = join('mask', 'all')
         self.AlignSteps = self.get_align_steps()
-        self.ProteusROOTFiles = [join(self.ProteusDataDir, '{}.root'.format(n)) for n in ['track-data', 'match-trees']]
+        self.ProteusROOTFiles = [join(self.ProteusDataDir, '{}-{:04d}-{}.root'.format(n, self.RunNumber, m)) for n, m in [('track', 'data'), ('match', 'trees')]]
         self.FinalFileName = join(self.SaveDir, 'run{:04d}.hdf5'.format(self.RunNumber))
-        self.FileNames = [self.ROOTFileName] + [self.get_toml_path(p) for p in [self.NoiseName, join('align', self.AlignSteps[-1])]] + self.ProteusROOTFiles + [self.FinalFileName]
+        self.FileNames = [self.ROOTFileName] + self.get_align_files() + self.ProteusROOTFiles + [self.FinalFileName]
 
         self.NSteps = len(self.FileNames)
         self.AtStep = self.find_step()
@@ -61,15 +61,13 @@ class DESYConverter(Converter):
         names = glob(join(self.DataDir, 'raw', 'run{:06d}*.raw'.format(self.RunNumber)))
         return names[0] if names else None
 
-    def find_step(self):
-        for i in reversed(range(self.NSteps)):
-            if file_exists(self.FileNames[i]):
-                return i + 1
-        return 0
-
     def get_steps(self):
         steps = [self.convert_raw_to_root, self.noise_scan, self.align, self.track, self.match, self.convert_root_to_hdf5]
-        return steps[self.AtStep:]
+        final_steps = []
+        for step, f in zip(steps, self.FileNames):
+            if not file_exists(f):
+                final_steps.append(step)
+        return final_steps
 
     @staticmethod
     def check_root_version():
@@ -94,10 +92,8 @@ class DESYConverter(Converter):
         with open(join(self.ProteusDataDir, 'analysis.toml')) as f:
             return [line.split(']')[0].replace('[align.', '') for line in f.readlines() if line.startswith('[align.')]
 
-    def get_toml_path(self, path):
-        name = basename(path)
-        d = None if dirname(path) == name else dirname(path)
-        return join(self.ProteusDataDir, self.make_toml_name(name, d, typ='geo' if d is None else d))
+    def get_align_files(self):
+        return [join(self.ProteusDataDir, name) for name in [self.make_toml_name('all', 'mask', 'mask'), self.make_toml_name()]]
     # endregion GET
     # ----------------------------------------
 
@@ -261,11 +257,11 @@ class DESYConverter(Converter):
 
     def track(self):
         """ step 3: based on the alignment generate the tracks with proteus. """
-        self.run_proteus('pt-track', 'track', self.make_toml_name())
+        self.run_proteus('pt-track', 'track-{:04d}'.format(self.RunNumber), self.make_toml_name())
 
     def match(self):
         """ step 4: match the tracks to the hits in the DUT with proteus. """
-        self.run_proteus('pt-match', 'match', self.make_toml_name(), f='track-data.root')
+        self.run_proteus('pt-match', 'match-{:04d}'.format(self.RunNumber), self.make_toml_name(), f='track-data.root')
 
     def check_alignment(self, step=0, p1=0, p2=1):
         f = TFile(join(self.ProteusDataDir, 'align', '{}-hists.root'.format(self.AlignSteps[step])))
