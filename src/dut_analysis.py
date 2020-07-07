@@ -21,13 +21,12 @@ from calibration import Calibration
 
 class DUTAnalysis(Analysis):
 
-    def __init__(self, run_number, dut, test_campaign, single_mode=True, verbose=True):
+    def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True):
 
-        self.RunNumber = run_number
         Analysis.__init__(self, test_campaign, verbose)
 
         # MAIN
-        self.Run = self.init_run()(run_number, dut, self.TCDir, self.Config, single_mode)
+        self.Run = self.init_run()(run_number, dut_number, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Plane = Plane(self.DUT.Number + self.Config.getint('TELESCOPE', 'planes'), self.Config, 'DUT')
 
@@ -46,7 +45,7 @@ class DUTAnalysis(Analysis):
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
 
-        self.print_start(self.RunNumber)
+        self.print_start(self.Run.Number)
 
     # ----------------------------------------
     # region INIT

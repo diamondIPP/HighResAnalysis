@@ -21,10 +21,9 @@ class Currents(Analysis):
         self.Ana = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
         self.Collection = None
-        self.RunNumber = self.load_run_number()
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.RunLogs = self.Ana.Run.Logs
-        self.Run = self.Ana.Run
+        self.Run = self.load_run()
         self.HVConfig = load_config(join(self.DataDir, 'config'))
         self.set_save_directory('currents')
         self.Bias = self.load_bias()
@@ -74,8 +73,8 @@ class Currents(Analysis):
     def load_bias(self):
         return self.Run.DUT.Bias if hasattr(self.Run, 'Bias') else None
 
-    def load_run_number(self):
-        return None if self.Ana is None else self.Ana.RunNumber if not self.IsCollection else self.Ana.RunPlan
+    def load_run(self):
+        return None if self.Ana is None else self.Ana.Run if not self.IsCollection else self.Ana.RunPlan
 
     def load_run_plan(self):
         return self.Collection.SelectedRunplan if self.Ana is None else self.Ana.RunPlan if self.IsCollection else None
@@ -141,7 +140,7 @@ class Currents(Analysis):
 
     def get_title(self):
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
-        run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
+        run_str = '{n}'.format(n=self.Run.Number) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
         return 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
 
     # endregion INIT
