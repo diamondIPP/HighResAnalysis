@@ -30,6 +30,7 @@ class DUT:
         self.NColumns = choose(2 * self.Pixel[0] * self.Pixel[1] + self.Pixel[0] + self.Pixel[1] + 1, default=None, decider=self.Pixel)
         self.ColumnDiameter = self.load_spec('column diameter', typ=float, error=.05)
         self.CellSize = self.load_spec('cell size', typ=int)
+        self.VcalToEl = self.Config.getfloat('DUT', 'vcal to electrons')
 
     def __str__(self):
         return 'DUT {}, {}, Bias: {:1.0f}V'.format(self.Number, self.Name, self.Bias)
