@@ -44,7 +44,6 @@ class DESYConverter(Converter):
         self.FileNames = [self.ROOTFileName] + self.get_align_files() + self.ProteusROOTFiles + [self.FinalFileName]
 
         self.NSteps = len(self.FileNames)
-        self.AtStep = self.find_step()
 
         self.Draw = Draw()
 
