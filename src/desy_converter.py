@@ -148,6 +148,7 @@ class DESYConverter(Converter):
             self.convert_plane_data(root_file, g, name, branch_name='Hits', types=hit_types)
             if name == 'Plane{}'.format(self.Calibration.Plane.Number):
                 self.add_hit_charge(g)
+                self.add_trigger_info(g, name)
 
             # clusters:  NClusters, Col, Row, VarCol, VarRow, CovColRow, Timing, Value, Track
             self.convert_plane_data(root_file, g, name, 'Clusters', plane_types, exclude='Value')  # adc doesn't make sense for clusters
@@ -158,6 +159,14 @@ class DESYConverter(Converter):
             self.convert_plane_data(root_file, g, name, 'Intercepts', intercept_types)  # adc doesn't make sense for clusters
 
         add_to_info(start_time, 'Finished conversion in')
+
+    def add_trigger_info(self, group, plane):
+        f = TFile(self.ROOTFileName)
+        tree = f.Get(plane).Get('Hits')
+        trigger_phase = get_root_vec(tree, var='TriggerPhase', dtype='u1')
+        trigger_count = get_root_vec(tree, var='TriggerCount', dtype='u1')
+        group.create_dataset('TriggerPhase', data=trigger_phase)
+        group.create_dataset('TriggerCount', data=trigger_count)
 
     def add_hit_charge(self, group):
         self.Calibration.load_fits(pbar=None)
@@ -260,7 +269,7 @@ class DESYConverter(Converter):
 
     def match(self):
         """ step 4: match the tracks to the hits in the DUT with proteus. """
-        self.run_proteus('pt-match', 'match-{:04d}'.format(self.RunNumber), self.make_toml_name(), f='track-data.root')
+        self.run_proteus('pt-match', 'match-{:04d}'.format(self.RunNumber), self.make_toml_name(), f='track-{:04d}-data.root'.format(self.RunNumber))
 
     def check_alignment(self, step=0, p1=0, p2=1):
         f = TFile(join(self.ProteusDataDir, 'align', '{}-hists.root'.format(self.AlignSteps[step])))
