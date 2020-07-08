@@ -6,7 +6,7 @@
 from utils import *
 from os.path import expanduser
 from argparse import ArgumentParser
-from numpy import average, sum, append
+from numpy import average, sum, append, delete
 
 
 class Converter:
@@ -25,7 +25,28 @@ class Converter:
     def load_raw_file_name(self):
         pass
 
-    # TODO think about general methods for calibration...
+    @staticmethod
+    def clusterise(hits):
+        if not hits.size:
+            return []
+        # sort hits into clusters
+        clusters = [Cluster(hits[0])]
+        hits = delete(hits, 0, axis=0)
+        while hits.size:
+            in_existing_cluster = False
+            n_deleted = 0
+            for i, hit in enumerate(hits):
+                for cluster in clusters:
+                    if cluster.hit_is_adjacent(hit):
+                        cluster.add_hit(hit)
+                        hits = delete(hits, i - n_deleted, axis=0)
+                        n_deleted += 1
+                        in_existing_cluster = True
+                        break
+            if not in_existing_cluster:  # make a new cluster if none of the hits is adjacent to any of the existing Clusters
+                clusters.append(Cluster(hits[0]))
+                hits = delete(hits, 0, axis=0)
+        return clusters
 
 
 class Hit:

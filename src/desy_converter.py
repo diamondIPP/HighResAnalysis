@@ -12,10 +12,9 @@ from argparse import ArgumentParser
 from converter import Converter
 from subprocess import check_call
 from glob import glob
-from numpy import concatenate, cumsum, split, delete, sum, in1d, where, argmax
+from numpy import concatenate, cumsum, split, sum, in1d, where, argmax
 import toml
 from calibration import Calibration
-from converter import Cluster
 
 
 class DESYConverter(Converter):
@@ -27,8 +26,8 @@ class DESYConverter(Converter):
         STEP 4: track-matching  (proteus)
         STEP 5: root -> hdf5    (python) """
 
-    def __init__(self, data_dir, run_number, config, calibration: Calibration):
-        Converter.__init__(self, data_dir, run_number, config, calibration)
+    def __init__(self, data_dir, run_number, config):
+        Converter.__init__(self, data_dir, run_number, config)
 
         # DIRECTORIES
         self.EUDAQDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'eudaq2'))
@@ -197,29 +196,6 @@ class DESYConverter(Converter):
         group['Clusters']['X'][...] = array([cluster.get_x() for cluster in clusters], dtype='f2')
         group['Clusters']['Y'][...] = array([cluster.get_y() for cluster in clusters], dtype='f2')
         group['Clusters'].create_dataset('Size', data=array([cluster.get_size() for cluster in clusters], dtype='u1'))
-
-    @staticmethod
-    def clusterise(hits):
-        if not hits.size:
-            return []
-        # sort hits into clusters
-        clusters = [Cluster(hits[0])]
-        hits = delete(hits, 0, axis=0)
-        while hits.size:
-            in_existing_cluster = False
-            n_deleted = 0
-            for i, hit in enumerate(hits):
-                for cluster in clusters:
-                    if cluster.hit_is_adjacent(hit):
-                        cluster.add_hit(hit)
-                        hits = delete(hits, i - n_deleted, axis=0)
-                        n_deleted += 1
-                        in_existing_cluster = True
-                        break
-            if not in_existing_cluster:  # make a new cluster if none of the hits is adjacent to any of the existing Clusters
-                clusters.append(Cluster(hits[0]))
-                hits = delete(hits, 0, axis=0)
-        return clusters
 
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
