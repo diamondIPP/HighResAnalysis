@@ -11,8 +11,6 @@ from datetime import datetime
 from json import dump
 from time import mktime
 
-year = '2019'
-
 # use credentials to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds']
 creds = ServiceAccountCredentials.from_json_keyfile_name('config/client_secret.json', scope)
@@ -21,10 +19,6 @@ client = gspread.authorize(creds)
 # Find a workbook by name and open the first sheet -> make sure to use the right name
 # share the the spreadsheet with the credential email (beamtest2@beamtest-219608.iam.gserviceaccount.com)
 sheet = client.open_by_key('1vtwJnPLbk0M1UztpSX9SZNsPYAyMCO0TnYQzD6jQWoo').sheet1
-
-# Extract and print all of the values
-# list_of_hashes = sheet.get_all_records()
-# print(list_of_hashes)
 
 
 def colnum_string(n):
@@ -42,20 +36,20 @@ def make_desy_run_log():
         run = row[0]
         if not run or not run.isdigit() or not row[11]:
             continue
-        row[3] += ':00' if row[3].count(':') == 1 else ''
-        dic[run] = {'start': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[2]), '%Y%a, %b %d %H:%M').timetuple()),
-                    'end': mktime(datetime.strptime('{}{}{}'.format(year, row[1], row[3]), '%Y%a, %b %d %H:%M:%S').timetuple()),
+        # row[3] += ':00' if row[3].count(':') == 1 else ''
+        dic[run] = {'start': mktime(datetime.strptime('{}-{}'.format(row[1], row[2]), '%m/%d/%Y-%H:%M').timetuple()),
+                    'end': mktime(datetime.strptime('{}-{}'.format(row[1], row[3]), '%m/%d/%Y-%H:%M').timetuple()),
                     'events': int(float(row[5]) * 1e6),
-                    'dut1': row[7],
-                    'hvsupply1': row[8],
-                    'hv1': int(row[9]),
-                    'current1': float(row[10]) if row[10] else '?',
-                    'trim1': row[11],
-                    'dut2': row[12],
-                    'hvsupply2': row[13],
-                    'hv2': int(row[14]),
-                    'current2': float(row[15]) if row[15] else '?',
-                    'trim2': row[16],
+                    'dut0': row[7],
+                    'hvsupply0': row[8],
+                    'hv0': int(row[9]),
+                    'current0': float(row[10]) if row[10] else '?',
+                    'trim0': row[11],
+                    'dut1': row[12],
+                    'hvsupply1': row[13],
+                    'hv1': int(row[14]),
+                    'current1': float(row[15]) if row[15] else '?',
+                    'trim1': row[16],
                     'angle': 0 if row[17] == '-' else int(row[17]),
                     'runplan': row[19],
                     'batch': row[20],
@@ -63,3 +57,8 @@ def make_desy_run_log():
                     }
     with open('runlog.json', 'w') as f:
         dump(dic, f, indent=2)
+    print('successfully extracted data from spreadsheet and saved it as "runlog.json"')
+
+
+if __name__ == '__main__':
+    make_desy_run_log()
