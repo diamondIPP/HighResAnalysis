@@ -18,7 +18,6 @@ from numpy import average, sqrt, array, arange, mean, exp
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 from time import time
-from sys import stdout
 
 
 type_dict = {'int32': 'I',
@@ -31,7 +30,10 @@ GREEN = '\033[92m'
 WHITE = '\033[98m'
 ENDC = '\033[0m'
 YELLOW = '\033[93m'
+CYAN = '\033[96m'
 RED = '\033[91m'
+UP1 = '\033[1A'
+ERASE = '\033[K'
 
 
 def get_t_str():
@@ -40,8 +42,7 @@ def get_t_str():
 
 def info(msg, overlay=False, prnt=True):
     if prnt:
-        print('{ov}{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(GREEN, ENDC), ov='\033[1A\r' if overlay else ''))
-        stdout.flush()
+        print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(CYAN, ENDC)), end=' ' if overlay else '\n', flush=True)
     return time()
 
 
@@ -57,6 +58,10 @@ def warning(msg):
 def critical(msg):
     print('{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head='{}CRITICAL:{}'.format(RED, ENDC)))
     _exit(1)
+
+
+def move_up(n):
+    print('\033[{}A'.format(n))
 
 
 def file_exists(filename):
