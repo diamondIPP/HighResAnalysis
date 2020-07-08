@@ -302,6 +302,11 @@ class DESYConverter(Converter):
             d.draw_histo(g, draw_opt='ap')
         self.Draw.add(trees, f, d)
 
+    def remove_root_files(self):
+        for f in self.FileNames:
+            if f.endswith('.root') or f.endswith('.hdf5'):
+                remove_file(f)
+
 
 class Cluster:
 
