@@ -321,10 +321,12 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
 
 
 class PBar:
-    def __init__(self):
+    def __init__(self, n=None):
         self.PBar = None
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.Step = 0
+        if n is not None:
+            self.start(n)
 
     def start(self, n):
         self.Step = 0
