@@ -62,7 +62,7 @@ class Currents(Analysis):
             data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
         data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
         if self.Ana is not None:
-            data['timestamps'] -= uint32(data['timestamps'][0] - self.Ana.StartTime)  # synchronise time vectors
+            data['timestamps'] -= uint32(data['timestamps'][0] - self.Run.StartTime)  # synchronise time vectors
         return data
 
     def reload_data(self, ignore_jumps):
