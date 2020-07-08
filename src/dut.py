@@ -19,7 +19,7 @@ class DUT:
         self.Bias = run_log['hv{}'.format(self.Number)]
 
         # Specs
-        self.Specs = load_json(join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json'))[self.Name.upper()]
+        self.Specs = self.load_specs()
         self.Irradiation = self.load_spec('irradiation')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
@@ -37,6 +37,13 @@ class DUT:
 
     def __repr__(self):
         return self.__str__()
+
+    def load_specs(self):
+        file_name = join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json')
+        data = load_json(file_name)
+        if not self.Name.upper() in data:
+            critical('You have to add the DUT {} to the diamond info ({})'.format(self.Name.upper(), file_name))
+        return data[self.Name.upper()]
 
     def load_irradiation(self):
         with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
