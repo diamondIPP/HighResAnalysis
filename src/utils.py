@@ -5,8 +5,9 @@
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
-from os.path import isfile, exists, isdir, dirname, realpath
-from os import makedirs, _exit, remove
+from os.path import isfile, exists, isdir, dirname, realpath, join, basename
+from os import makedirs, _exit, environ, remove, devnull
+from subprocess import call
 from configparser import ConfigParser
 from datetime import datetime
 from ROOT import TFile, gROOT
@@ -318,6 +319,12 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
         f = h5py.File(path, 'w')
         f.create_dataset('data', data=data)
         return f['data']
+
+
+def merge_root_files(files, new_file_name):
+    with open(devnull, 'w') as f:
+        call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file_name] + files, stdout=f)
+    info('successfully merged the single files to "{}"'.format(basename(new_file_name)))
 
 
 class PBar:

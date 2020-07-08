@@ -5,11 +5,8 @@
 # --------------------------------------------------------
 
 from utils import *
-from os.path import join, basename
+from os.path import join
 from analysis import Analysis
-from subprocess import call
-from converter import Converter
-from os import environ, remove, devnull
 from dut import DUT
 
 
@@ -41,32 +38,13 @@ class Run:
         pass
 
     def load_run_logs(self):
-        pass
+        return {}
 
     def load_dut_name(self):
         pass
 
     def load_file_name(self):
         pass
-
-    # TODO: move to converter
-    def convert_file(self):
-        if not file_exists(self.RawFileName) and not self.SingleMode:
-            self.merge_root_files()
-        warning('final root file "{}" does not exist. Starting Converter!'.format(self.FileName))
-        converter = Converter(self.RawFileName, self.DUT.Number, join(self.TCDir, self.DUT.Name), first_run=int(self.Logs.keys()[0]))
-        converter.run()
-        if not self.SingleMode:
-            info('removing raw file "{}"'.format(self.RawFileName))
-            remove(self.RawFileName)
-
-    def merge_root_files(self):
-        warning('raw file "{}" does not exist. Starting single file merger!'.format(self.RawFileName))
-        single_files = [join(self.TCDir, 'cms-raw', 'ljutel_{}.root'.format(n)) for n in self.Logs.keys()]
-        new_file = join(self.TCDir, self.DUT.Name, 'run_{}.root'.format(str(self.Number).zfill(2)))
-        with open(devnull, 'w') as f:
-            call([join(environ.get('ROOTSYS'), 'bin', 'hadd'), '-f', new_file] + single_files, stdout=f)
-        info('successfully merged the single files to "{}"'.format(basename(new_file)))
 
     def print_run_info(self):
         for key, value in sorted(load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file'))).values()[self.DUT.Number].iteritems(), key=lambda k: int(k[0])):
