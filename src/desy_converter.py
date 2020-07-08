@@ -12,9 +12,10 @@ from argparse import ArgumentParser
 from converter import Converter
 from subprocess import check_call
 from glob import glob
-from numpy import concatenate, cumsum, split, delete, append, sum, average, in1d, where, argmax
+from numpy import concatenate, cumsum, split, delete, sum, in1d, where, argmax
 import toml
 from calibration import Calibration
+from converter import Cluster
 
 
 class DESYConverter(Converter):
@@ -306,34 +307,6 @@ class DESYConverter(Converter):
         for f in self.FileNames:
             if f.endswith('.root') or f.endswith('.hdf5'):
                 remove_file(f)
-
-
-class Cluster:
-
-    def __init__(self, seed_hit):
-        self.Hits = array([seed_hit])
-
-    def add_hit(self, hit):
-        self.Hits = append(self.Hits, [hit], axis=0)
-
-    def hit_is_adjacent(self, hit):
-        """ returns: if any of the existing cluster hits has a distance of 1 to the given hit"""
-        return any(sqrt(sum(abs(hit[:2] - self.Hits[:, :2]), axis=1)) <= 1.1)
-
-    def get_charge(self):
-        return sum(self.Hits[:, 2])
-    
-    def get_size(self):
-        return self.Hits.shape[0]
-    
-    def get_x(self):
-        return average(self.Hits[:, 0], weights=self.Hits[:, 2])
-
-    def get_y(self):
-        return average(self.Hits[:, 1], weights=self.Hits[:, 2])
-    
-    def __repr__(self):
-        return 'Cluster with {} hits at [{:.1f}, {:.1f}] with charge {:.1f} vcals'.format(self.get_size(), self.get_x(), self.get_y(), self.get_charge())
 
 
 if __name__ == '__main__':
