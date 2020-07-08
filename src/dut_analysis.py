@@ -15,7 +15,6 @@ from tracks import TrackAnalysis
 from telescope import TelescopeAnalysis
 from analysis import *
 from numpy import in1d
-from dut import Plane
 from calibration import Calibration
 
 
@@ -28,11 +27,10 @@ class DUTAnalysis(Analysis):
         # MAIN
         self.Run = self.init_run()(run_number, dut_number, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
-        self.Plane = Plane(self.DUT.Number + self.Config.getint('TELESCOPE', 'planes'), self.Config, 'DUT')
+        self.Plane = self.DUT.Plane
 
-        # CONVERTER & CALIBRATION
-        self.Calibration = Calibration(self.Run, self.Plane)
-        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config, self.Calibration)
+        # DATA
+        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Data = self.load_file()
 
         # INFO
@@ -41,6 +39,7 @@ class DUTAnalysis(Analysis):
         self.EndTime = self.get_end_time()
 
         # SUBCLASSES
+        self.Calibration = Calibration(self.Run)
         self.Telescope = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)

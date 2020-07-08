@@ -8,7 +8,6 @@ from ROOT import TF1, TGraph
 from utils import *
 from analysis import glob, join
 from run import Run
-from dut import Plane
 from numpy import genfromtxt, split, all, delete, concatenate, round, zeros
 from draw import Draw, format_histo, update_canvas
 from copy import deepcopy
@@ -16,11 +15,11 @@ from copy import deepcopy
 
 class Calibration:
 
-    def __init__(self, run: Run, plane: Plane, n=None):
+    def __init__(self, run: Run, n=None):
 
         # INFO
         self.Run = run
-        self.Plane = plane
+        self.Plane = run.DUT.Plane
         self.Draw = Draw(config=self.Run.Config)
 
         # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
