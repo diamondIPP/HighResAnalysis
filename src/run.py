@@ -13,7 +13,7 @@ from dut import DUT
 class Run:
     """ Run class containing all the information for a single run from the tree and the json file. """
 
-    def __init__(self, run_number, dut_nr, tc_dir, config, single_mode=False):
+    def __init__(self, run_number, dut_number, tc_dir, config, single_mode=False):
 
         # Main Info
         self.Number = int(run_number)
@@ -27,12 +27,15 @@ class Run:
         # Info
         self.Info = self.load_run_info()
         self.Logs = self.load_run_logs()
-        self.DUT = DUT(dut_nr, self.Logs, config)
+        self.DUT = DUT(dut_number, self.Logs, self.Config)
 
         # Times
         # TODO: Fix later with real timestamps from the data
         self.StartTime = self.Logs['start']
         self.EndTime = self.Logs['end']
+
+    def get_dut_nrs(self):
+        return [int(remove_letters(key)) for key in self.Logs.keys() if key.startswith('dut')]
 
     def load_run_info(self):
         pass
@@ -53,4 +56,4 @@ class Run:
 
 if __name__ == '__main__':
     a = Analysis()
-    z = Run(301, 0, a.TCDir, a.Config, single_mode=True)
+    z = Run(301, 1, a.TCDir, a.Config, single_mode=True)
