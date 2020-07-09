@@ -23,6 +23,7 @@ class DUTAnalysis(Analysis):
     def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True):
 
         Analysis.__init__(self, test_campaign, verbose)
+        self.print_start(run_number)
 
         # MAIN
         self.Run = self.init_run()(run_number, dut_number, self.TCDir, self.Config, single_mode)
@@ -39,12 +40,11 @@ class DUTAnalysis(Analysis):
         self.EndTime = self.get_end_time()
 
         # SUBCLASSES
+        # TODO: add cut class
         self.Calibration = Calibration(self.Run)
         self.Telescope = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
-
-        self.print_start(self.Run.Number)
 
     # ----------------------------------------
     # region INIT
@@ -59,7 +59,13 @@ class DUTAnalysis(Analysis):
 
     def load_file(self):
         self.Converter.run()
-        return h5py.File(self.Run.FileName, 'r')
+        f = h5py.File(self.Run.FileName, 'r')
+        try:
+            _ = f['NTracks']
+            return f
+        except KeyError:
+            warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
+            return {'NTracks': array([])}  # dummy
 
     def reload_file(self):
         self.Data = self.load_file()
