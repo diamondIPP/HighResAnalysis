@@ -389,10 +389,10 @@ class Draw:
         self.add(c)
         return c
 
-    def make_graph_from_profile(self, p):
+    def make_graph_from_profile(self, p, err=True):
         x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
-        x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
-        y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
+        x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2 if err else 0]) for i in x_range]
+        y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i) if err else 0]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
     # endregion CREATE
     # ----------------------------------------
