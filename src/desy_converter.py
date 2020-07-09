@@ -113,94 +113,108 @@ class DESYConverter(Converter):
         for filename in glob('AutoDict_vector*'):
             remove(filename)
 
-    def get_tree(self, plane=0):
-        root_file = TFile(self.FileNames[-3])
-        return root_file, root_file.Get('Plane{}'.format(plane))
+    def load_root_file(self):
+        return TFile(self.FileNames[-3])
 
     def convert_root_to_hdf5(self):
         """ step 5: convert root file to hdf5 file. """
-        start_time = info('Start root->hdf5 conversion ...')
-        root_file = TFile(self.FileNames[-3])
         if file_exists(self.FinalFileName):
             remove_file(self.FinalFileName)
+        start_time = info('Start root->hdf5 conversion ...')
+        # files
         f = h5py.File(self.FinalFileName, 'w')
+        root_file = self.load_root_file()
 
-        # tracks
-        t = root_file.Get('Tracks')
-        names = [n.GetName() for n in t.GetListOfBranches()]  # NTracks, Chi2, Dof, X, Y, SlopeX, SlopeY, Cov
-        f.create_dataset('NTracks', data=get_root_vec(t, var=names[0], dtype='u1'))
-        n = t.Draw(':'.join(names[1:-1]), '', 'goff')
+        self.add_tracks(root_file, f)
+        t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
+        f.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
+        self.add_planes(root_file, f)
+
+        for i in range(self.NDUTPlanes):
+            group = f['Plane{}'.format(i + self.NTelPlanes)]
+            self.add_hit_charge(group, i)
+            self.add_trigger_info(group)
+            self.add_cluster_charge(group)
+
+        add_to_info(start_time, '\nFinished conversion in')
+
+    @staticmethod
+    def add_tracks(root_file, hdf5_file):
+        t0 = info('adding track information ... ', overlay=True)
+        tree = root_file.Get('Tracks')
+        names = [n.GetName() for n in tree.GetListOfBranches()]  # NTracks, Chi2, Dof, X, Y, SlopeX, SlopeY, Cov
+        hdf5_file.create_dataset('NTracks', data=get_root_vec(tree, var=names[0], dtype='u1'))
+        n = tree.Draw(':'.join(names[1:-1]), '', 'goff')
         types = ['f2', 'u1', 'f2', 'f2', 'f2', 'f2']
         for i, (name, typ) in enumerate(zip(names[1:-1], types)):
-            f.create_dataset(name, data=get_root_vec(t, n, i, dtype=typ))
+            hdf5_file.create_dataset(name, data=get_root_vec(tree, n, i, dtype=typ))
+        add_to_info(t0)
 
-        # planes
-        names = [n.GetName() for n in root_file.GetListOfKeys() if n.GetName().startswith('Plane')]
-        info('reading branches for {} planes'.format(len(names)))
+    def add_planes(self, root_file, hdf5_file):
+        names = [key.GetName() for key in root_file.GetListOfKeys() if key.GetName().startswith('Plane')]
+        info('reading branches for {} planes ... '.format(len(names)))
         hit_types = {'X': 'u2', 'Y': 'u2', 'ADC': 'u1', 'HitInCluster': 'u1'}
         plane_types = {'X': 'f2', 'Y': 'f2', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
         intercept_types = {'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
         self.PBar.start(sum(len(lst) for lst in [hit_types, plane_types, intercept_types]) * len(names))
         mask = self.load_mask()
         for i, name in enumerate(names):
-            g = f.create_group(name)
-
+            g = hdf5_file.create_group(name)
             # mask
             if i in mask:
                 g.create_dataset('Mask', data=mask[i].astype('u2'))
-
             # hits: NHits, PixX, PixY, Timing, Value, HitInCluster
             self.convert_plane_data(root_file, g, name, branch_name='Hits', types=hit_types)
-            if name == 'Plane{}'.format(self.Calibration.Plane.Number):
-                self.add_hit_charge(g)
-                self.add_trigger_info(g, name)
-
             # clusters:  NClusters, Col, Row, VarCol, VarRow, CovColRow, Timing, Value, Track
             self.convert_plane_data(root_file, g, name, 'Clusters', plane_types, exclude='Value')  # adc doesn't make sense for clusters
-            if name == 'Plane{}'.format(self.Calibration.Plane.Number):
-                self.add_cluster_charge(g)
-
             # intercepts
             self.convert_plane_data(root_file, g, name, 'Intercepts', intercept_types)  # adc doesn't make sense for clusters
 
-        add_to_info(start_time, 'Finished conversion in')
-
-    def add_trigger_info(self, group, plane):
+    def add_trigger_info(self, group):
         f = TFile(self.ROOTFileName)
-        tree = f.Get(plane).Get('Hits')
+        tree = f.Get(group.name.strip('/')).Get('Hits')
         trigger_phase = get_root_vec(tree, var='TriggerPhase', dtype='u1')
         trigger_count = get_root_vec(tree, var='TriggerCount', dtype='u1')
         group.create_dataset('TriggerPhase', data=trigger_phase)
         group.create_dataset('TriggerCount', data=trigger_count)
 
-    def add_hit_charge(self, group):
-        self.Calibration.load_fits(pbar=None)
+    def add_hit_charge(self, group, dut_nr):
+        info('adding hit charges for {} ... '.format(group.name.strip('/')))
+        calibration = self.get_calibration(dut_nr)
+        calibration.load_fits(pbar=None)
         charges = []
-        for j in range(group['Hits']['X'].size):
-            charges.append(self.Calibration.get_charge(group['Hits']['X'][j], group['Hits']['X'][j], group['Hits']['ADC'][j]))
+        n_events = group['Hits']['X'].size
+        self.PBar.start(n_events)
+        for j in range(n_events):
+            charges.append(calibration.get_charge(group['Hits']['X'][j], group['Hits']['X'][j], group['Hits']['ADC'][j]))
+            self.PBar.update()
         group['Hits'].create_dataset('Charge', data=array(charges, dtype='f2'))
-        group.create_dataset('CalChiSquare', data=self.Calibration.get_chi2s())
-
-    @staticmethod
-    def get_hits(group):
-        data = array([array(group['Hits'][s]) for s in ['X', 'Y', 'Charge']]).T
-        mask = group['Mask']
-        keys = data[:, 0].astype('i') * 10000 + data[:, 1].astype('i')
-        mask_keys = mask[:, 0].astype('i') * 10000 + mask[:, 1]
-        i_mask = where(in1d(keys, mask_keys))[0]
-        data = data[in1d(keys, mask_keys, invert=True)]
-        hs = cumsum(group['Hits']['NHits'])  # indices to sort hit array for events
-        i_sub = zeros(hs.size, dtype='i')
-        for i in i_mask:
-            i_sub[argmax(hs == i + 1):] += 1
-        return split(data, (hs - i_sub)[:-1].astype('i'))
+        group.create_dataset('CalChiSquare', data=calibration.get_chi2s())
 
     def add_cluster_charge(self, group):
+        t = info('adding cluster charges for {} ... '.format(group.name.strip('/')), overlay=True)
         clusters = concatenate([self.clusterise(hit_list) for hit_list in self.get_hits(group)])
         group['Clusters'].create_dataset('Charge', data=array([cluster.get_charge() for cluster in clusters], dtype='f2'))
         group['Clusters']['X'][...] = array([cluster.get_x() for cluster in clusters], dtype='f2')
         group['Clusters']['Y'][...] = array([cluster.get_y() for cluster in clusters], dtype='f2')
         group['Clusters'].create_dataset('Size', data=array([cluster.get_size() for cluster in clusters], dtype='u1'))
+        add_to_info(t)
+
+    @staticmethod
+    def get_hits(group):
+        data = array([array(group['Hits'][s]) for s in ['X', 'Y', 'Charge']]).T
+        hs = cumsum(group['Hits']['NHits'])  # indices to sort hit array for events
+        if 'Mask' not in group.keys():
+            return split(data, hs[:-1])
+        mask = group['Mask'] if 'Mask' in group.keys() else array([])
+        keys = data[:, 0].astype('i') * 10000 + data[:, 1].astype('i')
+        mask_keys = mask[:, 0].astype('i') * 10000 + mask[:, 1]
+        i_mask = where(in1d(keys, mask_keys))[0]
+        data = data[in1d(keys, mask_keys, invert=True)]
+        i_sub = zeros(hs.size, dtype='i')
+        for i in i_mask:
+            i_sub[argmax(hs == i + 1):] += 1
+        return split(data, (hs - i_sub)[:-1].astype('i'))
 
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
@@ -292,8 +306,6 @@ class DESYConverter(Converter):
 
 if __name__ == '__main__':
     from analysis import Analysis
-    from desy_run import DESYRun
-    from dut import Plane
 
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=11)
@@ -302,5 +314,5 @@ if __name__ == '__main__':
     pargs = parser.parse_args()
     a = Analysis()
     r = DESYRun(pargs.run, pargs.dut, a.TCDir, a.Config, single_mode=True)
-    z = DESYConverter(r.TCDir, r.Number, a.Config, Calibration(r, Plane(7, a.Config, 'DUT')))
+    z = DESYConverter(r.TCDir, r.Number, a.Config)
     # z.run()
