@@ -21,8 +21,8 @@ class Calibration:
         self.Run = run
         self.Plane = run.DUT.Plane
         self.Draw = Draw(config=self.Run.Config)
+        self.Dir = join(self.Run.TCDir, 'calibrations', self.Run.DUT.Name)
 
-        # TODO add calibration in hdf5 file (no charge for MIMOSA anyway)
         # Calibration
         self.HighRangeFactor = 7
         self.Trim, self.Number = self.get_trim_number(n)
@@ -30,8 +30,13 @@ class Calibration:
         self.Points = None
         self.Fits = None
 
+        self.FileName = join(self.Dir, '{}-{}.h5py'.format(self.Trim, self.Number))
+
         self.PBar = PBar()
         self.correct_file()
+
+    def __call__(self, x, y, adc):
+        return self.read()[x, y, adc]
 
     # ----------------------------------------
     # region INIT
@@ -40,13 +45,13 @@ class Calibration:
         return trim, choose(n, number)
 
     def get_file_name(self):
-        f = glob(join(self.Run.TCDir, 'calibrations', self.Run.DUT.Name, 'phCalibration{}*-{}.dat'.format(self.Trim, self.Number)))
+        f = glob(join(self.Dir, 'phCalibration{}*-{}.dat'.format(self.Trim, self.Number)))
         if len(f):
             return f[0]
         critical('Pulse height calibration file does not exist...')
 
     def get_fit_file(self):
-        f = glob(join(self.Run.TCDir, 'calibrations', self.Run.DUT.Name, 'phCalibrationFitErr{}*-{}.dat'.format(self.Trim, self.Number)))
+        f = glob(join(self.Dir, 'phCalibrationFitErr{}*-{}.dat'.format(self.Trim, self.Number)))
         if len(f):
             return f[0]
         warning('Pulse height calibration fit file does not exist...')
@@ -61,7 +66,7 @@ class Calibration:
             warning('Found corrupted file from pxar. Correcting ...')
             low_range = self.get_vcals()['low range']
             lines = []
-            data = self.read()
+            data = self.read_points()
             i_corr = arange(100, 100 + hr_size)  # indices of the corrupted data
             with open(self.get_file_name(), 'r+') as f:
                 for line in f.readlines():
@@ -84,21 +89,21 @@ class Calibration:
 
     # ----------------------------------------
     # region GET
-    def read(self):
+    def read_points(self):
         cols = arange(sum(a.size for a in self.get_vcals().values()))
         return array(split(genfromtxt(self.get_file_name(), skip_header=3, usecols=cols, dtype='u2'), self.get_splits()))
 
     def read_fit_pars(self):
         return array(split(genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2'), self.get_splits()))
 
-    def get(self, col, row):
+    def get_points(self, col, row):
         if self.Points is None:
-            self.Points = self.read()
+            self.Points = self.read_points()
         return self.Points[col][row]
 
-    def get_all(self):
+    def get_all_points(self):
         if self.Points is None:
-            self.Points = self.read()
+            self.Points = self.read_points()
         return self.Points
 
     def get_splits(self):
@@ -114,15 +119,23 @@ class Calibration:
         return concatenate([v * f for v, f in zip(self.get_vcals().values(), [1, self.HighRangeFactor])])
 
     def get_charge(self, col, row, adc):
-        fit = self.fit_erf(self.get_vcal_vec(), self.get(col, row)) if self.Fits is None else self.Fits[col][row]
+        fit = self.fit_erf(self.get_vcal_vec(), self.get_points(col, row)) if self.Fits is None else self.Fits[col][row]
         return -1 if fit is None else fit.GetX(adc)
 
-    def get_chi2s(self):
-        chi2s = zeros(self.Fits.shape, dtype='f2')
-        for col, rows in enumerate(self.Fits):
-            for row, fit in enumerate(rows):
-                chi2s[col][row] = 1000 if fit is None else fit.GetChisquare() / fit.GetNDF()
-        return chi2s
+    def get_chi2s(self, reload=False):
+        def f():
+            fits = self.get_fits()
+            chi2s = zeros(fits.shape, dtype='f2')
+            for col, rows in enumerate(self.Fits):
+                for row, fit in enumerate(rows):
+                    chi2s[col][row] = 1000 if fit is None else fit.GetChisquare() / fit.GetNDF()
+            return chi2s
+        return do_hdf5(join(self.Dir, 'chi2-{}-{}'.format(self.Trim, self.Number)), f, redo=reload)
+
+    def get_fits(self):
+        if self.Fits is None:
+            self.load_fits()
+        return self.Fits
     # endregion GET
     # ----------------------------------------
 
@@ -130,14 +143,29 @@ class Calibration:
         info('Fitting calibration points ...', prnt=pbar)
         do(self.PBar.start, self.Plane.NPixels, pbar)
         x = self.get_vcal_vec()
-        pars = zeros((self.Plane.NCols, self.Plane.NRows), dtype=object)
+        fits = zeros((self.Plane.NCols, self.Plane.NRows), dtype=object)
         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        for col, rows in enumerate(self.get_all()):
+        for col, rows in enumerate(self.get_all_points()):
             for row, y in enumerate(rows):
-                pars[col][row] = self.fit_erf(x, y)
+                fits[col][row] = self.fit_erf(x, y)
                 if pbar:
                     self.PBar.update()
-        self.Fits = array(pars)
+        self.Fits = array(fits)
+
+    def read(self, reload=False):
+        return array(do_hdf5(self.FileName, self.save, redo=reload))
+
+    def save(self):
+        self.load_fits()
+        info('Creating calibration file ... ')
+        v = zeros(self.Fits.shape + (256,))
+        self.PBar.start(v.size)
+        for col, rows in enumerate(self.Fits):
+            for row, fit in enumerate(rows):
+                for i in range(256):
+                    v[col][row][i] = 0 if fit is None else fit.GetX(i)
+                    self.PBar.update()
+        return v.astype('f2')
 
     def fit_erf(self, x, y):
         x, y = x[y > 0], y[y > 0]  # take only non zero values
@@ -149,7 +177,7 @@ class Calibration:
 
     def draw_fit(self, col=14, row=14, show=True):
         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        self.fit_erf(self.get_vcal_vec(), self.get(col, row))
+        self.fit_erf(self.get_vcal_vec(), self.get_points(col, row))
         self.draw(col, row, show).SetTitle('Calibration Fit for Pix {} {}'.format(col, row))
         self.Fit.Draw('same')
         update_canvas()
@@ -158,12 +186,13 @@ class Calibration:
     # ----------------------------------------
     # region DRAW
     def draw(self, col=14, row=14, show=True):
-        g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get(col, row))
+        g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get_points(col, row))
         format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4, markersize=.4)
         self.Draw.draw_histo(g, show, .12, draw_opt='ap')
         return g
 
     def draw_calibration_fit(self, col=14, row=14, show=True):
+        """ draws the Erf fit from pXar """
         self.Fit.SetParameters(*self.read_fit_pars()[col][row])
         self.draw(col, row, show).SetTitle('Calibration Fit for Pixel {} {}'.format(col, row))
         self.Fit.Draw('same')
