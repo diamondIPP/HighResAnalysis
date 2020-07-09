@@ -541,10 +541,11 @@ def set_root_output(status=True):
     gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
 
 
-def set_time_axis(histo, form='%H:%M', off=0):
-    histo.GetXaxis().SetTimeFormat(form)
-    histo.GetXaxis().SetTimeOffset(-off - 3600 if off else 0)
-    histo.GetXaxis().SetTimeDisplay(1)
+def set_time_axis(histo, form='%H:%M', off=0, axis='X'):
+    ax = getattr(histo, 'Get{}axis'.format(axis.upper()))()
+    ax.SetTimeFormat(form)
+    ax.SetTimeOffset(-off - 3600 if off else 0)
+    ax.SetTimeDisplay(1)
 
 
 def set_palette(pal):
