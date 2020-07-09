@@ -321,20 +321,21 @@ class Draw:
     # endregion SAVING
     # ----------------------------------------
 
-    def format_statbox(self, x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
-        gStyle.SetOptFit(int(only_fit or fit))
-        opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
-        if only_fit:
-            opt_stat = '0011'
-        if fit:
-            opt_stat = '1111'
-        y = (.88 if self.ActivateTitle else .95) if y is None else y
-        gStyle.SetOptStat(int(opt_stat))
-        gStyle.SetFitFormat(form) if form is not None else do_nothing()
-        gStyle.SetStatX(x)
-        gStyle.SetStatY(y)
-        gStyle.SetStatW(w)
-        gStyle.SetStatH(h)
+    def format_statbox(self, x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False, exe=True):
+        if exe:
+            gStyle.SetOptFit(int(only_fit or fit))
+            opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
+            if only_fit:
+                opt_stat = '0011'
+            if fit:
+                opt_stat = '1111'
+            y = (.88 if self.ActivateTitle else .95) if y is None else y
+            gStyle.SetOptStat(int(opt_stat))
+            gStyle.SetFitFormat(form) if form is not None else do_nothing()
+            gStyle.SetStatX(x)
+            gStyle.SetStatY(y)
+            gStyle.SetStatW(w)
+            gStyle.SetStatH(h)
 
     # ----------------------------------------
     # region CREATE
