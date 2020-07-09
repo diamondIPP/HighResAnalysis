@@ -14,15 +14,21 @@ class Converter:
     def __init__(self, data_dir, run_number, config):
 
         self.RunNumber = run_number
-        self.DataDir = data_dir
         self.Config = config
 
-        self.RawFilePath = self.load_raw_file_name()
+        # DIRECTORIES
+        self.DataDir = data_dir
+        self.SaveDir = join(self.DataDir, 'data')
         self.SoftDir = expanduser(self.Config.get('SOFTWARE', 'dir'))
+
+        self.RawFilePath = self.load_raw_file_name()
 
         self.PBar = PBar()
 
     def load_raw_file_name(self):
+        pass
+
+    def get_calibration(self, dut_number):
         pass
 
     @staticmethod

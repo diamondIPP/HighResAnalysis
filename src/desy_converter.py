@@ -15,6 +15,7 @@ from glob import glob
 from numpy import concatenate, cumsum, split, sum, in1d, where, argmax
 import toml
 from calibration import Calibration
+from desy_run import DESYRun
 
 
 class DESYConverter(Converter):
@@ -33,7 +34,6 @@ class DESYConverter(Converter):
         self.EUDAQDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'eudaq2'))
         self.ProteusSoftDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'proteus'))
         self.ProteusDataDir = join(self.DataDir, 'proteus')
-        self.SaveDir = join(self.DataDir, 'data')
 
         # FILENAMES
         self.ROOTFileName = join(self.SaveDir, 'run{:06d}.root'.format(self.RunNumber))
@@ -44,6 +44,8 @@ class DESYConverter(Converter):
         self.FileNames = [self.ROOTFileName] + self.get_align_files() + self.ProteusROOTFiles + [self.FinalFileName]
 
         self.NSteps = len(self.FileNames)
+        self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
+        self.NDUTPlanes = self.Config.getint('DUT', 'planes')
 
         self.Draw = Draw()
 
@@ -93,6 +95,9 @@ class DESYConverter(Converter):
 
     def get_align_files(self):
         return [join(self.ProteusDataDir, name) for name in [self.make_toml_name('all', 'mask', 'mask'), self.make_toml_name()]]
+
+    def get_calibration(self, dut_number):
+        return Calibration(DESYRun(self.RunNumber, dut_number, self.DataDir, self.Config))
     # endregion GET
     # ----------------------------------------
 
