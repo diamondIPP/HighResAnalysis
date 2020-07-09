@@ -19,9 +19,12 @@ class TrackAnalysis(Analysis):
 
         self.Data = self.Ana.Data
 
+    def get_n(self):
+        return array(self.Data['NTracks'])
+
     def draw_n(self, show=True):
         self.format_statbox(all_stat=True)
-        return self.draw_disto(self.Data['NTracks'], 'Number of Tracks', bins.make(0, 10, 1), show=show, x_tit='Number of Tracks', y_off=2.1, lm=.14)
+        return self.draw_disto(self.get_n(), 'Number of Tracks', bins.make(0, 10, 1), show=show, x_tit='Number of Tracks', y_off=2.1, lm=.14)
 
     def draw_dof(self, show=True):
         self.format_statbox(all_stat=True)
