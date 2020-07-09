@@ -179,17 +179,12 @@ class DESYConverter(Converter):
         group.create_dataset('TriggerCount', data=trigger_count)
 
     def add_hit_charge(self, group, dut_nr):
-        info('adding hit charges for {} ... '.format(group.name.strip('/')))
+        t = info('adding hit charges for {} ... '.format(group.name.strip('/')), overlay=True)
+        x, y, adc = [array(group['Hits'][name]) for name in ['X', 'Y', 'ADC']]
         calibration = self.get_calibration(dut_nr)
-        calibration.load_fits(pbar=None)
-        charges = []
-        n_events = group['Hits']['X'].size
-        self.PBar.start(n_events)
-        for j in range(n_events):
-            charges.append(calibration.get_charge(group['Hits']['X'][j], group['Hits']['X'][j], group['Hits']['ADC'][j]))
-            self.PBar.update()
-        group['Hits'].create_dataset('Charge', data=array(charges, dtype='f2'))
+        group['Hits'].create_dataset('Charge', data=calibration(x, y, adc), dtype='f2')
         group.create_dataset('CalChiSquare', data=calibration.get_chi2s())
+        add_to_info(t)
 
     def add_cluster_charge(self, group):
         t = info('adding cluster charges for {} ... '.format(group.name.strip('/')), overlay=True)
