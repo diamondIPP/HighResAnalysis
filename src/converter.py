@@ -90,10 +90,12 @@ class Cluster:
         return self.Hits.shape[0]
 
     def get_x(self):
-        return average(self.Hits[:, 0], weights=self.Hits[:, 2])
+        weights = self.Hits[:, 2]
+        return average(self.Hits[:, 0], weights=weights) if weights.nonzero()[0].size else mean(self.Hits[:, 0])
 
     def get_y(self):
-        return average(self.Hits[:, 1], weights=self.Hits[:, 2])
+        weights = self.Hits[:, 2]
+        return average(self.Hits[:, 1], weights=weights) if weights.nonzero()[0].size else mean(self.Hits[:, 1])
 
     def __repr__(self):
         return 'Cluster with {} hits at [{:.1f}, {:.1f}] with charge {:.1f} vcals'.format(self.get_size(), self.get_x(), self.get_y(), self.get_charge())
