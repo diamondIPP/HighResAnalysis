@@ -18,6 +18,7 @@ from uncertainties.core import Variable, AffineScalarFunc
 from numpy import average, sqrt, array, arange, mean, exp
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
+import pickle
 from time import time
 
 
@@ -319,6 +320,23 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
         f = h5py.File(path, 'w')
         f.create_dataset('data', data=data)
         return f['data']
+
+
+def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
+    if value is not None:
+        with open(path, 'wb') as f:
+            pickle.dump(value, f)
+        return value
+    try:
+        if file_exists(path) and not redo:
+            with open(path, 'rb') as f:
+                return pickle.load(f)
+    except ImportError:
+        pass
+    ret_val = func(*args, **kwargs)
+    with open(path, 'wb') as f:
+        pickle.dump(ret_val, f)
+    return ret_val
 
 
 def merge_root_files(files, new_file_name):
