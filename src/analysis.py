@@ -3,6 +3,7 @@ from glob import glob
 from os.path import realpath, basename, expanduser
 from shutil import copyfile
 from json import loads
+from cut import Cuts
 
 # global test campaign
 g_test_campaign = None
@@ -30,6 +31,8 @@ class Analysis(Draw):
         self.PickleDir = join(self.Dir, self.Config.get('SAVE', 'pickle directory'))
         self.PickleSubDir = ''
         self.ResultsDir = join(self.Dir, 'results')
+
+        self.Cuts = Cuts()
 
         # progress bar
         self.PBar = PBar()
@@ -67,6 +70,10 @@ class Analysis(Draw):
 
     def print_testcampaign(self):
         self.info('TESTCAMPAIGN: {}'.format(self.generate_tc_str()))
+
+    @staticmethod
+    def get_values(data, cut=None):
+        return data if cut is None else data[cut]
     # endregion INIT
     # ----------------------------------------
 
