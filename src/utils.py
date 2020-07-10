@@ -298,7 +298,8 @@ def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
-    return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
+    dtypes = [None] * n_ind if dtype is None else dtype
+    return [get_root_vec(tree, n, i, dtypes[i]) for i in range(n_ind)]
 
 
 def make_list(value, dtype=None):
