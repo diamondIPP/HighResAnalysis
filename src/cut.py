@@ -1,75 +1,49 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
 #       handles the cuts for the high rate analysis
-# created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
+# created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from draw import Draw
-from ROOT import TCut, TCutG
-from utils import *
-from os.path import join
-from json import loads
-from numpy import array
+from numpy import array, all
+from utils import print_table
 
 
-class Cut(Draw):
-    """
-    The Elementary class provides default behaviour objects in the analysis framework and is the Mother of all myPadAnalysis objects.
-    It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
-    """
+class Cuts:
+    """ Class that holds several cuts with functionality to combine them """
 
-    def __init__(self, analysis):
-        Draw.__init__(self)
+    def __init__(self):
 
-        self.Ana = analysis
-        self.Dir = analysis.Dir
-        self.CutStrings = self.define_cutstrings()
-        self.Config = load_config(join(self.Dir, 'config', 'cut'))
+        self.Cuts = {}
 
-        self.NCuts = 0
-
-        self.generate()
-
-    def __call__(self):
-        return self.generate_all_cut()
+    def __call__(self, cut=None):
+        return self.generate() if cut is None else None if not cut else cut
 
     def generate(self):
-        self.CutStrings['fiducial'] += self.generate_fiducial()
+        cuts = [cut.Values for cut in self.Cuts.values()]
+        return all(cuts, axis=0).flatten()
 
-    def generate_all_cut(self):
-        cut = TCut('AllCuts', '')
-        self.NCuts = 0
-        for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old') and not key.startswith('AllCut'):
-                cut += value
-                self.NCuts += 1
-        return cut
+    def register(self, name, values, level, description=None):
+        self.Cuts[name] = Cut(name, values, level, description)
 
-    @staticmethod
-    def define_cutstrings():
-        """ Defines the ordered dictionary that contains all the final cuts and the order they are going to be applied."""
-        dic = OrderedDict()
-        dic['raw'] = TCut('raw', '')
-        # dic['cluster'] = TCut('cluster', 'NCluster == 1')
-        dic['fiducial'] = TCut('fiducial', '')
-        dic['AllCuts'] = TCut('AllCuts', '')
-        return dic
+    def get(self, name):
+        return self.Cuts[name].Values
 
-    def generate_fiducial(self):
-        name = 'fid{}'.format(self.Ana.RunNumber)
-        xmin, xmax = loads(self.Config.get('CUT', 'fiducial'))[:2]
-        ymin, ymax = loads(self.Config.get('CUT', 'fiducial'))[2:]
-        xmin, ymin = xmin - .5, ymin - .5
-        xmax, ymax = xmax + .5, ymax + .5
-        x = array([xmin, xmin, xmax, xmax, xmin], 'd')
-        y = array([ymin, ymax, ymax, ymin, ymin], 'd')
-        cut = TCutG(name, 5, x, y)
-        cut.SetVarX('ClusterX')
-        cut.SetVarY('ClusterY')
-        self.Objects.append(cut)
-        cut.SetLineColor(2)
-        cut.SetLineWidth(3)
-        return name
+    def show(self, raw=False):
+        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.Cuts.values()]
+        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Description'])
 
-    def draw_fid_cut(self):
-        cut = get_object('fid{}'.format(self.Ana.RunNumber))
-        cut.Draw()
+
+class Cut:
+    """ Base class to describe a single cut """
+
+    def __init__(self, name, values, level, description=None):
+
+        self.Name = name
+        self.Values = array(values)
+        self.Level = level
+        self.Description = description
+
+    def __call__(self, cut_array):
+        return cut_array if self.Values is None else cut_array[self.Values]
+
+    def get_data(self, data):
+        return data if self.Values is None else data[self.Values]
