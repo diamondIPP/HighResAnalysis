@@ -143,11 +143,12 @@ class DESYConverter(Converter):
         tree = root_file.Get('Tracks')
         tree.SetEstimate(tree.GetEntries())
         names = [n.GetName() for n in tree.GetListOfBranches()]  # NTracks, Chi2, Dof, X, Y, SlopeX, SlopeY, Cov
-        hdf5_file.create_dataset('NTracks', data=get_root_vec(tree, var=names[0], dtype='u1'))
+        g = hdf5_file.create_group('Tracks')
+        g.create_dataset('NTracks', data=get_root_vec(tree, var=names[0], dtype='u1'))
         n = tree.Draw(':'.join(names[1:-1]), '', 'goff')
         types = ['f2', 'u1', 'f2', 'f2', 'f2', 'f2']
         for i, (name, typ) in enumerate(zip(names[1:-1], types)):
-            hdf5_file.create_dataset(name, data=get_root_vec(tree, n, i, dtype=typ))
+            g.create_dataset(name, data=get_root_vec(tree, n, i, dtype=typ))
         add_to_info(t0)
 
     @staticmethod
