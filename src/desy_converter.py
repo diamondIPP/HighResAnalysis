@@ -37,11 +37,11 @@ class DESYConverter(Converter):
 
         # FILENAMES
         self.ROOTFileName = join(self.SaveDir, 'run{:06d}.root'.format(self.RunNumber))
-        self.NoiseName = join('mask', 'all')
         self.AlignSteps = self.get_align_steps()
-        self.ProteusROOTFiles = [join(self.ProteusDataDir, '{}-{:04d}-{}.root'.format(n, self.RunNumber, m)) for n, m in [('track', 'data'), ('match', 'trees')]]
+        self.TrackFileName = join(self.ProteusDataDir, 'track-{:04d}-data.root'.format(self.RunNumber))
+        self.MatchFileName = join(self.ProteusDataDir, 'match-{:04d}-trees.root'.format(self.RunNumber))
         self.FinalFileName = join(self.SaveDir, 'run{:04d}.hdf5'.format(self.RunNumber))
-        self.FileNames = [self.ROOTFileName] + self.get_align_files() + self.ProteusROOTFiles + [self.FinalFileName]
+        self.FileNames = [self.ROOTFileName] + self.get_align_files() + [self.TrackFileName, self.MatchFileName, self.FinalFileName]
 
         self.NSteps = len(self.FileNames)
         self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
@@ -113,9 +113,6 @@ class DESYConverter(Converter):
         for filename in glob('AutoDict_vector*'):
             remove(filename)
 
-    def load_root_file(self):
-        return TFile(self.FileNames[-3])
-
     def convert_root_to_hdf5(self):
         """ step 5: convert root file to hdf5 file. """
         if file_exists(self.FinalFileName):
@@ -123,11 +120,12 @@ class DESYConverter(Converter):
         start_time = info('Start root->hdf5 conversion ...')
         # files
         f = h5py.File(self.FinalFileName, 'w')
-        root_file = self.load_root_file()
+        track_file = TFile(self.TrackFileName)
 
-        self.add_tracks(root_file, f)
-        self.add_time_stamp(root_file, f)
-        self.add_planes(root_file, f)
+        self.add_tracks(track_file, f)
+        self.add_matching(f)
+        self.add_time_stamp(track_file, f)
+        self.add_planes(track_file, f)
 
         for i in range(self.NDUTPlanes):
             group = f['Plane{}'.format(i + self.NTelPlanes)]
@@ -138,9 +136,9 @@ class DESYConverter(Converter):
         add_to_info(start_time, '\nFinished conversion in')
 
     @staticmethod
-    def add_tracks(root_file, hdf5_file):
+    def add_tracks(track_file, hdf5_file):
         t0 = info('adding track information ... ', overlay=True)
-        tree = root_file.Get('Tracks')
+        tree = track_file.Get('Tracks')
         tree.SetEstimate(tree.GetEntries())
         names = [n.GetName() for n in tree.GetListOfBranches()]  # NTracks, Chi2, Dof, X, Y, SlopeX, SlopeY, Cov
         g = hdf5_file.create_group('Tracks')
@@ -151,12 +149,22 @@ class DESYConverter(Converter):
             g.create_dataset(name, data=get_root_vec(tree, n, i, dtype=typ))
         add_to_info(t0)
 
+    def add_matching(self, hdf5_file):
+        f = TFile(self.MatchFileName)
+        tree = f.Get('C0').Get('tracks_clusters_matched')
+        tree.SetEstimate(tree.GetEntries())
+        n = tree.Draw('evt_frame:clu_size', '', 'goff')
+        events, cluster_size = get_root_vecs(tree, n, 2, ['u8', 'u2'])
+        hdf5_file['Tracks'].create_dataset('Matched', data=cluster_size > 0)
+        g = hdf5_file.create_group('Event')
+        g.create_dataset('Matched', data=events[cluster_size > 0])
+
     @staticmethod
     def add_time_stamp(root_file, hdf5_file):
         tree = root_file.Get('Event')
         tree.SetEstimate(tree.GetEntries())
         t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
-        hdf5_file.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
+        hdf5_file['Event'].create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
 
     def add_planes(self, root_file, hdf5_file):
         names = [key.GetName() for key in root_file.GetListOfKeys() if key.GetName().startswith('Plane')]
@@ -249,7 +257,7 @@ class DESYConverter(Converter):
     def noise_scan(self):
         """ step 1: find noisy pixels with proteus. """
         ensure_dir('mask')
-        self.run_proteus('pt-noisescan', self.NoiseName)
+        self.run_proteus('pt-noisescan', join('mask', 'all'))
 
     def align(self):
         """ step 2: align the telescope in several steps with proteus. """
