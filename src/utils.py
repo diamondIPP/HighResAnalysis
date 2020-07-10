@@ -15,7 +15,7 @@ from json import load
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp
+from numpy import average, sqrt, array, arange, mean, exp, concatenate
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
@@ -337,6 +337,20 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     with open(path, 'wb') as f:
         pickle.dump(ret_val, f)
     return ret_val
+
+
+def print_table(rows, header=None, prnt=True):
+    t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
+    col_width = [len(max(t[:, i], key=len)) for i in range(t.shape[1])]
+    total_width = sum(col_width) + len(col_width) * 3 + 1
+    hline = '{}'.format('~' * total_width)
+    if prnt:
+        for i, row in enumerate(t):
+            if i in [0, 1, t.size]:
+                print(hline)
+            print('| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width))))
+        print('{}\n'.format(hline))
+    return rows
 
 
 def merge_root_files(files, new_file_name):
