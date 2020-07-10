@@ -10,8 +10,7 @@
 # ignore backup files of any sort of editor:
 ~*
 *~
-.*
-\#*
+.idea
 
 # ignore python byte code
 *.pyc
