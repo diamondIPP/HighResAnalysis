@@ -55,17 +55,17 @@ class DUTAnalysis(Analysis):
         return DESYConverter if self.Location == 'DESY' else Converter
 
     def get_entries(self):
-        return self.Data['NTracks'].size
+        return self.Data['Tracks']['NTracks'].size
 
     def load_file(self):
         self.Converter.run()
         try:
             f = h5py.File(self.Run.FileName, 'r')
-            _ = f['NTracks']
+            _ = f['Tracks']
             return f
         except (KeyError, OSError):
             warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
-            return {'NTracks': array([])}  # dummy
+            return {'Tracks': array([])}  # dummy
 
     def reload_file(self):
         self.Data = self.load_file()
@@ -84,7 +84,7 @@ class DUTAnalysis(Analysis):
         return datetime.fromtimestamp(self.Run.EndTime)
 
     def get_time(self, cut=None):
-        t = array(self.Data['Time']).astype('f8') + self.Run.StartTime
+        t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
         return t if cut is None else t[cut]
 
     def get(self, plane=None):
@@ -291,4 +291,5 @@ if __name__ == '__main__':
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
     cal = z.Calibration
     c = z.Converter
+    t = z.Tracks
     z.add_info(t_start, prnt=True)
