@@ -126,8 +126,7 @@ class DESYConverter(Converter):
         root_file = self.load_root_file()
 
         self.add_tracks(root_file, f)
-        t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
-        f.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
+        self.add_time_stamp(root_file, f)
         self.add_planes(root_file, f)
 
         for i in range(self.NDUTPlanes):
@@ -142,6 +141,7 @@ class DESYConverter(Converter):
     def add_tracks(root_file, hdf5_file):
         t0 = info('adding track information ... ', overlay=True)
         tree = root_file.Get('Tracks')
+        tree.SetEstimate(tree.GetEntries())
         names = [n.GetName() for n in tree.GetListOfBranches()]  # NTracks, Chi2, Dof, X, Y, SlopeX, SlopeY, Cov
         hdf5_file.create_dataset('NTracks', data=get_root_vec(tree, var=names[0], dtype='u1'))
         n = tree.Draw(':'.join(names[1:-1]), '', 'goff')
@@ -149,6 +149,13 @@ class DESYConverter(Converter):
         for i, (name, typ) in enumerate(zip(names[1:-1], types)):
             hdf5_file.create_dataset(name, data=get_root_vec(tree, n, i, dtype=typ))
         add_to_info(t0)
+
+    @staticmethod
+    def add_time_stamp(root_file, hdf5_file):
+        tree = root_file.Get('Event')
+        tree.SetEstimate(tree.GetEntries())
+        t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
+        hdf5_file.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
 
     def add_planes(self, root_file, hdf5_file):
         names = [key.GetName() for key in root_file.GetListOfKeys() if key.GetName().startswith('Plane')]
@@ -213,14 +220,16 @@ class DESYConverter(Converter):
 
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
-        t0 = root_file.Get(plane_name).Get(branch_name)  # NHits, PixX, PixY, Timing, Value, HitInCluster
+        tree = root_file.Get(plane_name).Get(branch_name)  # NHits, PixX, PixY, Timing, Value, HitInCluster
         n_name = 'N{}'.format(branch_name)
-        g0.create_dataset(n_name, data=get_root_vec(t0, var=n_name, dtype='u2'))
+        tree.SetEstimate(tree.GetEntries())
+        g0.create_dataset(n_name, data=get_root_vec(tree, var=n_name, dtype='u2'))
+        tree.SetEstimate(sum(array(g0[n_name])))
         exclude = make_list(exclude, dtype=list) + ['Timing', 'Cov', 'CovColRow']  # Timing & CovColRow is empty, Cov too much data
-        names = [b.GetName() for b in t0.GetListOfBranches() if b.GetName() not in exclude][1:]
-        n = t0.Draw(':'.join(names), '', 'goff')
+        names = [b.GetName() for b in tree.GetListOfBranches() if b.GetName() not in exclude][1:]
+        n = tree.Draw(':'.join(names), '', 'goff')
         for j, (branch_name, typ) in enumerate(types.items()):
-            data = get_root_vec(t0, n, j, typ)
+            data = get_root_vec(tree, n, j, typ)
             self.PBar.update()
             if branch_name == 'ADC' and mean(data) == 1:  # don't save empty data... not all planes have pulse height information
                 continue
