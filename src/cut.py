@@ -51,9 +51,23 @@ class Cut:
         self.Values = array(values)
         self.Level = level
         self.Description = description
+        self.Size = self.Values.size
 
-    def __call__(self, cut_array):
-        return cut_array if self.Values is None else cut_array[self.Values]
+    def __call__(self):
+        return self.Values
+
+    def __add__(self, other=None):
+        s = len(other)
+        if s != self.Size:
+            warning('cut array has incorrect size ({}), {} required'.format(s, self.Size))
+            return self.Values
+        return self.Values if other is None else all([self.Values, other], axis=0)
+
+    def __str__(self):
+        return '{}, {} cut {}/{} entries: {}'.format(self.Level, self.Name, self.Values.nonzero()[0].size, self.Size, self.Description)
+
+    def __repr__(self):
+        return self.__str__()
 
     def get_data(self, data):
         return data if self.Values is None else data[self.Values]
