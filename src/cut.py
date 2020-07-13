@@ -3,8 +3,8 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, all
-from utils import print_table
+from numpy import array, all, in1d
+from utils import print_table, warning
 
 
 class Cuts:
@@ -30,6 +30,13 @@ class Cuts:
     def show(self, raw=False):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.Cuts.values()]
         print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Description'])
+
+    @staticmethod
+    def make_mask(x, y, masked_pixels):
+        data = x.astype('i') * 10000 + y  # make unique number out of the tuple... Is there a way to compare tuples?
+        mx, my = masked_pixels.T.astype('i')
+        mask = mx * 10000 + my
+        return in1d(data, mask, invert=True)
 
 
 class Cut:
