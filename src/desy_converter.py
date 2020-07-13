@@ -50,6 +50,7 @@ class DESYConverter(Converter):
         self.Draw = Draw()
 
     # TODO: add check for alignment or align every run?
+    # TODO: remove root files after conversion
 
     def run(self):
         for f in self.get_steps():
