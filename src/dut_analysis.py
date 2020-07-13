@@ -10,11 +10,10 @@ from currents import Currents
 from desy_converter import DESYConverter
 from converter import Converter
 from fit import *
-import bins
 from tracks import TrackAnalysis
 from telescope import TelescopeAnalysis
 from analysis import *
-from numpy import in1d, cumsum, split, concatenate, unique
+from numpy import cumsum, split, concatenate, repeat, all
 from calibration import Calibration
 
 
@@ -33,6 +32,7 @@ class DUTAnalysis(Analysis):
         # DATA
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Data = self.load_file()
+        self.init_cuts()
 
         # INFO
         self.NEvents = self.get_entries()
@@ -69,6 +69,15 @@ class DUTAnalysis(Analysis):
 
     def reload_file(self):
         self.Data = self.load_file()
+
+    def init_cuts(self):
+        mask = self.get_mask()
+        self.Cuts.register('mask', self.Cuts.make_mask(self.get_x(cluster=False), self.get_y(cluster=False), mask), 90, 'masked {} pixels'.format(mask.shape[0]))
+        n_clusters = self.get_n('Clusters')
+        one_cluster = n_clusters == 1
+        self.Cuts.register('e-1cluster', one_cluster, 91, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
+        self.Cuts.register('1cluster', repeat(n_clusters, n_clusters) == 1, 92, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
+
     # endregion INIT
     # ----------------------------------------
 
