@@ -100,15 +100,18 @@ class DUTAnalysis(Analysis):
         return self.Data['Plane{}'.format(self.get_plane(plane).Number)]
 
     def get_group(self, grp, plane=None):
-        return self.Data['Plane{}'.format(self.get_plane(plane).Number)][grp]
+        return self.get(plane)[grp]
 
     def get_data(self, grp, key=None, plane=None, cut=None):
         data = self.get_group(grp, plane)
         data = array(data) if key is None else array(data[key])
         return data if cut is None else data[cut]
 
-    def get_n(self, name='Hits', cut=None):
-        return self.get_data(name, 'N{}'.format(name), cut=cut)
+    def get_n(self, name='Hits', plane=None, cut=None):
+        return self.get_data(name, 'N{}'.format(name), plane, cut)
+
+    def get_n_clusters(self, plane=None):
+        return self.get_n('Clusters', plane)
 
     def get_split(self, cluster=True):
         n = 'Clusters' if cluster else 'Hits'
