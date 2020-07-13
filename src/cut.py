@@ -17,15 +17,18 @@ class Cuts:
     def __call__(self, cut=None):
         return self.generate() if cut is None else None if not cut else cut
 
+    def __add__(self, other=None):
+        return self.generate() if other is None else all([self.generate(), other], axis=0)
+
     def generate(self):
-        cuts = [cut.Values for cut in self.Cuts.values()]
+        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
         return all(cuts, axis=0).flatten()
 
     def register(self, name, values, level, description=None):
         self.Cuts[name] = Cut(name, values, level, description)
 
     def get(self, name):
-        return self.Cuts[name].Values
+        return self.Cuts[name]
 
     def show(self, raw=False):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.Cuts.values()]
