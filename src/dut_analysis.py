@@ -13,7 +13,7 @@ from fit import *
 from tracks import TrackAnalysis
 from telescope import TelescopeAnalysis
 from analysis import *
-from numpy import cumsum, split, concatenate, repeat, all
+from numpy import cumsum, split, concatenate, repeat, all, histogram, corrcoef, diff
 from calibration import Calibration
 
 
@@ -38,6 +38,7 @@ class DUTAnalysis(Analysis):
         self.NEvents = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
+        self.Time = self.get_time()
 
         # SUBCLASSES
         # TODO: add cut class
@@ -85,6 +86,12 @@ class DUTAnalysis(Analysis):
     # region GET
     def get_cluster_cut(self):
         return where(self.get_data('Clusters', 'NClusters') == 1)
+
+    def get_corr_cuts(self, plane):
+        tel_plane = self.Telescope.Plane(plane)
+        event_cut = all([self.Cuts.get('e-1cluster')(), self.Telescope.get_1_cluster_cut(plane)], axis=0)
+        dut_cut, tel_cut = event_cut.repeat(self.get_n_clusters()), event_cut.repeat(self.get_n_clusters(tel_plane))
+        return event_cut, dut_cut, tel_cut
 
     def get_start_time(self):
         return datetime.fromtimestamp(self.Run.StartTime)
@@ -145,6 +152,9 @@ class DUTAnalysis(Analysis):
 
     def get_plane(self, plane):
         return choose(plane, self.Plane)
+
+    def get_time_args(self, rel_t=False):
+        return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
     # endregion GET
     # ----------------------------------------
 
@@ -172,18 +182,26 @@ class DUTAnalysis(Analysis):
 
     def draw_correlation(self, mode, plane=2, show=True):
         tel_plane = self.Telescope.Plane(plane)
-        event_cut = all([self.Cuts.get('e-1cluster')(), self.Telescope.get_1_cluster_cut(plane)], axis=0)
-        dut_cut, tel_cut = event_cut.repeat(self.get_n_clusters()), event_cut.repeat(self.get_n_clusters(tel_plane))
+        evnt_cut, dut_cut, tel_cut = self.get_corr_cuts(plane)
         x, y = (self.get_x(cut=dut_cut), self.get_x(tel_plane, cut=tel_cut)) if mode.lower() == 'x' else (self.get_y(cut=dut_cut), self.get_y(tel_plane, cut=tel_cut))
         self.format_statbox(entries=True, x=.83)
-        binning = concatenate([getattr(bins, 'get_local_{}'.format(mode))(pl) for pl in [self.Plane, tel_plane]])
-        self.draw_histo_2d(x, y, 'Cluster Correlation in {} with Plane {}'.format(mode.upper(), plane), binning, x_tit='Col', y_tit='Row', show=show)
+        self.draw_histo_2d(x, y, 'Cluster Correlation in {} with Plane {}'.format(mode.upper(), plane), bins.get_corr(mode, self.Plane, tel_plane), x_tit='Col', y_tit='Row', show=show)
 
     def draw_x_correlation(self, plane=2, show=True):
         self.draw_correlation('x', plane, show)
 
     def draw_y_correlation(self, plane=2, show=True):
         self.draw_correlation('y', plane, show)
+
+    def draw_alignment(self, mode='y', plane=2, bin_width=30, show=True):
+        tel_plane = self.Telescope.Plane(plane)
+        evnt_cut, dut_cut, tel_cut = self.get_corr_cuts(plane)
+        splits, x = histogram(self.Time[evnt_cut], bins.get_time(self.Time, bin_width)[1])
+        y, z_ = (self.get_x(cut=dut_cut), self.get_x(tel_plane, cut=tel_cut)) if mode.lower() == 'x' else (self.get_y(cut=dut_cut), self.get_y(tel_plane, cut=tel_cut))
+        values = array([corrcoef(arr, rowvar=False)[0][1] for arr in split(array([y, z_]).T, cumsum(splits)[:-1])])
+        g = self.make_tgrapherrors('gal', 'Event Alignment', x=x[:-1] + diff(x) / 2, y=values)
+        format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
+        self.draw_histo(g, show, .13, draw_opt='ap')
 
     def draw_n_hits(self, plane=None, show=True):
         self.draw_n(plane, 'Hits', show)
@@ -228,7 +246,7 @@ class DUTAnalysis(Analysis):
         cut = self.get_cluster_cut()
         t = self.get_time(cut)
         charges = self.get_charges(e=e, cut=cut)
-        p = self.draw_prof(t, charges, bins.make(t[0], t[-1], bin_width), x_tit='Time [hh:mm}', y_tit='Charge [{}]'.format('e' if e else 'vcal'), show=show, t_ax_off=0)
+        p = self.draw_prof(t, charges, bins.get_time(t, bin_width), x_tit='Time [hh:mm}', y_tit='Charge [{}]'.format('e' if e else 'vcal'), show=show, t_ax_off=0)
         values = get_hist_vec(p)
         format_histo(p, y_range=choose(y_range, increased_range([min(values).n, max(values).n], 1, 2)))
         update_canvas()
@@ -245,7 +263,7 @@ class DUTAnalysis(Analysis):
         cut = self.Tracks.get_n() > 0
         eff = (self.get_n(cut=cut) > 0).astype('u2') * 100
         t = self.get_time(cut)
-        return self.draw_prof(t, eff, bins.make(t[0], t[-1], bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        return self.draw_prof(t, eff, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
 
     def fit_efficiency(self, bin_width=30):
         self.format_statbox(only_fit=True)
