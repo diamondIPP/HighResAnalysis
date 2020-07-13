@@ -5,13 +5,14 @@
 # --------------------------------------------------------
 
 from utils import *
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile, TH2F
 from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
 from numpy import ndarray, zeros, array, ones, linspace
 from uncertainties.core import Variable, ufloat
 from argparse import ArgumentParser
 from json import loads
+import bins
 
 
 class Draw:
@@ -87,8 +88,8 @@ class Draw:
 
     @staticmethod
     def make_bins(values, thresh=.02):
-        bins = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
-        return [bins.size - 1, bins]
+        binning = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+        return [binning.size - 1, binning]
 
     @staticmethod
     def get_count():
@@ -247,26 +248,37 @@ class Draw:
         format_frame(fr)
         self.add(fr)
 
-    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
+    def draw_disto(self, values, title='', binning=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
         values = array(values, dtype='d')
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        h = TH1F('h{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=values, thresh=thresh))
+        h = TH1F('h{}'.format(self.get_count()), title, *choose(binning, self.make_bins, values=values, thresh=thresh))
         fill_hist(h, values)
         format_histo(h, **kwargs)
         self.draw_histo(h, show, lm, rm)
         return h
 
-    def draw_prof(self, x, y, bins=None, title='', thresh=.02, lm=None, rm=None, cx=None, cy=None, show=True, **kwargs):
+    def draw_prof(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, cx=None, cy=None, show=True, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        p = TProfile('p{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=x, thresh=thresh))
+        p = TProfile('p{}'.format(self.get_count()), title, *choose(binning, self.make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
         self.draw_histo(p, show, lm, rm, x=cx, y=cy)
         return p
+
+    def draw_histo_2d(self, x, y, title='', binning=None, lm=None, rm=None, show=True, **kwargs):
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        x, y = array(x, dtype='d'), array(y, dtype='d')
+        dflt_bins = bins.make(min(x), max(x), sqrt(x.size)) + binning.make(min(y), max(y), sqrt(x.size))
+        h = TH2F('h'.format(self.get_count()), title, *choose(binning, dflt_bins))
+        fill_hist(h, x, y)
+        format_histo(h, **kwargs)
+        self.draw_histo(h, show, lm, rm)
+        return h
+
     # endregion DRAWING
     # ----------------------------------------
 
@@ -626,7 +638,6 @@ def get_color_gradient(n):
     blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
     red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
     color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
-    print(color_gradient)
     color_table = [color_gradient + ij for ij in range(255)]
     return array(color_table[0::(len(color_table) + 1) / n], 'i8')
 
