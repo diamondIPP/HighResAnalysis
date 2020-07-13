@@ -33,3 +33,7 @@ class TelescopeAnalysis(Analysis):
 
     def draw_cluster_size(self, plane=0, show=True):
         self.Ana.draw_cluster_size(self.Plane(plane), show)
+
+    def get_1_cluster_cut(self, plane=0):
+        n = self.Ana.get_n_clusters(self.Plane(plane))
+        return n == 1
