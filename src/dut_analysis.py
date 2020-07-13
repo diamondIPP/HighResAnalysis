@@ -143,13 +143,6 @@ class DUTAnalysis(Analysis):
     def get_mask(self, plane=None):
         return self.get_data('Mask', plane=plane)
 
-    def get_mask_cut(self, plane=None):
-        x, y = self.get_hits(plane)
-        data = x.astype('i') * 10000 + y  # make unique number out of the tuple... Is there a way to compare tuples?
-        mx, my = self.get_mask(plane).T.astype('i')
-        mask = mx * 10000 + my
-        return where(in1d(data, mask, invert=True))[0]
-
     def get_plane(self, plane):
         return choose(plane, self.Plane)
     # endregion GET
@@ -170,14 +163,27 @@ class DUTAnalysis(Analysis):
         self.format_statbox(entries=True)
         self.draw_histo(h, show=show, lm=.12, draw_opt='box')
 
-    def draw_occupancy(self, plane=None, cluster=True, cut=None, show=True):
+    def draw_occupancy(self, plane=None, cluster=True, bin_width=1, cut=None, show=True):
         plane = self.get_plane(plane)
-        h = TH2F('hto', '{} Occupancy in {}'.format('Cluster' if cluster else 'Hit', plane), *bins.get_local(plane))
-        cut = unique(concatenate([self.get_mask_cut(plane), [] if cut is None else cut])) if not cluster else cut
-        fill_hist(h, *(self.get_clusters(plane, cut) if cluster else self.get_hits(plane, cut)))
-        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.5, z_tit='Number of Entries', z_off=1.2)
+        x, y = self.get_clusters(plane, cut) if cluster else self.get_hits(plane, cut)
+        title = '{} Occupancy in {}'.format('Cluster' if cluster else 'Hit', plane)
         self.format_statbox(entries=True, x=.83, m=True)
-        self.draw_histo(h, show=show, lm=.12, draw_opt='colz', rm=.15)
+        self.draw_histo_2d(x, y, title, bins.get_local(plane, bin_width), x_tit='Column', y_tit='Row', show=show)
+
+    def draw_correlation(self, mode, plane=2, show=True):
+        tel_plane = self.Telescope.Plane(plane)
+        event_cut = all([self.Cuts.get('e-1cluster')(), self.Telescope.get_1_cluster_cut(plane)], axis=0)
+        dut_cut, tel_cut = event_cut.repeat(self.get_n_clusters()), event_cut.repeat(self.get_n_clusters(tel_plane))
+        x, y = (self.get_x(cut=dut_cut), self.get_x(tel_plane, cut=tel_cut)) if mode.lower() == 'x' else (self.get_y(cut=dut_cut), self.get_y(tel_plane, cut=tel_cut))
+        self.format_statbox(entries=True, x=.83)
+        binning = concatenate([getattr(bins, 'get_local_{}'.format(mode))(pl) for pl in [self.Plane, tel_plane]])
+        self.draw_histo_2d(x, y, 'Cluster Correlation in {} with Plane {}'.format(mode.upper(), plane), binning, x_tit='Col', y_tit='Row', show=show)
+
+    def draw_x_correlation(self, plane=2, show=True):
+        self.draw_correlation('x', plane, show)
+
+    def draw_y_correlation(self, plane=2, show=True):
+        self.draw_correlation('y', plane, show)
 
     def draw_n_hits(self, plane=None, show=True):
         self.draw_n(plane, 'Hits', show)
@@ -303,5 +309,4 @@ if __name__ == '__main__':
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose)
     cal = z.Calibration
     c = z.Converter
-    t = z.Tracks
     z.add_info(t_start, prnt=True)
