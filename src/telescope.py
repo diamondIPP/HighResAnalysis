@@ -19,8 +19,8 @@ class TelescopeAnalysis(Analysis):
         self.Plane = Plane(0, self.Ana.Config)
         self.NPlanes = self.Config.getint('TELESCOPE', 'planes')
 
-    def draw_occupancy(self, plane=0, cluster=True, show=True):
-        return self.Ana.draw_occupancy(self.Plane(plane), cluster, show)
+    def draw_occupancy(self, plane=0, cluster=True, bin_width=10, show=True):
+        return self.Ana.draw_occupancy(self.Plane(plane), cluster, bin_width, show=show)
 
     def draw_n_hits(self, plane=0, show=True):
         self.Ana.draw_n(self.Plane(plane), 'Hits', show)
@@ -33,4 +33,3 @@ class TelescopeAnalysis(Analysis):
 
     def draw_cluster_size(self, plane=0, show=True):
         self.Ana.draw_cluster_size(self.Plane(plane), show)
-
