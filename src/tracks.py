@@ -88,7 +88,7 @@ class TrackAnalysis(Analysis):
     def draw_slope(self, mode='x', bin_width=.01):
         values = rad2deg(array(self.Data['Slope{}'.format(mode.title())]))
         self.format_statbox(all_stat=True)
-        self.draw_disto(values, 'Track Slope {}'.format(mode.title()), bins.make(-1, 1, bin_width), x_tit='Track Slope [deg]', y_off=1.8)
+        self.draw_disto(values, 'Track Slope {}'.format(mode.title()), bins.make(-1, 1, bin_width), x_tit='Track Slope [deg]', y_off=1.8, lm=.13)
 
     def draw_slope_x(self, bin_width=.01):
         self.draw_slope('x', bin_width)
