@@ -22,7 +22,7 @@ class Cuts:
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
-        return all(cuts, axis=0).flatten()
+        return all(cuts, axis=0).flatten() if len(cuts) else None
 
     def register(self, name, values, level, description=None):
         self.Cuts[name] = Cut(name, values, level, description)
@@ -57,9 +57,9 @@ class Cut:
         return self.Values
 
     def __add__(self, other=None):
-        s = len(other)
-        if s != self.Size:
-            warning('cut array has incorrect size ({}), {} required'.format(s, self.Size))
+        s = 0 if other is None else len(other)
+        if other is None or len(other) != self.Size:
+            warning('cut array has incorrect size ({}), {} required'.format(s, self.Size), prnt=s)
             return self.Values
         return self.Values if other is None else all([self.Values, other], axis=0)
 
