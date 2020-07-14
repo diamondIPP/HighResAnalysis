@@ -41,11 +41,11 @@ class DUTAnalysis(Analysis):
         self.Time = self.get_time()
 
         # SUBCLASSES
-        # TODO: add cut class
         self.Calibration = Calibration(self.Run)
         self.Telescope = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
+        self.add_cuts()
 
     # ----------------------------------------
     # region INIT
@@ -78,6 +78,10 @@ class DUTAnalysis(Analysis):
         one_cluster = n_clusters == 1
         self.Cuts.register('e-1cluster', one_cluster, 91, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
         self.Cuts.register('1cluster', repeat(n_clusters, n_clusters) == 1, 92, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
+
+    def add_cuts(self):
+        n_tracks = self.Tracks.get_n() > 0
+        self.Cuts.register('tracks', n_tracks, 93, '{} events with at least one track'.format(n_tracks.nonzero()[0].size))
 
     # endregion INIT
     # ----------------------------------------
