@@ -69,7 +69,7 @@ class Plane:
 
         self.IsDUT = 'DUT' in section
         self.Number = n
-        self.Name = config.get(section, 'name')
+        self.Type = config.get(section, 'name')
         self.NCols, self.NRows = loads(config.get(section, 'pixel'))
         self.NPixels = self.NCols * self.NRows
         self.PX, self.PY = loads(config.get(section, 'pitch'))
@@ -78,12 +78,15 @@ class Plane:
         return 'DUT Plane' if self.IsDUT else 'Plane {}'.format(self.Number)
 
     def __repr__(self):
-        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Name.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
+        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Type.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
 
     def __call__(self, number=None):
         if number is not None:
             self.set_number(number)
         return self
+
+    def get_name(self):
+        return 'Plane{}'.format(self.Number)
 
     def get_max_width(self):
         return max(self.get_x_width(), self.get_y_width())
