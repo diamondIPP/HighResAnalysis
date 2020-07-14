@@ -190,6 +190,7 @@ class DESYConverter(Converter):
     def add_trigger_info(self, group):
         f = TFile(self.ROOTFileName)
         tree = f.Get(group.name.strip('/')).Get('Hits')
+        tree.SetEstimate(tree.GetEntries())
         trigger_phase = get_root_vec(tree, var='TriggerPhase', dtype='u1')
         trigger_count = get_root_vec(tree, var='TriggerCount', dtype='u1')
         group.create_dataset('TriggerPhase', data=trigger_phase)
