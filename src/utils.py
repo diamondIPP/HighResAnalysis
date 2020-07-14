@@ -53,8 +53,9 @@ def add_to_info(t, msg='Done', prnt=True):
         print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
 
 
-def warning(msg):
-    print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}WARNING:{}'.format(YELLOW, ENDC)))
+def warning(msg, prnt=True):
+    if prnt:
+        print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}WARNING:{}'.format(YELLOW, ENDC)))
 
 
 def critical(msg):
