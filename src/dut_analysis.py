@@ -159,6 +159,9 @@ class DUTAnalysis(Analysis):
 
     def get_time_args(self, rel_t=False):
         return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
+
+    def get_efficiency(self, cut=None):
+        return (self.get_n(cut=self.Cuts.get('tracks') + cut) > 0).astype('u2') * 100
     # endregion GET
     # ----------------------------------------
 
@@ -240,7 +243,9 @@ class DUTAnalysis(Analysis):
 
     def draw_trigger_phase(self):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_data('TriggerPhase'), 'Trigger Phase', bins.make(0, 10), x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        h = self.draw_disto(self.get_data('TriggerPhase'), 'Trigger Phase', bins.make(0, 10), x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
+        update_canvas()
 
     def draw_charge_vs_trigger_phase(self):
         pass
@@ -264,10 +269,8 @@ class DUTAnalysis(Analysis):
         return fit
 
     def draw_efficiency(self, bin_width=30, show=True):
-        cut = self.Tracks.get_n() > 0
-        eff = (self.get_n(cut=cut) > 0).astype('u2') * 100
-        t = self.get_time(cut)
-        return self.draw_prof(t, eff, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        t = self.get_time(self.Cuts.get('tracks')())
+        return self.draw_prof(t, self.get_efficiency(), bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
 
     def fit_efficiency(self, bin_width=30):
         self.format_statbox(only_fit=True)
@@ -276,9 +279,9 @@ class DUTAnalysis(Analysis):
         fit = h.Fit('pol0', 'sq')
         return fit
 
-    def draw_efficiency_vs_trigger_phase(self):
-        # add profile
-        pass
+    def draw_efficiency_vs_trigger_phase(self, show=True):
+        x = self.get_data('TriggerPhase', cut=self.Cuts.get('tracks')())
+        return self.draw_prof(x, self.get_efficiency(), bins.make(0, 10), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show, stats=0)
 
     def draw_time(self, show=True):
         t = self.get_time()
