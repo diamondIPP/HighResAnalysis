@@ -44,6 +44,10 @@ def get_global(plane, res=1):
     return get_global_x(plane, res) + get_global_y(plane, res)
 
 
+def get_coods(local, plane, bin_width):
+    return get_local(plane, bin_width) if local else get_global(plane, bin_width)
+
+
 def get_global_x(plane, res=1):
     """ calculates the global telescope bins
     :return: [nbins, bin_array] """
