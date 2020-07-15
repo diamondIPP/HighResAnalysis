@@ -66,22 +66,21 @@ class DUTAnalysis(Analysis):
             return f
         except (KeyError, OSError):
             warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
-            return {'Tracks': array([])}  # dummy
+            return {'Tracks': {'NTracks': zeros(0), 'X': zeros(0)}, 'Event': {'Time': zeros(2)}}  # dummy
 
     def reload_file(self):
         self.Data = self.load_file()
 
     def init_cuts(self):
-        mask = self.get_mask()
-        self.Cuts.register('mask', self.Cuts.make_mask(self.get_x(cluster=False), self.get_y(cluster=False), mask), 90, 'masked {} pixels'.format(mask.shape[0]))
+        # mask = self.get_mask()
+        # self.Cuts.register('mask', self.Cuts.make_mask(self.get_x(cluster=False), self.get_y(cluster=False), mask), 90, 'masked {} pixels'.format(mask.shape[0]))
         n_clusters = self.get_n('Clusters')
         one_cluster = n_clusters == 1
         self.Cuts.register('e-1cluster', one_cluster, 91, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
         self.Cuts.register('1cluster', repeat(n_clusters, n_clusters) == 1, 92, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
 
     def add_cuts(self):
-        n_tracks = self.Tracks.get_n() > 0
-        self.Cuts.register('tracks', n_tracks, 93, '{} events with at least one track'.format(n_tracks.nonzero()[0].size))
+        self.Cuts.register('tracks', self.Tracks.get_n() > 0, 93, 'at least one track')
 
     # endregion INIT
     # ----------------------------------------
@@ -152,7 +151,7 @@ class DUTAnalysis(Analysis):
         return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
 
     def get_mask(self, plane=None):
-        return self.get_data('Mask', plane=plane)
+        return self.get_data('MaskX', plane=plane), self.get_data('MaskY', plane=plane)
 
     def get_plane(self, plane):
         return choose(plane, self.Plane)
