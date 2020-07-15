@@ -72,8 +72,6 @@ class DUTAnalysis(Analysis):
         self.Data = self.load_file()
 
     def init_cuts(self):
-        # mask = self.get_mask()
-        # self.Cuts.register('mask', self.Cuts.make_mask(self.get_x(cluster=False), self.get_y(cluster=False), mask), 90, 'masked {} pixels'.format(mask.shape[0]))
         n_clusters = self.get_n('Clusters')
         one_cluster = n_clusters == 1
         self.Cuts.register('e-1cluster', one_cluster, 91, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
@@ -151,7 +149,7 @@ class DUTAnalysis(Analysis):
         return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
 
     def get_mask(self, plane=None):
-        return self.get_data('MaskX', plane=plane), self.get_data('MaskY', plane=plane)
+        return self.get_data('Mask', plane=plane)
 
     def get_plane(self, plane):
         return choose(plane, self.Plane)
@@ -174,7 +172,7 @@ class DUTAnalysis(Analysis):
     def draw_mask(self, plane=None, show=True):
         plane = self.get_plane(plane)
         h = TH2F('htm', 'Masked Pixels in {}'.format(plane), *bins.get_local(self.Plane))
-        fill_hist(h, *self.get_mask(plane))
+        fill_hist(h, self.get_mask(plane))
         format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, fill_color=1)
         self.format_statbox(entries=True)
         self.draw_histo(h, show=show, lm=.12, draw_opt='box')
