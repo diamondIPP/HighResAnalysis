@@ -24,10 +24,7 @@ class TrackAnalysis(Analysis):
     # ----------------------------------------
     # region INIT
     def init_cuts(self):
-        dof = self.get_dof(cut=False)
-        self.Cuts.register('dof', (dof > 10) & (dof < 20), 10, 'degress of freedom > 10')
-        matched = self.get('Matched', cut=False)
-        self.Cuts.register('matched', matched, 10, '{} matched tracks'.format(matched.nonzero()[0].size))
+        pass
     # endregion INIT
     # ----------------------------------------
 
