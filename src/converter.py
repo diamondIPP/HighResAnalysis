@@ -34,7 +34,7 @@ class Converter:
     @staticmethod
     def clusterise(hits):
         if not hits.size:
-            return []
+            return [None]
         # sort hits into clusters
         clusters = [Cluster(hits[0])]
         hits = delete(hits, 0, axis=0)
@@ -53,22 +53,6 @@ class Converter:
                 clusters.append(Cluster(hits[0]))
                 hits = delete(hits, 0, axis=0)
         return clusters
-
-
-class Hit:
-
-    def __init__(self, x, y):
-
-        self.X = x
-        self.Y = y
-
-        self.Charge = None
-
-    def set_charge(self, value):
-        self.Charge = value
-
-    def __str__(self):
-        return 'Hit: {0} {1}, Charge: {2:1.2f}vcal'.format(self.X, self.Y, self.Charge)
 
 
 class Cluster:
