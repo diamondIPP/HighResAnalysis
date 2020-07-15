@@ -34,7 +34,7 @@ class Converter:
     @staticmethod
     def clusterise(hits):
         if not hits.size:
-            return [None]
+            return []
         # sort hits into clusters
         clusters = [Cluster(hits[0])]
         hits = delete(hits, 0, axis=0)
