@@ -174,7 +174,7 @@ class DUTAnalysis(Analysis):
     def draw_mask(self, plane=None, show=True):
         plane = self.get_plane(plane)
         h = TH2F('htm', 'Masked Pixels in {}'.format(plane), *bins.get_local(self.Plane))
-        fill_hist(h, *self.get_mask(plane).T)
+        fill_hist(h, *self.get_mask(plane))
         format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, fill_color=1)
         self.format_statbox(entries=True)
         self.draw_histo(h, show=show, lm=.12, draw_opt='box')
