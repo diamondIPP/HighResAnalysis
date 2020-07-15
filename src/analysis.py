@@ -70,10 +70,6 @@ class Analysis(Draw):
 
     def print_testcampaign(self):
         self.info('TESTCAMPAIGN: {}'.format(self.generate_tc_str()))
-
-    @staticmethod
-    def get_values(data, cut=None):
-        return data if cut is None else data[cut]
     # endregion INIT
     # ----------------------------------------
 
