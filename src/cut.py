@@ -3,7 +3,7 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, all, in1d
+from numpy import array, all, in1d, invert
 from utils import print_table, warning
 
 
@@ -54,7 +54,7 @@ class Cut:
         self.Level = level
         self.Description = description
         self.Size = self.Values.size
-        self.P = self.Values.nonzero()[0].size / self.Size
+        self.P = invert(self.Values).nonzero()[0].size / self.Size
 
     def __call__(self):
         return self.Values
