@@ -18,6 +18,7 @@ class TrackAnalysis(Analysis):
         Analysis.__init__(self, verbose=self.Ana.Verbose)
 
         self.Data = self.Ana.Data['Tracks']
+        self.PlaneData = self.Ana.get_group('Tracks')
         self.N = self.Data['X'].size
         self.init_cuts()
 
@@ -34,13 +35,19 @@ class TrackAnalysis(Analysis):
         if key not in self.Data.keys():
             warning('key {} not found in {}'.format(key, list(self.Data.keys())))
             return
-        return self.get_values(array(self.Data[key]), self.Cuts(cut))
+        return array(self.Data[key])[self.Cuts(cut)]
 
     def get_n(self):
         return self.get('NTracks')
 
     def get_x(self, cut=None):
         return self.get('X', cut)
+
+    def get_u(self, cut=None):
+        return array(self.PlaneData['U'])[self.Cuts(cut)]
+
+    def get_v(self, cut=None):
+        return array(self.PlaneData['V'])[self.Cuts(cut)]
 
     def get_y(self, cut=None):
         return self.get('Y', cut)
@@ -70,12 +77,16 @@ class TrackAnalysis(Analysis):
         self.format_statbox(entries=True, x=.9)
         self.draw_prof(arange(self.N), self.get_dof(cut), bins.make(0, self.N, sqrt(self.N)), 'DOF Trend', x_tit='Track Number', y_tit='Degrees of Freedom', show=show, rm=.08)
 
-    def draw_occupancy(self, scale=4, cut=None):
+    def draw_occupancy0(self, scale=4, cut=None):
         h = TH2F('hto', 'Track Occupancy', *bins.get_global(self.Ana.Telescope.Plane, scale))
         fill_hist(h, *self.get_coods(cut))
         format_histo(h, x_tit='Track X [mm]', y_tit='Track Y [mm]', y_off=1.3, z_tit='Number of Entries', z_off=1.2)
         self.format_statbox(all_stat=True, x=.83)
         self.draw_histo(h, lm=.12, draw_opt='colz', rm=.15)
+
+    def draw_occupancy(self, scale=4, cut=None):
+        self.format_statbox(all_stat=True, x=.83)
+        self.draw_histo_2d(self.get_u(cut), self.get_v(cut), 'Track Occupancy', bins.get_global(self.Ana.Telescope.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]')
 
     def draw_chi2(self, cut=None):
         self.format_statbox(all_stat=True)
