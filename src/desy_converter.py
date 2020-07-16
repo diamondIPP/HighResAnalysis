@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from converter import Converter
 from subprocess import check_call
 from glob import glob
-from numpy import concatenate, cumsum, split, sum, nan
+from numpy import concatenate, cumsum, split, sum, nan, invert, isnan
 from calibration import Calibration
 from desy_run import DESYRun
 from dut import Plane
@@ -209,14 +209,14 @@ class DESYConverter(Converter):
             tree = match_file.Get('C{}'.format(i)).Get('tracks_clusters_matched')
             tree.SetEstimate(tree.GetEntries())
             branches = ['trk_u', 'trk_v'] + ['clu_{}'.format(n) for n in ['size', 'col', 'row', 'u', 'v']]
-            name_types = OrderedDict([('TrackU', 'f2'), ('TrackV', 'f2'), ('ClusterSize', 'u2'), ('ClusterX', 'f2'), ('ClusterY', 'f2'), ('ClusterU', 'f2'), ('ClusterV', 'f2')])
+            name_types = OrderedDict([('TracksU', 'f2'), ('TracksV', 'f2'), ('ClustersSize', 'u2'), ('ClustersX', 'f2'), ('ClustersY', 'f2'), ('ClustersU', 'f2'), ('ClustersV', 'f2')])
             n = tree.Draw(':'.join(branches), '', 'goff')
-            group.create_group('Track')
-            group.create_group('Cluster')
+            group.create_group('Tracks')
+            group.create_group('Clusters')
             for j, (name, typ) in enumerate(name_types.items()):
-                group_name = 'Track' if 'Track' in name else 'Cluster'
-                group[group_name].create_dataset(name.replace(group_name, ''), data=get_root_vec(tree, n, j, dtype=typ))
-
+                group_name = 'Tracks' if 'Track' in name else 'Clusters'
+                data = get_root_vec(tree, n, j, dtype=typ)
+                group[group_name].create_dataset(name.replace(group_name, ''), data=data[invert(isnan(data))])  # filter out the nan events
             self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
             # TODO: add correction for cluster position based on the real charge weights
             self.add_charge(tree, group, i)
@@ -233,15 +233,15 @@ class DESYConverter(Converter):
         hit_list = self.get_hits(match_tree, group, dut_nr)
         info('calculating cluster charges for DUT Plane {} ... '.format(dut_nr))
         clusters = []
-        self.PBar.start(group['Cluster']['X'].size)
-        for hits in split(hit_list, cumsum(group['Cluster']['Size'])[:-1].astype('i')):
+        self.PBar.start(group['Clusters']['X'].size)
+        for hits in split(hit_list, cumsum(group['Clusters']['Size'])[:-1].astype('i')):
             clusters.append(self.clusterise(hits))
             self.PBar.update()
         clusters = concatenate(clusters)
-        group = group['Cluster']
+        group = group['Clusters']
         group.create_dataset('Charge', data=array([nan if cluster is None else cluster.get_charge() for cluster in clusters], dtype='f2'))
-        x = array([nan if cluster is None else cluster.get_x() for cluster in clusters])
-        y = array([nan if cluster is None else cluster.get_y() for cluster in clusters])
+        x = array([cluster.get_x() for cluster in clusters])
+        y = array([cluster.get_y() for cluster in clusters])
         group['U'][...] = array(group['U']) + (x - array(group['X'])) * plane.PX  # correct for the new charge weights
         group['V'][...] = array(group['V']) + (y - array(group['Y'])) * plane.PY
         group['X'][...] = x
