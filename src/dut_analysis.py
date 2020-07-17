@@ -4,17 +4,18 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TProfile2D, TH1F, TH2F
+from numpy import cumsum, split, all, histogram, corrcoef, diff, invert
+
+from analysis import *
+from calibration import Calibration
 from cern_run import CERNRun
-from desy_run import DESYRun
+from converter import Converter
 from currents import Currents
 from desy_converter import DESYConverter
-from converter import Converter
+from desy_run import DESYRun
 from fit import *
-from tracks import TrackAnalysis
 from telescope import TelescopeAnalysis
-from analysis import *
-from numpy import cumsum, split, concatenate, repeat, all, histogram, corrcoef, diff
-from calibration import Calibration
+from tracks import TrackAnalysis
 
 
 class DUTAnalysis(Analysis):
