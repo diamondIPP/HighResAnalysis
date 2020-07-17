@@ -216,7 +216,8 @@ class DESYConverter(Converter):
             for j, (name, typ) in enumerate(name_types.items()):
                 group_name = 'Tracks' if 'Track' in name else 'Clusters'
                 data = get_root_vec(tree, n, j, dtype=typ)
-                group[group_name].create_dataset(name.replace(group_name, ''), data=data[invert(isnan(data))])  # filter out the nan events
+                data = data if group_name == 'Tracks' or 'Size' in name else data[array(group['Clusters']['Size']) > 0]  # filter out the nan events
+                group[group_name].create_dataset(name.replace(group_name, ''), data=data)
             self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
             # TODO: add correction for cluster position based on the real charge weights
             self.add_charge(tree, group, i)
