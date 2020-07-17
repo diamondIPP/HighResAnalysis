@@ -26,8 +26,12 @@ class Cuts:
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
-    def register(self, name, values, level, description=None):
-        self.Cuts[name] = Cut(name, values, level, description)
+    def register(self, name, values=None, level=None, description=None):
+        if isinstance(name, Cut):
+            cut = name
+            self.Cuts[cut.Name] = cut
+        else:
+            self.Cuts[name] = Cut(name, values, level, description)
 
     def get(self, name):
         return self.Cuts[name]
