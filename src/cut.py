@@ -29,6 +29,7 @@ class Cuts:
     def register(self, name, values=None, level=None, description=None):
         if isinstance(name, Cut):
             cut = name
+            cut.set_level(level)
             self.Cuts[cut.Name] = cut
         else:
             self.Cuts[name] = Cut(name, values, level, description)
@@ -74,14 +75,18 @@ class Cut:
             return self
         return Cut('add', all([self.Values, values], axis=0))
 
-    def get_p_str(self):
-        return '{:.1f}%'.format(self.P * 100)
-
     def __str__(self):
         return '{}, {} cut, {}: {}'.format(self.Level, self.Name, self.get_p_str(), self.Description)
 
     def __repr__(self):
         return self.__str__()
+
+    def get_p_str(self):
+        return '{:.1f}%'.format(self.P * 100)
+
+    def set_level(self, level):
+        if level is not None:
+            self.Level = level
 
     @staticmethod
     def make(cut):
