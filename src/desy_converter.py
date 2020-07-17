@@ -3,18 +3,16 @@
 #       convert EUDAQ-2 raw files to hdf5
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from __future__ import print_function
 
-from draw import *
-from os import chdir, remove
-from os.path import basename, join
-from argparse import ArgumentParser
-from converter import Converter
-from subprocess import check_call
 from glob import glob
-from numpy import concatenate, cumsum, split, sum, nan, invert, isnan
+from os import chdir
+from subprocess import check_call
+from numpy import cumsum, split, sum, nan
+
 from calibration import Calibration
+from converter import Converter
 from desy_run import DESYRun
+from draw import *
 from dut import Plane
 
 
@@ -219,7 +217,6 @@ class DESYConverter(Converter):
                 data = data if group_name == 'Tracks' or 'Size' in name else data[array(group['Clusters']['Size']) > 0]  # filter out the nan events
                 group[group_name].create_dataset(name.replace(group_name, ''), data=data)
             self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
-            # TODO: add correction for cluster position based on the real charge weights
             self.add_charge(tree, group, i)
 
     def add_trigger_info(self, group, evt_frame):
