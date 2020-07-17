@@ -9,6 +9,7 @@ from draw import fill_hist, format_histo, array
 from ROOT import TH2F
 from numpy import rad2deg, arange, sqrt
 import bins
+from cut import Cut
 
 
 class TrackAnalysis(Analysis):
@@ -25,7 +26,7 @@ class TrackAnalysis(Analysis):
     # ----------------------------------------
     # region INIT
     def init_cuts(self):
-        pass
+        self.Cuts.register(self.Ana.Cuts.get('cluster'))
     # endregion INIT
     # ----------------------------------------
 
@@ -38,16 +39,11 @@ class TrackAnalysis(Analysis):
         return array(self.Data[key])[self.Cuts(cut)]
 
     def get_n(self):
+        """ returns: number of tracks per event. """
         return self.get('NTracks')
 
     def get_x(self, cut=None):
         return self.get('X', cut)
-
-    def get_u(self, cut=None):
-        return array(self.PlaneData['U'])[self.Cuts(cut)]
-
-    def get_v(self, cut=None):
-        return array(self.PlaneData['V'])[self.Cuts(cut)]
 
     def get_y(self, cut=None):
         return self.get('Y', cut)
@@ -60,6 +56,14 @@ class TrackAnalysis(Analysis):
 
     def get_chi2(self, cut=None):
         return self.get('Chi2', cut)
+
+    def get_u(self, cut=None, raw=False):
+        data = array(self.PlaneData['U'])
+        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Ana.Cuts(cut)]
+
+    def get_v(self, cut=None, raw=False):
+        data = array(self.PlaneData['V'])
+        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Ana.Cuts(cut)]
     # endregion GET
     # ----------------------------------------
 
@@ -84,9 +88,15 @@ class TrackAnalysis(Analysis):
         self.format_statbox(all_stat=True, x=.83)
         self.draw_histo(h, lm=.12, draw_opt='colz', rm=.15)
 
-    def draw_occupancy(self, scale=4, cut=None):
+    def draw_occupancy(self, scale=4, cut=None, raw=False, show=True):
         self.format_statbox(all_stat=True, x=.83)
-        self.draw_histo_2d(self.get_u(cut), self.get_v(cut), 'Track Occupancy', bins.get_global(self.Ana.Telescope.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]')
+        x, y = self.get_coods(cut) if raw else (self.get_u(raw=True), self.get_v(cut, raw=True))
+        self.draw_histo_2d(x, y, 'Track Occupancy', bins.get_global(self.Ana.Telescope.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
+
+    def draw_map(self, bin_width=.1, cut=None, dut_plane=True, show=True):
+        self.format_statbox(all_stat=True, x=.83)
+        binning = bins.get_global(self.Ana.Plane if dut_plane else self.Ana.Telescope.Plane, bin_width)
+        self.draw_histo_2d(self.get_u(cut), self.get_v(cut), 'Track Map', binning, x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_chi2(self, cut=None):
         self.format_statbox(all_stat=True)
