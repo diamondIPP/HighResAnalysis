@@ -79,5 +79,8 @@ class Cut:
     def __repr__(self):
         return self.__str__()
 
-    def get_data(self, data):
-        return data if self.Values is None else data[self.Values]
+    @staticmethod
+    def make(cut):
+        if isinstance(cut, Cut):
+            return cut.Values
+        return cut if cut else ...
