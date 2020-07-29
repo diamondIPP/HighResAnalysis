@@ -22,8 +22,8 @@ def get_time(t_vec, bin_width, last=False):
 
 # ----------------------------------------
 # region PIXEL
-def get_local(plane, bin_width=1):
-    return get_local_x(plane, bin_width) + get_local_y(plane, bin_width)
+def get_local(plane, bin_width=1, aspect_ratio=False):
+    return get_local_x(plane, bin_width, aspect_ratio) + get_local_y(plane, bin_width, aspect_ratio)
 
 
 def get_local_x(plane, bin_width=1, aspect_ratio=False):
