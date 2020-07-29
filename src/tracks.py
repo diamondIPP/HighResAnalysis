@@ -27,6 +27,7 @@ class TrackAnalysis(Analysis):
     # region INIT
     def init_cuts(self):
         self.Cuts.register(self.Ana.Cuts.get('cluster'))
+        self.Cuts.register('n', self.get_n(cut=False) > 0, 91, 'at least one track')
     # endregion INIT
     # ----------------------------------------
 
@@ -38,9 +39,9 @@ class TrackAnalysis(Analysis):
             return
         return array(self.Data[key])[self.Cuts(cut)]
 
-    def get_n(self):
+    def get_n(self, cut=None):
         """ returns: number of tracks per event. """
-        return self.get('NTracks')
+        return self.get('NTracks', cut)
 
     def get_x(self, cut=None):
         return self.get('X', cut)
