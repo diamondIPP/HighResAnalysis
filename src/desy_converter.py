@@ -157,7 +157,7 @@ class DESYConverter(Converter):
         tree.SetEstimate(tree.GetEntries())
         t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
         g = hdf5_file.create_group('Event')
-        g.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f2'))  # convert time vec to seconds
+        g.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f4'))  # convert time vec to seconds
 
     def add_tel_planes(self, root_file, hdf5_file):
         names = ['Plane{}'.format(i) for i in range(self.NTelPlanes)]
