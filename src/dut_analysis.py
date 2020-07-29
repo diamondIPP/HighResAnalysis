@@ -20,7 +20,7 @@ from tracks import TrackAnalysis
 
 class DUTAnalysis(Analysis):
 
-    def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True):
+    def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True, test=False):
 
         Analysis.__init__(self, test_campaign, verbose)
         self.print_start(run_number)
@@ -32,7 +32,7 @@ class DUTAnalysis(Analysis):
 
         # DATA
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
-        self.Data = self.load_file()
+        self.Data = self.load_file(test)
         self.init_cuts()
 
         # INFO
@@ -59,15 +59,21 @@ class DUTAnalysis(Analysis):
     def get_entries(self):
         return self.Data['Tracks']['NTracks'].size
 
-    def load_file(self):
-        self.Converter.run()
-        try:
-            f = h5py.File(self.Run.FileName, 'r')
-            _ = f['Tracks']
-            return f
-        except (KeyError, OSError):
-            warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
-            return {'Tracks': {'NTracks': zeros(0), 'X': zeros(0)}, 'Event': {'Time': zeros(2)}}  # dummy
+    def load_file(self, test):
+        if not test:
+            self.Converter.run()
+            try:
+                f = h5py.File(self.Run.FileName, 'r')
+                _ = f['Tracks']
+                _ = f[self.Plane.get_name()]
+                return f
+            except (KeyError, OSError):
+                warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
+                # # TODO: make real hdf5 dummy
+                # return {'Tracks': {'NTracks': zeros(0), 'X': zeros(0)},
+                #         'Event': {'Time': zeros(2)},
+                #         self.Plane.get_name(): {'Tracks': zeros(0)}}  # dummy
+        return h5py.File(self.get_dummy_filename(), 'r')
 
     def reload_file(self):
         self.Data = self.load_file()
