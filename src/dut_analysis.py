@@ -59,7 +59,7 @@ class DUTAnalysis(Analysis):
     def get_entries(self):
         return self.Data['Tracks']['NTracks'].size
 
-    def load_file(self, test):
+    def load_file(self, test=False):
         if not test:
             self.Converter.run()
             try:
