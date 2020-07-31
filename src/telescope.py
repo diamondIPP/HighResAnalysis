@@ -19,6 +19,11 @@ class TelescopeAnalysis(Analysis):
         self.Plane = Plane(0, self.Ana.Config)
         self.NPlanes = self.Config.getint('TELESCOPE', 'planes')
 
+        self.init_cuts()
+        
+    def init_cuts(self):
+        self.Cuts.register('1cluster', self.get_n('Clusters', plane=2, cut=False) == 1, 90, 'events with 1 cluster in plane 2')
+
     # ----------------------------------------
     # region GET
     def get(self, plane=0):
@@ -43,13 +48,16 @@ class TelescopeAnalysis(Analysis):
 
     def get_coods(self, plane=0, cluster=True, cut=None):
         return self.get_x(plane, cluster, cut), self.get_y(plane, cluster, cut)
+
+    def get_1_cluster_cut(self, plane=0):
+        return self.get_n('Clusters', plane, cut=False) == 1
     # endregion GET
     # ----------------------------------------
 
     def draw_n(self, plane=0, name='Hits', show=True):
         self.format_statbox(all_stat=True)
-        n, pl = name, plane
-        self.draw_disto(self.get_n(n, pl), 'Number of {} in {}'.format(n, pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
+        n, n_pl = name, self.Plane(plane).get_name()
+        self.draw_disto(self.get_n(n, plane), 'Number of {} in {}'.format(n, n_pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
 
     def draw_occupancy(self, plane=0, cluster=True, bin_width=10, cut=None, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
