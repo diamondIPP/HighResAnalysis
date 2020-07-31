@@ -16,6 +16,7 @@ from desy_run import DESYRun
 from fit import *
 from telescope import TelescopeAnalysis
 from tracks import TrackAnalysis
+from dummy import Dummy
 
 
 class DUTAnalysis(Analysis):
@@ -32,6 +33,7 @@ class DUTAnalysis(Analysis):
 
         # DATA
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
+        self.Dummy = Dummy(self.TCDir, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
         self.Data = self.load_file(test)
         self.init_cuts()
 
@@ -69,11 +71,7 @@ class DUTAnalysis(Analysis):
                 return f
             except (KeyError, OSError):
                 warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
-                # # TODO: make real hdf5 dummy
-                # return {'Tracks': {'NTracks': zeros(0), 'X': zeros(0)},
-                #         'Event': {'Time': zeros(2)},
-                #         self.Plane.get_name(): {'Tracks': zeros(0)}}  # dummy
-        return h5py.File(self.get_dummy_filename(), 'r')
+        return self.Dummy.load_file()
 
     def reload_file(self):
         self.Data = self.load_file()
