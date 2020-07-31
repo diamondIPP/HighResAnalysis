@@ -16,6 +16,7 @@ from desy_run import DESYRun
 from fit import *
 from telescope import TelescopeAnalysis
 from tracks import TrackAnalysis
+from cut import Cut
 from dummy import Dummy
 
 
@@ -75,17 +76,40 @@ class DUTAnalysis(Analysis):
 
     def reload_file(self):
         self.Data = self.load_file()
+    # endregion INIT
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region CUTS
     def init_cuts(self):
-        n_clusters = self.get_n('Clusters')
-        one_cluster = n_clusters == 1
-        self.Cuts.register('e-1cluster', one_cluster, 91, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
-        self.Cuts.register('1cluster', repeat(n_clusters, n_clusters) == 1, 92, '{} events with 1 cluster'.format(one_cluster.nonzero()[0].size))
+        self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'tracks with at least 1 cluster')
+        self.Cuts.register('fid', self.make_fiducial(), 91, 'fid cut')
+        self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with at least 1 cluster')
+
+    def make_fiducial(self):
+        x, y = self.get_coods(local=True, cut=False)
+        return (x > 14) & (x < 36) & (y > 51) & (y < 77)
+
+    def find_doubles(self):
+        # TODO: do this already in the conversion!
+        """ sort out the double clusters based on the residuals. """
+        doubles = concatenate([(diff(self.get_x(cut=False)) == 0) & (diff(self.get_y(cut=False)) == 0), [False]])
+        doubles[doubles.nonzero()[0] + 1] = True  # set the pairs
+        cut = ones(doubles.size, '?')
+        try:
+            double_indices = doubles.nonzero()[0]
+            r = self.get_residuals(cut=doubles)
+            rl = r[::2] > r[1::2]  # find the cluster with the bigger residual
+            double_cut = concatenate(array([rl, invert(rl)]).T)  # merge with zipper method
+            cut[double_indices[double_cut]] = False
+        except ValueError:
+            pass
+        return cut
 
     def add_cuts(self):
-        self.Cuts.register('tracks', self.Tracks.get_n() > 0, 93, 'at least one track')
-
-    # endregion INIT
+        self.Cuts.register('res', self.find_doubles(), 70, 'no double clusters')
+        self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'no double clusters')
+    # endregion CUTS
     # ----------------------------------------
 
     # ----------------------------------------
