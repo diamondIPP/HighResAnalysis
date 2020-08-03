@@ -3,7 +3,7 @@
 #       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TProfile2D, TH1F, TH2F
+from ROOT import TProfile2D, TH1F
 from numpy import cumsum, split, all, histogram, corrcoef, diff, invert
 
 from analysis import *
@@ -11,13 +11,13 @@ from calibration import Calibration
 from cern_run import CERNRun
 from converter import Converter
 from currents import Currents
+from cut import Cut
 from desy_converter import DESYConverter
 from desy_run import DESYRun
+from dummy import Dummy
 from fit import *
 from telescope import TelescopeAnalysis
 from tracks import TrackAnalysis
-from cut import Cut
-from dummy import Dummy
 
 
 class DUTAnalysis(Analysis):
