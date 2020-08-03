@@ -118,6 +118,7 @@ class DUTAnalysis(Analysis):
         return where(self.get_data('Clusters', 'NClusters') == 1)
 
     def get_corr_cuts(self, plane):
+        # TODO: Fix correlation!
         tel_plane = self.Telescope.Plane(plane)
         event_cut = all([self.Cuts.get('e-1cluster')(), self.Telescope.get_1_cluster_cut(plane)], axis=0)
         dut_cut, tel_cut = event_cut.repeat(self.get_n_clusters()), event_cut.repeat(self.get_n_clusters(tel_plane))
@@ -133,61 +134,62 @@ class DUTAnalysis(Analysis):
         t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
         return t if cut is None else t[cut]
 
-    def get(self, plane=None):
-        return self.Data['Plane{}'.format(self.get_plane(plane).Number)]
+    def get(self):
+        return self.Data['Plane{}'.format(self.Plane.Number)]
 
-    def get_group(self, grp, plane=None):
-        return self.get(plane)[grp]
+    def get_group(self, grp):
+        return self.get()[grp]
 
-    def get_data(self, grp, key=None, plane=None, cut=None):
-        data = self.get_group(grp, plane)
+    def get_data(self, grp, key=None, cut=None):
+        data = self.get_group(grp)
         data = array(data) if key is None else array(data[key])
-        return data if cut is None else data[cut]
+        return data[self.Cuts(cut)]
 
-    def get_n(self, name='Hits', plane=None, cut=None):
-        return self.get_data(name, 'N{}'.format(name), plane, cut)
-
-    def get_n_clusters(self, plane=None):
-        return self.get_n('Clusters', plane)
-
-    def get_split(self, cluster=True):
-        n = 'Clusters' if cluster else 'Hits'
-        return cumsum(self.get_n(n))[:-1]
-
-    def get_charges(self, cluster=True, e=False, cut=None, flat=False):
-        values = self.get_data('Clusters' if cluster else 'Hits', 'Charge', self.Plane, cut if flat else None) * (self.DUT.VcalToEl if e else 1)
-        if flat:
-            return values
-        return concatenate(array(split(values, self.get_split(cluster)))[cut])
+    def get_charges(self, e=False, cut=None):
+        return self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
 
     def get_charge(self, cut=None):
-        values = self.get_charges(cut=cut, flat=True)
+        values = self.get_charges(cut=cut)
         m, s = mean_sigma(values)
         return ufloat(m, s / sqrt(values.size))
 
-    def get_x(self, plane=None, cluster=True, cut=None):
-        return self.get_data('Clusters' if cluster else 'Hits', 'X', plane, cut)
+    def get_x(self, key='Clusters', cut=None):
+        return self.get_data(key, 'X', cut)
 
-    def get_y(self, plane=None, cluster=True, cut=None):
-        return self.get_data('Clusters' if cluster else 'Hits', 'Y', plane, cut)
+    def get_y(self, key='Clusters', cut=None):
+        return self.get_data(key, 'Y', cut)
 
-    def get_hits(self, plane=None, cut=None):
-        return array([self.get_x(plane, cluster=False, cut=cut), self.get_y(plane, cluster=False, cut=cut)])
+    def get_u(self, cut=None):
+        return self.get_data('Clusters', 'U', cut=cut)
 
-    def get_clusters(self, plane=None, cut=None):
-        return array([self.get_x(plane, cluster=True, cut=cut), self.get_y(plane, cluster=True, cut=cut)])
+    def get_v(self, cut=None):
+        return self.get_data('Clusters', 'V', cut=cut)
 
-    def get_mask(self, plane=None):
-        return self.get_data('Mask', plane=plane)
+    def get_du(self, cut=None):
+        return self.get_u(cut=cut) - self.Tracks.get_u(cut)
 
-    def get_plane(self, plane):
-        return choose(plane, self.Plane)
+    def get_dv(self, cut=None):
+        return self.get_v(cut=cut) - self.Tracks.get_v(cut)
+
+    def get_residuals(self, cut=None):
+        return sqrt(self.get_du(cut) ** 2 + self.get_dv(cut) ** 2)
+
+    def get_coods(self, local=True, cut=None):
+        return array([self.get_x(cut=cut) if local else self.get_u(cut), self.get_y(cut=cut) if local else self.get_v(cut)])
+
+    def get_mask(self):
+        return self.get_data('Mask', cut=False)
 
     def get_time_args(self, rel_t=False):
         return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
 
+    def get_cluster_size(self, cut=None, raw=False):
+        data = self.get_data('Clusters', 'Size', cut=False)
+        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
+
     def get_efficiency(self, cut=None):
-        return (self.get_n(cut=self.Cuts.get('tracks') + cut) > 0).astype('u2') * 100
+        # TODO: add residual cut from REF
+        return (self.get_cluster_size(cut, raw=True) > 0).astype('u2') * 100
     # endregion GET
     # ----------------------------------------
 
