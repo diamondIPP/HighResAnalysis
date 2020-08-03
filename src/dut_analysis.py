@@ -145,6 +145,10 @@ class DUTAnalysis(Analysis):
         data = array(data) if key is None else array(data[key])
         return data[self.Cuts(cut)]
 
+    def get_track_data(self, grp, key=None, cut=None, raw=False):
+        data = self.get_data(grp, key, cut=False)
+        return data if raw else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
+
     def get_charges(self, e=False, cut=None):
         return self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
 
