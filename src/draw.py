@@ -269,7 +269,7 @@ class Draw:
         self.draw_histo(p, show, lm, rm, x=cx, y=cy)
         return p
 
-    def draw_histo_2d(self, x, y, title='', binning=None, lm=None, rm=.15, show=True, **kwargs):
+    def draw_histo_2d(self, x, y, title='', binning=None, lm=None, rm=.15, show=True, draw_opt='colz', **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
@@ -278,7 +278,7 @@ class Draw:
         h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
-        self.draw_histo(h, show, lm, rm, draw_opt='colz')
+        self.draw_histo(h, show, lm, rm, draw_opt=draw_opt)
         return h
 
     # endregion DRAWING
