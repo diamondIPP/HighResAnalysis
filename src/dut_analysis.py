@@ -201,12 +201,20 @@ class DUTAnalysis(Analysis):
         title = 'Masked Pixels in {}'.format(self.DUT.Name)
         self.draw_histo_2d(x, y, title, bins.get_local(self.Plane), x_tit='Column', y_tit='Row', fill_color=1, draw_opt='box', rm=.03, show=show)
 
-    def draw_occupancy(self, plane=None, cluster=True, bin_width=1, cut=None, show=True):
-        plane = self.get_plane(plane)
-        x, y = self.get_clusters(plane, cut) if cluster else self.get_hits(plane, cut)
-        title = '{} Occupancy in {}'.format('Cluster' if cluster else 'Hit', plane)
+    def draw_occupancy(self, local=False, bin_width=1, cut=None, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
-        self.draw_histo_2d(x, y, title, bins.get_local(plane, bin_width), x_tit='Column', y_tit='Row', show=show)
+        x, y = self.get_coods(local, cut)
+        title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
+        self.draw_histo_2d(x, y, title, bins.get_coods(local, self.Plane, bin_width), x_tit='Column', y_tit='Row', show=show)
+
+    def draw_x_residuals(self):
+        self.draw_disto(self.get_du(), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+
+    def draw_y_residuals(self):
+        self.draw_disto(self.get_du(), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+
+    def draw_residuals(self):
+        self.draw_disto(self.get_residuals(), 'Residuals', bins.make(0, 6, .01), x_tit='Residual [mm]')
 
     def draw_correlation(self, mode, plane=2, show=True):
         tel_plane = self.Telescope.Plane(plane)
