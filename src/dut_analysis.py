@@ -243,40 +243,30 @@ class DUTAnalysis(Analysis):
         format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
         self.draw_histo(g, show, .13, draw_opt='ap')
 
-    def draw_n_hits(self, plane=None, show=True):
-        self.draw_n(plane, 'Hits', show)
-
-    def draw_n_clusters(self, plane=None, show=True):
-        self.draw_n(plane, 'Clusters', show)
-
-    def draw_cluster_size(self, plane=None, show=True):
+    def draw_cluster_size(self, min_size=0, show=True, cut=None):
         self.format_statbox(all_stat=True)
-        v = self.get_data('Clusters', 'Size', plane)
-        self.draw_disto(v[v > 0], 'Cluster Size in {}'.format(self.get_plane(plane)), bins.make(0, 10), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
+        v = self.get_cluster_size(cut, raw=True)
+        self.draw_disto(v[v >= min_size], 'Cluster Size in {}'.format(self.Plane), bins.make(0, 10), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
 
-    def draw_n_intercepts(self, plane=None, show=True):
-        self.draw_n(plane, 'Intercepts', show)
-
-    def draw_charge_map(self, res=1, plane=None, cut=None):
-        plane = self.get_plane(plane)
-        p = TProfile2D('pam', 'Charge Map', *bins.get_local(plane, res))
-        fill_hist(p, self.get_x(plane, cut=cut), self.get_y(plane, cut=cut), self.get_charges(cut=cut, flat=True))
+    def draw_charge_map(self, res=1, cut=None):
+        p = TProfile2D('pam', 'Charge Map', *bins.get_local(self.Plane, res))
+        fill_hist(p, self.get_x(cut=cut), self.get_y(cut=cut), self.get_charges(cut=cut))
         self.format_statbox(entries=True, x=.78)
         format_histo(p, x_tit='Cluster X', y_tit='Cluster Y', z_tit='Charge [vcal]', y_off=1.2, z_off=1.5)
         self.draw_histo(p, draw_opt='colz', rm=.18)
 
     def draw_charge_distribution(self, bin_width=4, cut=None, x_range=None, show=True):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_charges(cut=cut, flat=True), 'Cluster Charge', bins.get_vcal(bin_width), x_tit='Charge [vcal]', x_range=x_range, show=show)
+        self.draw_disto(self.get_charges(cut=cut), 'Cluster Charge', bins.get_vcal(bin_width), x_tit='Charge [vcal]', x_range=x_range, show=show)
 
     def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, show=True):
         self.format_statbox(all_stat=True)
-        values = self.get_charges(cut=cut, flat=True) * self.DUT.VcalToEl
+        values = self.get_charges(cut=cut) * self.DUT.VcalToEl
         return self.draw_disto(values, 'Pulse Height', bins.get_electrons(bin_width), x_tit='Pulse Height [e]', x_range=x_range, show=show)
 
-    def draw_trigger_phase(self):
-        self.format_statbox(all_stat=True)
-        h = self.draw_disto(self.get_data('TriggerPhase'), 'Trigger Phase', bins.make(0, 10), x_tit='Trigger Phase', y_off=1.8, lm=.13)
+    def draw_trigger_phase(self, cut=None, raw=False):
+        self.format_statbox(entries=True)
+        h = self.draw_disto(self.get_track_data('TriggerPhase', raw=raw, cut=cut), 'Trigger Phase', bins.make(0, 10), x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
 
