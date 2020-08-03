@@ -197,7 +197,9 @@ class DUTAnalysis(Analysis):
     # region DRAW
     def draw_mask(self, show=True):
         self.format_statbox(entries=True)
-        self.draw_histo(h, show=show, lm=.12, draw_opt='box')
+        x, y = self.get_mask().T
+        title = 'Masked Pixels in {}'.format(self.DUT.Name)
+        self.draw_histo_2d(x, y, title, bins.get_local(self.Plane), x_tit='Column', y_tit='Row', fill_color=1, draw_opt='box', rm=.03, show=show)
 
     def draw_occupancy(self, plane=None, cluster=True, bin_width=1, cut=None, show=True):
         plane = self.get_plane(plane)
