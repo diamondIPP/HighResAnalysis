@@ -195,16 +195,7 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw_n(self, plane, name, show=True):
-        self.format_statbox(all_stat=True)
-        n, pl = name, self.get_plane(plane)
-        self.draw_disto(self.get_data(n, 'N{}'.format(n), pl), 'Number of {} in {}'.format(n, pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
-
-    def draw_mask(self, plane=None, show=True):
-        plane = self.get_plane(plane)
-        h = TH2F('htm', 'Masked Pixels in {}'.format(plane), *bins.get_local(self.Plane))
-        fill_hist(h, self.get_mask(plane))
-        format_histo(h, x_tit='Column', y_tit='Row', y_off=1.3, fill_color=1)
+    def draw_mask(self, show=True):
         self.format_statbox(entries=True)
         self.draw_histo(h, show=show, lm=.12, draw_opt='box')
 
