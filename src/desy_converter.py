@@ -7,7 +7,7 @@
 from glob import glob
 from os import chdir
 from subprocess import check_call
-from numpy import cumsum, split, sum, nan
+from numpy import cumsum, split, sum, nan, min, invert
 
 from calibration import Calibration
 from converter import Converter
@@ -206,18 +206,62 @@ class DESYConverter(Converter):
             # cluster
             tree = match_file.Get('C{}'.format(i)).Get('tracks_clusters_matched')
             tree.SetEstimate(tree.GetEntries())
-            branches = ['trk_u', 'trk_v'] + ['clu_{}'.format(n) for n in ['size', 'col', 'row', 'u', 'v']]
-            name_types = OrderedDict([('TracksU', 'f2'), ('TracksV', 'f2'), ('ClustersSize', 'u2'), ('ClustersX', 'f2'), ('ClustersY', 'f2'), ('ClustersU', 'f2'), ('ClustersV', 'f2')])
-            n = tree.Draw(':'.join(branches), '', 'goff')
-            group.create_group('Tracks')
-            group.create_group('Clusters')
-            for j, (name, typ) in enumerate(name_types.items()):
-                group_name = 'Tracks' if 'Track' in name else 'Clusters'
-                data = get_root_vec(tree, n, j, dtype=typ)
-                data = data if group_name == 'Tracks' or 'Size' in name else data[array(group['Clusters']['Size']) > 0]  # filter out the nan events
-                group[group_name].create_dataset(name.replace(group_name, ''), data=data)
+            self.add_dut_tracks(group, tree)
+            self.add_clusters(group, tree)
+            self.add_cluster_charge(tree, group, i)
+            self.remove_doubles(group, tree)
+
+            # trigger info
             self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
-            self.add_charge(tree, group, i)
+
+    @staticmethod
+    def remove_doubles(group, tree):
+        """ find the tracks which are closer to the cluster in case there are more than 1 track per cluster. """
+        s = array(group['Clusters']['Size'])
+        cut = s > 0
+        nt = get_root_vec(tree, var='evt_ntracks', dtype='u1')[cut]      # number of tracks
+        nc = get_root_vec(tree, var='evt_nclusters', dtype='u1')[cut]    # number of clusters
+        tu, tv = array(group['Tracks']['U'])[cut], array(group['Tracks']['V'])[cut]
+        u, v = array(group['Clusters']['U']), array(group['Clusters']['V'])
+        r = sqrt((tu - u) ** 2 + (tv - v) ** 2)
+        good = nt == 1
+        c2 = (nt > 1) & (nc == 2)  # selector for one cluster for two tracks, if nc == 2 and nt > 1 there is always a double
+        r2 = r[c2][::2] < r[c2][1::2]
+        r2c = concatenate(array([r2, invert(r2)]).T)  # merge with zipper method
+        good[c2] = r2c
+        # more than 1 cluster
+        for nt_i in arange(2, 5):
+            for nc_i in arange(4, 7, 2):
+                c = (nt == nt_i) & (nc == nc_i)
+                ri = array(split(r[c], arange(nt_i, r[c].size, nt_i)))
+                good[c] = concatenate(ri) == min(ri, axis=1).repeat(nt_i)
+        # write changes to the file
+        s0 = s[cut]
+        s0[invert(good)] = 0
+        s[cut] = s0  # set all sizes of the removed clusters to 0
+        group['Clusters']['Size'][...] = s
+        for name in ['U', 'V', 'X', 'Y', 'Charge']:
+            data = array(group['Clusters'][name])[good]
+            del group['Clusters'][name]
+            group['Clusters'].create_dataset(name, data=data)
+
+    @staticmethod
+    def add_dut_tracks(group, tree):
+        group.create_group('Tracks')
+        n = tree.Draw('trk_u:trk_v', '', 'goff')
+        group['Tracks'].create_dataset('U', data=get_root_vec(tree, n, 0, dtype='f2'))
+        group['Tracks'].create_dataset('V', data=get_root_vec(tree, n, 1, dtype='f2'))
+
+    @staticmethod
+    def add_clusters(group, tree):
+        group.create_group('Clusters')
+        branches = ['clu_{}'.format(n) for n in ['size', 'col', 'row', 'u', 'v']]
+        n = tree.Draw(':'.join(branches), '', 'goff')
+        cluster_size = get_root_vec(tree, n, 0, dtype='u2')
+        group['Clusters'].create_dataset('Size', data=cluster_size)
+        for i, name in enumerate(['X', 'Y', 'U', 'V'], 1):
+            data = get_root_vec(tree, n, i, dtype='f2')[cluster_size > 0]  # filter out the nan events
+            group['Clusters'].create_dataset(name, data=data)
 
     def add_trigger_info(self, group, evt_frame):
         f = TFile(self.ROOTFileName)
@@ -226,7 +270,7 @@ class DESYConverter(Converter):
         group.create_dataset('TriggerPhase', data=get_root_vec(tree, var='TriggerPhase')[evt_frame], dtype='u1')
         group.create_dataset('TriggerCount', data=get_root_vec(tree, var='TriggerCount')[evt_frame], dtype='u1')
 
-    def add_charge(self, match_tree, group, dut_nr):
+    def add_cluster_charge(self, match_tree, group, dut_nr):
         plane = Plane(dut_nr + self.NTelPlanes, self.Config, 'DUT')
         hit_list = self.get_hits(match_tree, group, dut_nr)
         info('calculating cluster charges for DUT Plane {} ... '.format(dut_nr))
@@ -343,6 +387,6 @@ if __name__ == '__main__':
     parser.add_argument('dut', nargs='?', default=1, type=int)
     pargs = parser.parse_args()
     a = Analysis()
-    r = DESYRun(pargs.run, pargs.dut, a.TCDir, a.Config, single_mode=True)
-    z = DESYConverter(r.TCDir, r.Number, a.Config)
+    run = DESYRun(pargs.run, pargs.dut, a.TCDir, a.Config, single_mode=True)
+    z = DESYConverter(run.TCDir, run.Number, a.Config)
     # z.run()
