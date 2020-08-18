@@ -4,7 +4,7 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TProfile2D, TH1F
-from numpy import cumsum, split, all, histogram, corrcoef, diff, invert
+from numpy import cumsum, split, all, histogram, corrcoef, diff
 
 from analysis import *
 from calibration import Calibration
@@ -90,25 +90,8 @@ class DUTAnalysis(Analysis):
         x, y = self.get_coods(local=True, cut=False)
         return (x > 14) & (x < 36) & (y > 51) & (y < 77)
 
-    def find_doubles(self):
-        # TODO: do this already in the conversion!
-        """ sort out the double clusters based on the residuals. """
-        doubles = concatenate([(diff(self.get_x(cut=False)) == 0) & (diff(self.get_y(cut=False)) == 0), [False]])
-        doubles[doubles.nonzero()[0] + 1] = True  # set the pairs
-        cut = ones(doubles.size, '?')
-        try:
-            double_indices = doubles.nonzero()[0]
-            r = self.get_residuals(cut=doubles)
-            rl = r[::2] > r[1::2]  # find the cluster with the bigger residual
-            double_cut = concatenate(array([rl, invert(rl)]).T)  # merge with zipper method
-            cut[double_indices[double_cut]] = False
-        except ValueError:
-            pass
-        return cut
-
     def add_cuts(self):
-        self.Cuts.register('res', self.find_doubles(), 70, 'no double clusters')
-        self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'no double clusters')
+        self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'small residuals')
     # endregion CUTS
     # ----------------------------------------
 
