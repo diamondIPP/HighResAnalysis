@@ -194,11 +194,13 @@ class DUTAnalysis(Analysis):
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, title, bins.get_coods(local, self.Plane, bin_width), x_tit='Column', y_tit='Row', show=show)
 
-    def draw_x_residuals(self):
-        self.draw_disto(self.get_du(), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+    def draw_x_residuals(self, cut=None):
+        self.format_statbox(all_stat=True)
+        self.draw_disto(self.get_du(cut), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
 
-    def draw_y_residuals(self):
-        self.draw_disto(self.get_du(), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+    def draw_y_residuals(self, cut=None):
+        self.format_statbox(all_stat=True)
+        self.draw_disto(self.get_du(cut), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
 
     def draw_residuals(self):
         self.draw_disto(self.get_residuals(), 'Residuals', bins.make(0, 6, .01), x_tit='Residual [mm]')
