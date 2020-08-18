@@ -4,7 +4,8 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import array, all, in1d, invert
-from utils import print_table, warning
+from utils import print_table, warning, get_base_dir, load_config, join, critical
+from json import loads
 
 
 class Cuts:
@@ -12,6 +13,7 @@ class Cuts:
 
     def __init__(self):
 
+        self.Config = load_config(join(get_base_dir(), 'config', 'cut'))
         self.Cuts = {}
 
     def __call__(self, cut=None):
@@ -21,6 +23,12 @@ class Cuts:
 
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
+
+    def get_config(self, option, lst=False, typ=None):
+        if option not in self.Config.options('CUT'):
+            critical('option "{}" not found in cut config, please set it!')
+        value = self.Config.get('CUT', option)
+        return loads(value) if lst else value if typ is None else typ(value)
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
