@@ -99,9 +99,6 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region GET
-    def get_cluster_cut(self):
-        return where(self.get_data('Clusters', 'NClusters') == 1)
-
     def get_corr_cuts(self, plane):
         # TODO: Fix correlation!
         tel_plane = self.Telescope.Plane(plane)
