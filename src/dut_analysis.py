@@ -110,13 +110,6 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region GET
-    def get_corr_cuts(self, plane):
-        # TODO: Fix correlation!
-        tel_plane = self.Telescope.Plane(plane)
-        event_cut = all([self.Cuts.get('e-1cluster')(), self.Telescope.get_1_cluster_cut(plane)], axis=0)
-        dut_cut, tel_cut = event_cut.repeat(self.get_n_clusters()), event_cut.repeat(self.get_n_clusters(tel_plane))
-        return event_cut, dut_cut, tel_cut
-
     def get_start_time(self):
         return datetime.fromtimestamp(self.Run.StartTime)
 
