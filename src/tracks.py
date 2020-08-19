@@ -9,7 +9,6 @@ from draw import fill_hist, format_histo, array
 from ROOT import TH2F
 from numpy import rad2deg, arange, sqrt
 import bins
-from cut import Cut
 
 
 class TrackAnalysis(Analysis):
@@ -43,14 +42,14 @@ class TrackAnalysis(Analysis):
         """ returns: number of tracks per event. """
         return self.get('NTracks', cut)
 
-    def get_x(self, cut=None):
-        return self.get('X', cut)
+    def get_x(self, cut=None, raw=False):
+        return self.Ana.get_track_data('Tracks', 'X', cut, raw)
 
-    def get_y(self, cut=None):
-        return self.get('Y', cut)
+    def get_y(self, cut=None, raw=False):
+        return self.Ana.get_track_data('Tracks', 'Y', cut, raw)
 
-    def get_coods(self, cut):
-        return self.get_x(cut), self.get_y(cut)
+    def get_coods(self, local=True, cut=None, raw=False):
+        return (self.get_x(cut, raw), self.get_y(cut, raw)) if local else (self.get_u(cut, raw), self.get_v(cut, raw))
 
     def get_dof(self, cut=None):
         return self.get('Dof', cut)
@@ -59,12 +58,10 @@ class TrackAnalysis(Analysis):
         return self.get('Chi2', cut)
 
     def get_u(self, cut=None, raw=False):
-        data = array(self.PlaneData['U'])
-        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Ana.Cuts(cut)]
+        return self.Ana.get_track_data('Tracks', 'U', cut, raw)
 
     def get_v(self, cut=None, raw=False):
-        data = array(self.PlaneData['V'])
-        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Ana.Cuts(cut)]
+        return self.Ana.get_track_data('Tracks', 'V', cut, raw)
     # endregion GET
     # ----------------------------------------
 
