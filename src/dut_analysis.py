@@ -206,11 +206,11 @@ class DUTAnalysis(Analysis):
 
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_du(cut), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+        self.draw_disto(self.get_du(cut), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]', lm=.12, y_off=1.8)
 
     def draw_y_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_du(cut), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
+        self.draw_disto(self.get_dv(cut), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]', lm=.12, y_off=1.8)
 
     def draw_residuals(self):
         self.draw_disto(self.get_residuals(), 'Residuals', bins.make(0, 6, .01), x_tit='Residual [mm]')
@@ -252,7 +252,7 @@ class DUTAnalysis(Analysis):
 
     def draw_charge_distribution(self, bin_width=4, cut=None, x_range=None, show=True):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_charges(cut=cut), 'Cluster Charge', bins.get_vcal(bin_width), x_tit='Charge [vcal]', x_range=x_range, show=show)
+        self.draw_disto(self.get_charges(cut=cut), 'Cluster Charge', bins.get_vcal(bin_width), x_tit='Charge [vcal]', x_range=x_range, show=show, y_off=1.8, lm=.12)
 
     def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, show=True):
         self.format_statbox(all_stat=True)
