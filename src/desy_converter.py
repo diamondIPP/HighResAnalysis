@@ -248,9 +248,9 @@ class DESYConverter(Converter):
     @staticmethod
     def add_dut_tracks(group, tree):
         group.create_group('Tracks')
-        n = tree.Draw('trk_u:trk_v', '', 'goff')
-        group['Tracks'].create_dataset('U', data=get_root_vec(tree, n, 0, dtype='f2'))
-        group['Tracks'].create_dataset('V', data=get_root_vec(tree, n, 1, dtype='f2'))
+        n = tree.Draw('trk_u:trk_v:trk_col:trk_row', '', 'goff')
+        for i, name in enumerate(['U', 'V', 'X', 'Y']):
+            group['Tracks'].create_dataset(name, data=get_root_vec(tree, n, i, dtype='f2'))
 
     @staticmethod
     def add_clusters(group, tree):
