@@ -3,8 +3,8 @@
 #       small script to read simple text files written by pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TProfile2D, TH1F
-from numpy import cumsum, split, all, histogram, corrcoef, diff
+from ROOT import TH1F
+from numpy import cumsum, split, histogram, corrcoef, diff, all, invert
 
 from analysis import *
 from calibration import Calibration
@@ -82,18 +82,29 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region CUTS
     def init_cuts(self):
-        self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'tracks with at least 1 cluster')
-        self.Cuts.register('fid', self.make_fiducial(), 91, 'fid cut')
-        self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with at least 1 cluster')
+        self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
+        self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
+        self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')
+        self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
 
     def make_fiducial(self):
         x, y = self.get_coods(local=True, cut=False)
         x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
         return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
 
+    def make_mask(self):
+        x, y = self.get_coods(local=True, cut=False)
+        mx, my = array(self.Cuts.get_config('mask', lst=True)).T
+        return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
+
     def add_cuts(self):
         self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'small residuals')
-        self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 92, 'trigger phase')
+        self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 61, 'trigger phase')
+
+    def draw_fid_area(self):
+        x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
+        self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid')
+
     # endregion CUTS
     # ----------------------------------------
 
