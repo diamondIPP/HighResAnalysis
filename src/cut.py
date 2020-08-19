@@ -24,11 +24,11 @@ class Cuts:
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
 
-    def get_config(self, option, lst=False, typ=None):
+    def get_config(self, option, lst=False, dtype=None):
         if option not in self.Config.options('CUT'):
             critical('option "{}" not found in cut config, please set it!')
         value = self.Config.get('CUT', option)
-        return loads(value) if lst else value if typ is None else typ(value)
+        return loads(value) if lst else value if dtype is None else dtype(value)
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
