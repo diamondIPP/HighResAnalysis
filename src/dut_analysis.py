@@ -173,6 +173,10 @@ class DUTAnalysis(Analysis):
     def get_time_args(self, rel_t=False):
         return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
 
+    @staticmethod
+    def get_axis_titles(local):
+        return {'x_tit': 'Column' if local else 'X [mm]', 'y_tit': 'Row' if local else 'Y [mm]'}
+
     def get_cluster_size(self, cut=None, raw=False):
         data = self.get_data('Clusters', 'Size', cut=False)
         return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
