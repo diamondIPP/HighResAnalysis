@@ -7,7 +7,7 @@
 from analysis import Analysis, warning, bins
 from draw import array
 from dut import Plane
-from numpy import sqrt
+from numpy import sqrt, zeros
 
 
 class RefAnalysis(Analysis):
@@ -25,6 +25,11 @@ class RefAnalysis(Analysis):
     def init_cuts(self):
         self.Cuts.register('cluster', self.get('Clusters', 'Size') > 0, 90, 'tracks with a cluster')
         self.Cuts.register('cluster2', (self.Cuts.get('cluster') + self.Ana.Cuts.get('cluster')).Values, 90, 'tracks a cluster in DUT and REF')
+
+    def make_residuals(self):
+        cut = zeros(self.Ana.Tracks.N, bool)
+        cut[self.Cuts.get('cluster')()] = self.get_residuals() < self.Cuts.get_config('residuals', dtype=float)
+        return cut[self.Ana.Cuts.get('cluster')()]
     # endregion INIT
     # ----------------------------------------
 
