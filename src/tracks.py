@@ -7,7 +7,7 @@
 from analysis import Analysis, warning
 from draw import fill_hist, format_histo, array
 from ROOT import TH2F
-from numpy import rad2deg, arange, sqrt
+from numpy import rad2deg
 import bins
 
 
@@ -26,7 +26,6 @@ class TrackAnalysis(Analysis):
     # region INIT
     def init_cuts(self):
         self.Cuts.register(self.Ana.Cuts.get('cluster'))
-        self.Cuts.register('n', self.get_n(cut=False) > 0, 91, 'at least one track')
     # endregion INIT
     # ----------------------------------------
 
@@ -55,7 +54,7 @@ class TrackAnalysis(Analysis):
         return self.get('Dof', cut)
 
     def get_chi2(self, cut=None):
-        return self.get('Chi2', cut)
+        return self.get('Chi2', cut) / self.get_dof(cut)
 
     def get_u(self, cut=None, raw=False):
         return self.Ana.get_track_data('Tracks', 'U', cut, raw)
@@ -73,11 +72,7 @@ class TrackAnalysis(Analysis):
 
     def draw_dof(self, show=True, cut=None):
         self.format_statbox(all_stat=True)
-        return self.draw_disto(self.get_dof(cut), 'Track Degrees of Freedom', bins.make(0, 20, 1), show=show, x_tit='Degrees of Freedom', y_off=2.1, lm=.14)
-
-    def draw_dof_trend(self, cut=False, show=True):
-        self.format_statbox(entries=True, x=.9)
-        self.draw_prof(arange(self.N), self.get_dof(cut), bins.make(0, self.N, sqrt(self.N)), 'DOF Trend', x_tit='Track Number', y_tit='Degrees of Freedom', show=show, rm=.08)
+        return self.draw_disto(self.get_dof(cut), bins.make(0, 20, 1), 'Track Degrees of Freedom', show=show, x_tit='Degrees of Freedom', y_off=2.1, lm=.14)
 
     def draw_occupancy0(self, scale=4, cut=None):
         h = TH2F('hto', 'Track Occupancy', *bins.get_global(self.Ana.Telescope.Plane, scale))
@@ -89,22 +84,22 @@ class TrackAnalysis(Analysis):
     def draw_occupancy(self, scale=4, cut=None, raw=False, show=True):
         self.format_statbox(all_stat=True, x=.83)
         x, y = self.get_coods(cut) if raw else (self.get_u(raw=True), self.get_v(cut, raw=True))
-        self.draw_histo_2d(x, y, 'Track Occupancy', bins.get_global(self.Ana.Telescope.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
+        self.draw_histo_2d(x, y, bins.get_global(self.Ana.Telescope.Plane, scale), 'Track Occupancy', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_map(self, bin_width=.1, cut=None, dut_plane=True, show=True):
         self.format_statbox(all_stat=True, x=.83)
         binning = bins.get_global(self.Ana.Plane if dut_plane else self.Ana.Telescope.Plane, bin_width)
-        self.draw_histo_2d(self.get_u(cut), self.get_v(cut), 'Track Map', binning, x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
+        self.draw_histo_2d(self.get_u(cut), self.get_v(cut), binning, 'Track Map', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_chi2(self, cut=None):
         self.format_statbox(all_stat=True)
-        values = self.get_chi2(cut) / self.get_dof(cut)
-        self.draw_disto(values, 'Track #chi^{2}', bins.make(0, 100, 1.), x_tit='#chi^{2}')
+        values = self.get_chi2(cut)
+        self.draw_disto(values, bins.make(0, 100, 1.), 'Track #chi^{2}', x_tit='#chi^{2}')
 
     def draw_slope(self, mode='x', bin_width=.01):
         values = rad2deg(array(self.Data['Slope{}'.format(mode.title())]))
         self.format_statbox(all_stat=True)
-        self.draw_disto(values, 'Track Slope {}'.format(mode.title()), bins.make(-1, 1, bin_width), x_tit='Track Slope [deg]', y_off=1.8, lm=.13)
+        self.draw_disto(values, bins.make(-1, 1, bin_width), 'Track Slope {}'.format(mode.title()), x_tit='Track Slope [deg]', y_off=1.8, lm=.13)
 
     def draw_slope_x(self, bin_width=.01):
         self.draw_slope('x', bin_width)
