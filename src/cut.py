@@ -4,7 +4,7 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import array, all, in1d, invert
-from utils import print_table, warning, get_base_dir, load_config, join, critical
+from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list
 from json import loads
 
 
@@ -44,6 +44,11 @@ class Cuts:
 
     def get(self, name):
         return self.Cuts[name]
+
+    def get_special(self, exclude):
+        exclude = make_list(exclude)
+        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80 and cut.Name not in exclude]
+        return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def show(self, raw=False):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.get_p_str(), cut.Value if raw else cut.Description] for cut in self.Cuts.values()]
