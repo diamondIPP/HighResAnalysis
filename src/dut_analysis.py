@@ -88,7 +88,8 @@ class DUTAnalysis(Analysis):
 
     def make_fiducial(self):
         x, y = self.get_coods(local=True, cut=False)
-        return (x > 14) & (x < 36) & (y > 51) & (y < 77)
+        x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
+        return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
 
     def add_cuts(self):
         self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'small residuals')
