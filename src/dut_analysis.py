@@ -143,11 +143,11 @@ class DUTAnalysis(Analysis):
         m, s = mean_sigma(values)
         return ufloat(m, s / sqrt(values.size))
 
-    def get_x(self, key='Clusters', cut=None):
-        return self.get_data(key, 'X', cut)
+    def get_x(self, cut=None):
+        return self.get_data('Clusters', 'X', cut)
 
-    def get_y(self, key='Clusters', cut=None):
-        return self.get_data(key, 'Y', cut)
+    def get_y(self, cut=None):
+        return self.get_data('Clusters', 'Y', cut)
 
     def get_u(self, cut=None):
         return self.get_data('Clusters', 'U', cut=cut)
@@ -196,18 +196,13 @@ class DUTAnalysis(Analysis):
         self.format_statbox(entries=True)
         x, y = self.get_mask().T
         title = 'Masked Pixels in {}'.format(self.DUT.Name)
-        self.draw_histo_2d(x, y, title, bins.get_local(self.Plane), x_tit='Column', y_tit='Row', fill_color=1, draw_opt='box', rm=.03, show=show)
+        self.draw_histo_2d(x, y, bins.get_local(self.Plane), title, x_tit='Column', y_tit='Row', fill_color=1, draw_opt='box', rm=.03, show=show)
 
-    def draw_occupancy(self, local=False, bin_width=1, cut=None, show=True):
+    def draw_occupancy(self, local=True, bin_width=1, cut=None, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
         x, y = self.get_coods(local, cut)
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, title, bins.get_coods(local, self.Plane, bin_width), x_tit='Column', y_tit='Row', show=show)
-
-    def draw_ped_map(self, c_max, c_min=None, cut=None):
-        charge = self.get_charges(cut=False)
-        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts(cut)
-        self.draw_occupancy(cut=cut)
 
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
@@ -243,26 +238,35 @@ class DUTAnalysis(Analysis):
         format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
         self.draw_histo(g, show, .13, draw_opt='ap')
 
-    def draw_cluster_size(self, min_size=0, show=True, cut=None):
+    def draw_cluster_size(self, show=True, cut=None, raw=False):
         self.format_statbox(all_stat=True)
-        v = self.get_cluster_size(cut, raw=True)
-        self.draw_disto(v[v >= min_size], 'Cluster Size in {}'.format(self.Plane), bins.make(0, 10), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
+        v = self.get_cluster_size(cut, raw)
+        self.draw_disto(v, bins.make(0, 10), 'Cluster Size in {}'.format(self.Plane), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
 
-    def draw_charge_map(self, res=1, cut=None):
-        p = TProfile2D('pam', 'Charge Map', *bins.get_local(self.Plane, res))
-        fill_hist(p, self.get_x(cut=cut), self.get_y(cut=cut), self.get_charges(cut=cut))
-        self.format_statbox(entries=True, x=.78)
-        format_histo(p, x_tit='Cluster X', y_tit='Cluster Y', z_tit='Charge [vcal]', y_off=1.2, z_off=1.5)
-        self.draw_histo(p, draw_opt='colz', rm=.18)
+    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
+        self.format_statbox(entries=True, x=.83)
+        x, y = self.Tracks.get_coods(local, cut)
+        self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_axis_titles(local))
+
+    def draw_ped_map(self, c_max, c_min=None, cut=None):
+        charge = self.get_charges(cut=False)
+        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts(cut)
+        self.draw_hit_map(cut=cut)
+
+    def draw_charge_map(self, res=.3, cluster=False, cut=None):
+        res = 1 if cluster else res
+        x, y = (self.get_x(cut), self.get_y(cut)) if cluster else (self.Tracks.get_x(cut), self.Tracks.get_y(cut))
+        self.format_statbox(entries=True, x=.84)
+        self.draw_prof2d(x, y, self.get_charges(cut=cut), bins.get_local(self.Plane, res), 'Charge Map', x_tit='Column', y_tit='Row', z_tit='Charge [vcal]')
 
     def draw_charge_distribution(self, bin_width=4, cut=None, x_range=None, show=True):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_charges(cut=cut), 'Cluster Charge', bins.get_vcal(bin_width), x_tit='Charge [vcal]', x_range=x_range, show=show, y_off=1.8, lm=.12)
+        self.draw_disto(self.get_charges(cut=cut), bins.get_vcal(bin_width), 'Cluster Charge', x_tit='Charge [vcal]', x_range=x_range, show=show, y_off=1.8, lm=.12)
 
     def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, show=True):
         self.format_statbox(all_stat=True)
         values = self.get_charges(cut=cut) * self.DUT.VcalToEl
-        return self.draw_disto(values, 'Pulse Height', bins.get_electrons(bin_width), x_tit='Pulse Height [e]', x_range=x_range, show=show)
+        return self.draw_disto(values, bins.get_electrons(bin_width), 'Pulse Height', x_tit='Pulse Height [e]', x_range=x_range, show=show)
 
     def draw_trigger_phase(self, cut=None, raw=False):
         self.format_statbox(entries=True)
