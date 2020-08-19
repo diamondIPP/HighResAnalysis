@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from utils import *
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile, TH2F
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile, TH2F, TProfile2D
 from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
 from numpy import ndarray, zeros, array, ones, linspace
@@ -267,6 +267,17 @@ class Draw:
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
         self.draw_histo(p, show, lm, rm, x=cx, y=cy)
+        return p
+
+    def draw_prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, cx=None, cy=None, show=True, **kwargs):
+        x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
+        dflt_bins = bins.make(min(x), max(x), sqrt(x.size)) + bins.make(min(y), max(y), sqrt(x.size))
+        p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
+        fill_hist(p, x, y, zz)
+        format_histo(p, **kwargs)
+        self.draw_histo(p, show, lm, rm, x=cx, y=cy, draw_opt='colz')
         return p
 
     def draw_histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, draw_opt='colz', **kwargs):
