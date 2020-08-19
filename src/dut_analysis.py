@@ -199,6 +199,11 @@ class DUTAnalysis(Analysis):
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, title, bins.get_coods(local, self.Plane, bin_width), x_tit='Column', y_tit='Row', show=show)
 
+    def draw_ped_map(self, c_max, c_min=None, cut=None):
+        charge = self.get_charges(cut=False)
+        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts(cut)
+        self.draw_occupancy(cut=cut)
+
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
         self.draw_disto(self.get_du(cut), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]')
