@@ -93,6 +93,7 @@ class DUTAnalysis(Analysis):
 
     def add_cuts(self):
         self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'small residuals')
+        self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 92, 'trigger phase')
     # endregion CUTS
     # ----------------------------------------
 
@@ -178,6 +179,9 @@ class DUTAnalysis(Analysis):
     def get_efficiency(self, cut=None):
         # TODO: add residual cut from REF
         return (self.get_cluster_size(cut, raw=True) > 0).astype('u2') * 100
+
+    def get_trigger_phase(self, raw=False, cut=None):
+        return self.get_track_data('TriggerPhase', cut=cut, raw=raw)
     # endregion GET
     # ----------------------------------------
 
@@ -252,12 +256,14 @@ class DUTAnalysis(Analysis):
 
     def draw_trigger_phase(self, cut=None, raw=False):
         self.format_statbox(entries=True)
-        h = self.draw_disto(self.get_track_data('TriggerPhase', raw=raw, cut=cut), 'Trigger Phase', bins.make(0, 10), x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        h = self.draw_disto(self.get_trigger_phase(raw, cut), 'Trigger Phase', bins.make(0, 10, last=True), x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
 
-    def draw_charge_vs_trigger_phase(self):
-        pass
+    def draw_charge_vs_trigger_phase(self, cut=None, show=True):
+        self.format_statbox(entries=True)
+        x, y = self.get_trigger_phase(cut=cut), self.get_charges(cut=cut)
+        self.draw_prof(x, y, bins.make(0, 10, last=True), 'Charge vs. Trigger Phase', show=show, x_tit='Trigger Phase', y_tit='Charge [vcal]')
 
     def draw_charge_trend(self, bin_width=30, e=False, y_range=None, show=True, stats=True):
         self.format_statbox(entries=True, exe=stats)
