@@ -18,6 +18,7 @@ from dummy import Dummy
 from fit import *
 from telescope import TelescopeAnalysis
 from tracks import TrackAnalysis
+from reference import RefAnalysis
 
 
 class DUTAnalysis(Analysis):
@@ -46,6 +47,7 @@ class DUTAnalysis(Analysis):
 
         # SUBCLASSES
         self.Calibration = Calibration(self.Run)
+        self.Reference = RefAnalysis(self)
         self.Telescope = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.Currents = Currents(self)
@@ -98,13 +100,12 @@ class DUTAnalysis(Analysis):
         return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
 
     def add_cuts(self):
-        self.Cuts.register('res<', self.get_residuals(cut=False) < .4, 69, 'small residuals')
+        self.Cuts.register('res', self.Reference.make_residuals(), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 61, 'trigger phase')
 
     def draw_fid_area(self):
         x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
         self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid')
-
     # endregion CUTS
     # ----------------------------------------
 
