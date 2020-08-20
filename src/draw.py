@@ -380,7 +380,7 @@ class Draw:
         if x is None:
             gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
         else:
-            gr = TGraphErrors(*make_graph_args(x, y, ex, ey)) if not asym_err else TGraphAsymmErrors(*make_graph_args(x, y, ex, ey))
+            gr = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
         gr.SetTitle(title)
         gr.SetName(name)
         gr.SetMarkerStyle(marker)
@@ -549,14 +549,15 @@ def find_range(values, lfac=.2, rfac=.2, thresh=.02):
     return increased_range([xmin, xmax], lfac, rfac)
 
 
-def make_graph_args(x, y, ex=None, ey=None):
+def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
     if len(list(x)) != len(list(y)):
         warning('Arrays have different size!')
         return []
-    lx = len(x)
+    s = len(x)
     if type(x[0]) is Variable:
-        return [lx, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
-    return [lx, array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else zeros(lx), array(ey, 'd') if ey is not None else zeros(lx)]
+        return [s, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
+    e = [zeros((2, s) if asym_errors else s) if v is None else array(v, 'd') for v in [ex, ey]]
+    return [s, array(x, 'd'), array(y, 'd')] + ([e[0][0], e[0][1], e[1][0], e[1][1]] if asym_errors else e)
 
 
 def make_transparent(pad):
