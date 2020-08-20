@@ -29,7 +29,10 @@ class RefAnalysis(Analysis):
     def make_residuals(self):
         cut = zeros(self.Ana.Tracks.N, bool)
         cut[self.Cuts.get('cluster')()] = self.get_residuals() < self.Cuts.get_config('residuals', dtype=float)
-        return cut[self.Ana.Cuts.get('cluster')()]
+        return cut
+
+    def make_dut_residuals(self):
+        return self.make_residuals()[self.Ana.Cuts.get('cluster')()]
     # endregion INIT
     # ----------------------------------------
 
