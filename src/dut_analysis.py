@@ -216,14 +216,14 @@ class DUTAnalysis(Analysis):
 
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_du(cut), 'X Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]', lm=.12, y_off=1.8)
+        self.draw_disto(self.get_du(cut), bins.make(-3, 3, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
 
     def draw_y_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_dv(cut), 'Y Residuals', bins.make(-3, 3, .01), x_tit='Residual [mm]', lm=.12, y_off=1.8)
+        self.draw_disto(self.get_dv(cut), bins.make(-3, 3, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
 
     def draw_residuals(self):
-        self.draw_disto(self.get_residuals(), 'Residuals', bins.make(0, 6, .01), x_tit='Residual [mm]')
+        self.draw_disto(self.get_residuals(), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]')
 
     def draw_correlation(self, mode, plane=2, show=True):
         tel_plane = self.Telescope.Plane(plane)
@@ -248,15 +248,21 @@ class DUTAnalysis(Analysis):
         format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
         self.draw_histo(g, show, .13, draw_opt='ap')
 
-    def draw_cluster_size(self, show=True, cut=None, raw=False):
+    def draw_cluster_size(self, show=True, cut=None, trk_cut=-1):
         self.format_statbox(all_stat=True)
-        v = self.get_cluster_size(cut, raw)
+        v = self.get_cluster_size(cut, trk_cut)
         self.draw_disto(v, bins.make(0, 10), 'Cluster Size in {}'.format(self.Plane), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
 
-    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
-        self.format_statbox(entries=True, x=.83)
+    def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, show=True):
+        self.format_statbox(entries=True, x=.84)
+        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
         x, y = self.Tracks.get_coods(local, cut)
-        self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_axis_titles(local))
+        self.draw_prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', show=show, z_tit='Cluster Size', **self.get_ax_tits(local))
+
+    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
+        self.format_statbox(entries=True, x=.84)
+        x, y = self.Tracks.get_coods(local, cut)
+        self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_ax_tits(local))
 
     def draw_ped_map(self, c_max, c_min=None, cut=None):
         charge = self.get_charges(cut=False)
