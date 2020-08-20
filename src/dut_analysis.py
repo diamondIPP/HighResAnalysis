@@ -116,7 +116,6 @@ class DUTAnalysis(Analysis):
     def add_track_cuts(self):
         self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(track=True), 10, 'track trigger phase')
         self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
-
     # endregion CUTS
     # ----------------------------------------
 
@@ -183,20 +182,20 @@ class DUTAnalysis(Analysis):
         return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
 
     @staticmethod
-    def get_axis_titles(local):
+    def get_ax_tits(local):
         return {'x_tit': 'Column' if local else 'X [mm]', 'y_tit': 'Row' if local else 'Y [mm]'}
 
     def get_track_data(self, grp, key=None, cut=None, trk_cut=-1):
         data = self.get_data(grp, key, cut=False)
-        return data[self.Cuts.get('cluster').Values][self.Cuts(cut)] if trk_cut == -1 else data[self.Tracks.Cuts(trk_cut)]
+        return data[self.Tracks.Cuts(trk_cut)] if type(trk_cut) == ndarray or trk_cut != -1 else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
 
     def get_cluster_size(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('Clusters', 'Size', cut=cut, trk_cut=trk_cut)
 
-    def get_efficiency(self, cut=None):
-        return (self.get_cluster_size(cut, trk_cut=None) > 0).astype('u2') * 100
+    def get_efficiency(self, trk_cut=None):
+        return (self.get_cluster_size(trk_cut=trk_cut) > 0).astype('u2') * 100
 
-    def get_trigger_phase(self, cut=None, trk_cut=-1):
+    def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
     # endregion GET
     # ----------------------------------------
