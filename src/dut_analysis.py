@@ -19,6 +19,7 @@ from fit import *
 from telescope import TelescopeAnalysis
 from tracks import TrackAnalysis
 from reference import RefAnalysis
+from typing import Any
 
 
 class DUTAnalysis(Analysis):
@@ -46,14 +47,13 @@ class DUTAnalysis(Analysis):
         self.REF = RefAnalysis(self)
         self.Currents = Currents(self)
         self.add_cuts()
+        self.add_track_cuts()
 
         # INFO
         self.NEvents = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
         self.Time = self.get_time()
-
-        # TODO: add raw cut
 
     # ----------------------------------------
     # region INIT
@@ -101,13 +101,23 @@ class DUTAnalysis(Analysis):
         mx, my = array(self.Cuts.get_config('mask', lst=True)).T
         return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
 
-    def add_cuts(self):
-        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
-        self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 61, 'trigger phase')
-
     def draw_fid_area(self):
         x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
         self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid')
+
+    def make_trigger_phase(self, track=False):
+        tp = self.get_trigger_phase(cut=False, trk_cut=False if track else -1)
+        low, high = self.Cuts.get_config('trigger phase', lst=True)
+        return (tp >= low) & (tp <= high)
+
+    def add_cuts(self):
+        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
+        self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
+
+    def add_track_cuts(self):
+        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(track=True), 10, 'track trigger phase')
+        self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
+
     # endregion CUTS
     # ----------------------------------------
 
@@ -134,10 +144,6 @@ class DUTAnalysis(Analysis):
         data = self.get_group(grp)
         data = array(data) if key is None else array(data[key])
         return data[self.Cuts(cut)]
-
-    def get_track_data(self, grp, key=None, cut=None, raw=False):
-        data = self.get_data(grp, key, cut=False)
-        return data if raw else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
 
     def get_charges(self, e=False, cut=None):
         return self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
@@ -181,16 +187,18 @@ class DUTAnalysis(Analysis):
     def get_axis_titles(local):
         return {'x_tit': 'Column' if local else 'X [mm]', 'y_tit': 'Row' if local else 'Y [mm]'}
 
-    def get_cluster_size(self, cut=None, raw=False):
-        data = self.get_data('Clusters', 'Size', cut=False)
-        return data[Cut.make(cut)] if raw else data[self.Cuts.get('cluster').Values][self.Cuts(cut)]
+    def get_track_data(self, grp, key=None, cut=None, trk_cut=-1):
+        data = self.get_data(grp, key, cut=False)
+        return data[self.Cuts.get('cluster').Values][self.Cuts(cut)] if trk_cut == -1 else data[self.Tracks.Cuts(trk_cut)]
+
+    def get_cluster_size(self, cut=None, trk_cut: Any = -1):
+        return self.get_track_data('Clusters', 'Size', cut=cut, trk_cut=trk_cut)
 
     def get_efficiency(self, cut=None):
-        # TODO: add residual cut from REF
-        return (self.get_cluster_size(cut, raw=True) > 0).astype('u2') * 100
+        return (self.get_cluster_size(cut, trk_cut=None) > 0).astype('u2') * 100
 
-    def get_trigger_phase(self, raw=False, cut=None):
-        return self.get_track_data('TriggerPhase', cut=cut, raw=raw)
+    def get_trigger_phase(self, cut=None, trk_cut=-1):
+        return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
     # endregion GET
     # ----------------------------------------
 
