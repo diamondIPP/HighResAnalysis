@@ -20,14 +20,6 @@ class TrackAnalysis(Analysis):
         self.Data = self.Ana.Data['Tracks']
         self.PlaneData = self.Ana.get_group('Tracks')
         self.N = self.Data['X'].size
-        self.init_cuts()
-
-    # ----------------------------------------
-    # region INIT
-    def init_cuts(self):
-        self.Cuts.register(self.Ana.Cuts.get('cluster'))
-    # endregion INIT
-    # ----------------------------------------
 
     # ----------------------------------------
     # region GET
