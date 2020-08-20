@@ -291,6 +291,18 @@ class Draw:
         format_histo(h, **kwargs)
         self.draw_histo(h, show, lm, rm, draw_opt=draw_opt)
         return h
+
+    def draw_eff(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
+        binning = choose(binning, bins.make, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
+        p = self.draw_prof(x, e, binning, show=False)
+        x = get_hist_args(p, err=False)
+        values = [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]
+        e = array([calc_eff(p0 / 100 * n, n) for p0, n in values])
+        ey = array([e[:, 1], e[:, 2]])
+        g = self.make_tgrapherrors('g{}'.format(self.Count), title, x=x, y=e[:, 0], ey=ey, asym_err=True)
+        format_histo(g, **kwargs)
+        self.draw_histo(g, show, lm, draw_opt='ap')
+        return g
     # endregion DRAWING
     # ----------------------------------------
 
