@@ -27,6 +27,7 @@ pitch = [0.15, 0.10]
 pixel = [52, 80]
 planes = 2
 vcal to electrons = 46.5
+reference plane = 6
 
 [TELESCOPE]
 name = mimosa
