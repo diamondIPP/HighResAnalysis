@@ -119,9 +119,10 @@ class DUTAnalysis(Analysis):
     def get_end_time(self):
         return datetime.fromtimestamp(self.Run.EndTime)
 
-    def get_time(self, cut=None):
+    def get_time(self, cut=False):
         t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
-        return t if cut is None else t[cut]
+        t = t[self.Tracks.get_events()]  # map the event times to the track times
+        return t[self.Cuts(cut)]
 
     def get(self):
         return self.Data['Plane{}'.format(self.Plane.Number)]
