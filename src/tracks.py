@@ -55,7 +55,7 @@ class TrackAnalysis(Analysis):
         return self.Ana.get_track_data('Tracks', 'V', cut, raw)
 
     def get_events(self):
-        return self.get('EvtFrame')
+        return self.get('EvtFrame', cut=False)
     # endregion GET
     # ----------------------------------------
 
