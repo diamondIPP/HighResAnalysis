@@ -90,8 +90,8 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')
         self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
 
-    def make_fiducial(self):
-        x, y = self.get_coods(local=True, cut=False)
+    def make_fiducial(self, tracks=False):
+        x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
         x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
         return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
 
@@ -104,8 +104,8 @@ class DUTAnalysis(Analysis):
         x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
         self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid')
 
-    def make_trigger_phase(self, track=False):
-        tp = self.get_trigger_phase(cut=False, trk_cut=False if track else -1)
+    def make_trigger_phase(self, tracks=False):
+        tp = self.get_trigger_phase(cut=False, trk_cut=False if tracks else -1)
         low, high = self.Cuts.get_config('trigger phase', lst=True)
         return (tp >= low) & (tp <= high)
 
@@ -114,8 +114,9 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
 
     def add_track_cuts(self):
-        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(track=True), 10, 'track trigger phase')
+        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True), 10, 'track trigger phase')
         self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
     # endregion CUTS
     # ----------------------------------------
 
