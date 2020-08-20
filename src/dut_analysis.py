@@ -39,19 +39,21 @@ class DUTAnalysis(Analysis):
         self.Data = self.load_file(test)
         self.init_cuts()
 
+        # SUBCLASSES
+        self.Calibration = Calibration(self.Run)
+        self.Telescope = TelescopeAnalysis(self)
+        self.Tracks = TrackAnalysis(self)
+        self.REF = RefAnalysis(self)
+        self.Currents = Currents(self)
+        self.add_cuts()
+
         # INFO
         self.NEvents = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
         self.Time = self.get_time()
 
-        # SUBCLASSES
-        self.Calibration = Calibration(self.Run)
-        self.Reference = RefAnalysis(self)
-        self.Telescope = TelescopeAnalysis(self)
-        self.Tracks = TrackAnalysis(self)
-        self.Currents = Currents(self)
-        self.add_cuts()
+        # TODO: add raw cut
 
     # ----------------------------------------
     # region INIT
@@ -100,7 +102,7 @@ class DUTAnalysis(Analysis):
         return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
 
     def add_cuts(self):
-        self.Cuts.register('res', self.Reference.make_residuals(), 69, 'small residuals to REF plane')
+        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.get_trigger_phase(cut=False) >= 5, 61, 'trigger phase')
 
     def draw_fid_area(self):
