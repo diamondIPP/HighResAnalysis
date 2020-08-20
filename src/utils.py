@@ -15,7 +15,7 @@ from json import load
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
@@ -282,6 +282,16 @@ def get_p1(x1, x2, y1, y2):
 
 def get_p0(x1, y1, p1):
     return y1 - x1 * p1
+
+
+def calc_eff(k=0, n=0, values=None):
+    values = array(values) if values is not None else None
+    k = float(k if values is None else count_nonzero(values))
+    n = float(n if values is None else values.size)
+    m = (k + 1) / (n + 2)
+    mode = k / n
+    s = sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))
+    return array([mode, max(s + (mode - m), 0), max(s - (mode - m), 0)]) * 100
 
 
 def make_ufloat(tup):
