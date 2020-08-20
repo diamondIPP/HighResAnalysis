@@ -4,6 +4,8 @@ run plan file = Runinfos/run_plans.json
 run log file = runlog.json
 default test campaign = 201912
 locations = ["CERN", "DESY"]
+
+[SAVE]
 pickle directory = pickles
 
 [DRAW]
