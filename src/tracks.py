@@ -33,14 +33,14 @@ class TrackAnalysis(Analysis):
         """ returns: number of tracks per event. """
         return self.get('NTracks', cut)
 
-    def get_x(self, cut=None, raw=False):
-        return self.Ana.get_track_data('Tracks', 'X', cut, raw)
+    def get_x(self, cut=None, trk_cut=-1):
+        return self.Ana.get_track_data('Tracks', 'X', cut, trk_cut)
 
-    def get_y(self, cut=None, raw=False):
-        return self.Ana.get_track_data('Tracks', 'Y', cut, raw)
+    def get_y(self, cut=None, trk_cut=-1):
+        return self.Ana.get_track_data('Tracks', 'Y', cut, trk_cut)
 
-    def get_coods(self, local=True, cut=None, raw=False):
-        return (self.get_x(cut, raw), self.get_y(cut, raw)) if local else (self.get_u(cut, raw), self.get_v(cut, raw))
+    def get_coods(self, local=True, cut=None, trk_cut=-1):
+        return (self.get_x(cut, trk_cut), self.get_y(cut, trk_cut)) if local else (self.get_u(cut, trk_cut), self.get_v(cut, trk_cut))
 
     def get_dof(self, cut=None):
         return self.get('Dof', cut)
@@ -48,11 +48,11 @@ class TrackAnalysis(Analysis):
     def get_chi2(self, cut=None):
         return self.get('Chi2', cut) / self.get_dof(cut)
 
-    def get_u(self, cut=None, raw=False):
-        return self.Ana.get_track_data('Tracks', 'U', cut, raw)
+    def get_u(self, cut=None, trk_cut=-1):
+        return self.Ana.get_track_data('Tracks', 'U', cut, trk_cut)
 
-    def get_v(self, cut=None, raw=False):
-        return self.Ana.get_track_data('Tracks', 'V', cut, raw)
+    def get_v(self, cut=None, trk_cut=-1):
+        return self.Ana.get_track_data('Tracks', 'V', cut, trk_cut)
 
     def get_events(self):
         return self.get('EvtFrame', cut=False)
@@ -78,7 +78,7 @@ class TrackAnalysis(Analysis):
 
     def draw_occupancy(self, scale=4, cut=None, raw=False, show=True):
         self.format_statbox(all_stat=True, x=.83)
-        x, y = self.get_coods(cut) if raw else (self.get_u(raw=True), self.get_v(cut, raw=True))
+        x, y = self.get_coods(cut) if raw else (self.get_u(trk_cut=True), self.get_v(cut, trk_cut=True))
         self.draw_histo_2d(x, y, bins.get_global(self.Ana.Telescope.Plane, scale), 'Track Occupancy', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_map(self, bin_width=.1, cut=None, dut_plane=True, show=True):
