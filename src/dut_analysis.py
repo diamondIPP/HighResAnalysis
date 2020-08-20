@@ -297,9 +297,9 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL
-    def draw_ped_map(self, c_max, c_min=None, cut=None):
+    def draw_ped_map(self, c_max, c_min=None):
         charge = self.get_charges(cut=False)
-        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts(cut)
+        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts.get_special('fid')
         self.draw_hit_map(cut=cut)
 
     def draw_charge_map(self, res=.3, cluster=False, fid=False, cut=None):
@@ -345,10 +345,10 @@ class DUTAnalysis(Analysis):
     # region EFFICIENCY
     def draw_efficiency(self, bin_width=30, show=True):
         t, e = self.get_time(trk_cut=None), self.get_efficiency()
-        return self.draw_prof(t, e, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        return self.draw_prof(t, e, bins.get_time(t, bin_width), 'Efficiency', x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
 
     def fit_efficiency(self, bin_width=30):
-        self.format_statbox(only_fit=True)
+        self.format_statbox(only_fit=True, y=.35)
         h = self.draw_efficiency(bin_width=bin_width)
         format_histo(h, stats=1, name='Fit Result')
         fit = h.Fit('pol0', 'sq')
@@ -364,7 +364,7 @@ class DUTAnalysis(Analysis):
         cut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.get_special('fid')
         x, y = self.Tracks.get_x(trk_cut=cut, local=local), self.Tracks.get_y(trk_cut=cut, local=local)
         self.format_statbox(entries=True, x=.84)
-        self.draw_prof2d(x, y, self.get_efficiency(cut), bins.get_coods(local, self.Plane, res), **self.get_ax_tits(local))
+        self.draw_prof2d(x, y, self.get_efficiency(cut), bins.get_coods(local, self.Plane, res), 'Efficiency Map', **self.get_ax_tits(local))
     # endregion EFFICIENCY
     # ----------------------------------------
 
