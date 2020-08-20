@@ -215,6 +215,39 @@ class DUTAnalysis(Analysis):
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, title, bins.get_coods(local, self.Plane, bin_width), x_tit='Column', y_tit='Row', show=show)
 
+    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
+        self.format_statbox(entries=True, x=.84)
+        x, y = self.Tracks.get_coods(local, cut)
+        self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_ax_tits(local))
+
+    def draw_cluster_size(self, show=True, cut=None, trk_cut=-1):
+        self.format_statbox(all_stat=True)
+        v = self.get_cluster_size(cut, trk_cut)
+        self.draw_disto(v, bins.make(0, 10), 'Cluster Size in {}'.format(self.Plane), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
+
+    def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, show=True):
+        self.format_statbox(entries=True, x=.84)
+        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        x, y = self.Tracks.get_coods(local, cut)
+        self.draw_prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', show=show, z_tit='Cluster Size', **self.get_ax_tits(local))
+
+    def draw_trigger_phase(self, cut=None, raw=False):
+        self.format_statbox(entries=True)
+        h = self.draw_disto(self.get_trigger_phase(raw, cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
+        update_canvas()
+
+    def draw_time(self, show=True):
+        t = self.get_time()
+        g = self.make_graph_from_profile(self.draw_prof(arange(t.size), t, bins.make(0, t.size, sqrt(t.size)), show=False), err=0)
+        format_histo(g, x_tit='Event Number', y_tit='Time [hh:mm]', y_off=1.8)
+        set_time_axis(g, axis='Y')
+        self.draw_histo(g, show, .13, draw_opt='al')
+    # endregion DRAW
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region RESIDUALS
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
         self.draw_disto(self.get_du(cut), bins.make(-3, 3, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
@@ -223,9 +256,19 @@ class DUTAnalysis(Analysis):
         self.format_statbox(all_stat=True)
         self.draw_disto(self.get_dv(cut), bins.make(-3, 3, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
 
-    def draw_residuals(self):
-        self.draw_disto(self.get_residuals(), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]')
+    def draw_residuals(self, show=True):
+        self.draw_disto(self.get_residuals(), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', show=show)
 
+    def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, show=True):
+        self.format_statbox(entries=True, x=.84)
+        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        x, y = self.Tracks.get_coods(local, cut)
+        self.draw_prof2d(x, y, self.get_residuals(cut), bins.get_coods(local, self.Plane, res), 'Residuals', z_tit='Residuals', show=show, **self.get_ax_tits(local))
+    # endregion RESIDUALS
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region CORRELATION
     def draw_correlation(self, mode, plane=2, show=True):
         tel_plane = self.Telescope.Plane(plane)
         evnt_cut, dut_cut, tel_cut = self.get_corr_cuts(plane)
@@ -248,23 +291,11 @@ class DUTAnalysis(Analysis):
         g = self.make_tgrapherrors('gal', 'Event Alignment', x=x[:-1] + diff(x) / 2, y=values)
         format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
         self.draw_histo(g, show, .13, draw_opt='ap')
+    # endregion CORRELATION
+    # ----------------------------------------
 
-    def draw_cluster_size(self, show=True, cut=None, trk_cut=-1):
-        self.format_statbox(all_stat=True)
-        v = self.get_cluster_size(cut, trk_cut)
-        self.draw_disto(v, bins.make(0, 10), 'Cluster Size in {}'.format(self.Plane), show=show, x_tit='Cluster Size', lm=.14, y_off=2)
-
-    def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, show=True):
-        self.format_statbox(entries=True, x=.84)
-        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
-        x, y = self.Tracks.get_coods(local, cut)
-        self.draw_prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', show=show, z_tit='Cluster Size', **self.get_ax_tits(local))
-
-    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
-        self.format_statbox(entries=True, x=.84)
-        x, y = self.Tracks.get_coods(local, cut)
-        self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_ax_tits(local))
-
+    # ----------------------------------------
+    # region SIGNAL
     def draw_ped_map(self, c_max, c_min=None, cut=None):
         charge = self.get_charges(cut=False)
         cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts(cut)
@@ -284,12 +315,6 @@ class DUTAnalysis(Analysis):
         self.format_statbox(all_stat=True)
         values = self.get_charges(cut=cut) * self.DUT.VcalToEl
         return self.draw_disto(values, bins.get_electrons(bin_width), 'Pulse Height', x_tit='Pulse Height [e]', x_range=x_range, show=show)
-
-    def draw_trigger_phase(self, cut=None, raw=False):
-        self.format_statbox(entries=True)
-        h = self.draw_disto(self.get_trigger_phase(raw, cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
-        format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
-        update_canvas()
 
     def draw_charge_vs_trigger_phase(self, cut=None, show=True):
         self.format_statbox(entries=True)
@@ -311,7 +336,11 @@ class DUTAnalysis(Analysis):
         format_histo(h, stats=1, name='Fit Result')
         fit = h.Fit('pol0', 'sq')
         return fit
+    # endregion SIGNAL
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region EFFICIENCY
     def draw_efficiency(self, bin_width=30, show=True):
         t, e = self.get_time(trk_cut=None), self.get_efficiency()
         return self.draw_prof(t, e, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
@@ -333,15 +362,7 @@ class DUTAnalysis(Analysis):
         x, y = self.Tracks.get_x(trk_cut=None), self.Tracks.get_y(trk_cut=None)
         self.format_statbox(entries=True, x=.84)
         self.draw_prof2d(x, y, self.get_efficiency(), bins.get_coods(local, self.Plane, res), **self.get_ax_tits(local))
-
-    def draw_time(self, show=True):
-        t = self.get_time()
-        g = self.make_graph_from_profile(self.draw_prof(arange(t.size), t, bins.make(0, t.size, sqrt(t.size)), show=False), err=0)
-        format_histo(g, x_tit='Event Number', y_tit='Time [hh:mm]', y_off=1.8)
-        set_time_axis(g, axis='Y')
-        self.draw_histo(g, show, .13, draw_opt='al')
-
-    # endregion DRAW
+    # endregion EFFICIENCY
     # ----------------------------------------
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
