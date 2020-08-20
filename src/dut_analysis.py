@@ -286,7 +286,7 @@ class DUTAnalysis(Analysis):
 
     def draw_trigger_phase(self, cut=None, raw=False):
         self.format_statbox(entries=True)
-        h = self.draw_disto(self.get_trigger_phase(raw, cut), 'Trigger Phase', bins.make(0, 10, last=True), x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        h = self.draw_disto(self.get_trigger_phase(raw, cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
 
@@ -295,11 +295,9 @@ class DUTAnalysis(Analysis):
         x, y = self.get_trigger_phase(cut=cut), self.get_charges(cut=cut)
         self.draw_prof(x, y, bins.make(0, 10, last=True), 'Charge vs. Trigger Phase', show=show, x_tit='Trigger Phase', y_tit='Charge [vcal]')
 
-    def draw_charge_trend(self, bin_width=30, e=False, y_range=None, show=True, stats=True):
+    def draw_charge_trend(self, bin_width=30, e=False, y_range=None, cut=None, show=True, stats=True):
         self.format_statbox(entries=True, exe=stats)
-        cut = self.get_cluster_cut()
-        t = self.get_time(cut)
-        charges = self.get_charges(e=e, cut=cut)
+        t, charges = self.get_time(cut), self.get_charges(e=e, cut=cut)
         p = self.draw_prof(t, charges, bins.get_time(t, bin_width), x_tit='Time [hh:mm}', y_tit='Charge [{}]'.format('e' if e else 'vcal'), show=show, t_ax_off=0)
         values = get_hist_vec(p)
         format_histo(p, y_range=choose(y_range, increased_range([min(values).n, max(values).n], 1, 2)))
@@ -314,8 +312,8 @@ class DUTAnalysis(Analysis):
         return fit
 
     def draw_efficiency(self, bin_width=30, show=True):
-        t = self.get_time(self.Cuts.get('tracks')())
-        return self.draw_prof(t, self.get_efficiency(), bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        t, e = self.get_time(), self.get_efficiency()
+        return self.draw_prof(t, e, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
 
     def fit_efficiency(self, bin_width=30):
         self.format_statbox(only_fit=True)
@@ -325,8 +323,15 @@ class DUTAnalysis(Analysis):
         return fit
 
     def draw_efficiency_vs_trigger_phase(self, show=True):
-        x = self.get_data('TriggerPhase', cut=self.Cuts.get('tracks')())
-        return self.draw_prof(x, self.get_efficiency(), bins.make(0, 10), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show, stats=0)
+        self.format_statbox(entries=True)
+        cut = self.Tracks.Cuts.get_special('triggerphase')
+        x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiency(cut)
+        return self.draw_prof(x, y, bins.make(0, 11), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
+
+    def draw_efficiency_map(self, res=.3, local=True):
+        x, y = self.Tracks.get_x(trk_cut=None), self.Tracks.get_y(trk_cut=None)
+        self.format_statbox(entries=True, x=.84)
+        self.draw_prof2d(x, y, self.get_efficiency(), bins.get_coods(local, self.Plane, res), **self.get_ax_tits(local))
 
     def draw_time(self, show=True):
         t = self.get_time()
@@ -378,6 +383,4 @@ if __name__ == '__main__':
     aparser.add_argument('--test', '-t', action='store_true')
     args = aparser.parse_args()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
-    cal = z.Calibration
-    c = z.Converter
     z.add_info(t_start, prnt=True)
