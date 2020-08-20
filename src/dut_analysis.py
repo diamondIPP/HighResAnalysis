@@ -193,8 +193,11 @@ class DUTAnalysis(Analysis):
     def get_cluster_size(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('Clusters', 'Size', cut=cut, trk_cut=trk_cut)
 
-    def get_efficiency(self, trk_cut=None):
+    def get_efficiencies(self, trk_cut=None):
         return (self.get_cluster_size(trk_cut=trk_cut) > 0).astype('u2') * 100
+
+    def get_efficiency(self, trk_cut=None):
+        return calc_eff(values=self.get_efficiencies(trk_cut))
 
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
@@ -344,8 +347,9 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region EFFICIENCY
     def draw_efficiency(self, bin_width=30, show=True):
-        t, e = self.get_time(trk_cut=None), self.get_efficiency()
-        return self.draw_prof(t, e, bins.get_time(t, bin_width), 'Efficiency', x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        t, e = self.get_time(trk_cut=None), self.get_efficiencies()
+        p = self.draw_eff(t, e, bins.get_time(t, bin_width), 'Efficiency', x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
+        return p
 
     def fit_efficiency(self, bin_width=30):
         self.format_statbox(only_fit=True, y=.35)
@@ -357,14 +361,14 @@ class DUTAnalysis(Analysis):
     def draw_efficiency_vs_trigger_phase(self, show=True):
         self.format_statbox(entries=True)
         cut = self.Tracks.Cuts.get_special('triggerphase')
-        x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiency(cut)
+        x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
         return self.draw_prof(x, y, bins.make(0, 11), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
     def draw_efficiency_map(self, res=.3, local=True, fid=False, cut=None):
         cut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.get_special('fid')
         x, y = self.Tracks.get_x(trk_cut=cut, local=local), self.Tracks.get_y(trk_cut=cut, local=local)
         self.format_statbox(entries=True, x=.84)
-        self.draw_prof2d(x, y, self.get_efficiency(cut), bins.get_coods(local, self.Plane, res), 'Efficiency Map', **self.get_ax_tits(local))
+        self.draw_prof2d(x, y, self.get_efficiencies(cut), bins.get_coods(local, self.Plane, res), 'Efficiency Map', **self.get_ax_tits(local))
     # endregion EFFICIENCY
     # ----------------------------------------
 
