@@ -197,7 +197,9 @@ class DUTAnalysis(Analysis):
         return (self.get_cluster_size(trk_cut=trk_cut) > 0).astype('u2') * 100
 
     def get_efficiency(self, trk_cut=None):
-        return calc_eff(values=self.get_efficiencies(trk_cut))
+        eff = calc_eff(values=self.get_efficiencies(trk_cut))
+        print('{:.1f}(-{:.1f}+{:.1f})%'.format(*eff))
+        return eff
 
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
