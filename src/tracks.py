@@ -33,11 +33,11 @@ class TrackAnalysis(Analysis):
         """ returns: number of tracks per event. """
         return self.get('NTracks', cut)
 
-    def get_x(self, cut=None, trk_cut=-1):
-        return self.Ana.get_track_data('Tracks', 'X', cut, trk_cut)
+    def get_x(self, cut=None, trk_cut=-1, local=True):
+        return self.Ana.get_track_data('Tracks', 'X' if local else 'U', cut, trk_cut)
 
-    def get_y(self, cut=None, trk_cut=-1):
-        return self.Ana.get_track_data('Tracks', 'Y', cut, trk_cut)
+    def get_y(self, cut=None, trk_cut=-1, local=True):
+        return self.Ana.get_track_data('Tracks', 'Y' if local else 'V', cut, trk_cut)
 
     def get_coods(self, local=True, cut=None, trk_cut=-1):
         return (self.get_x(cut, trk_cut), self.get_y(cut, trk_cut)) if local else (self.get_u(cut, trk_cut), self.get_v(cut, trk_cut))
