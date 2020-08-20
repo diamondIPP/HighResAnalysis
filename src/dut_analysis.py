@@ -53,7 +53,6 @@ class DUTAnalysis(Analysis):
         self.NEvents = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
-        self.Time = self.get_time()
 
     # ----------------------------------------
     # region INIT
@@ -129,10 +128,10 @@ class DUTAnalysis(Analysis):
     def get_end_time(self):
         return datetime.fromtimestamp(self.Run.EndTime)
 
-    def get_time(self, cut=False):
+    def get_time(self, cut=None, trk_cut=-1):
         t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
         t = t[self.Tracks.get_events()]  # map the event times to the track times
-        return t[self.Cuts(cut)]
+        return t[self.Cuts.get('cluster')()][self.Cuts(cut)] if trk_cut == -1 else t[self.Tracks.Cuts(trk_cut)]
 
     def get(self):
         return self.Data['Plane{}'.format(self.Plane.Number)]
