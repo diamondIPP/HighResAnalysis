@@ -128,7 +128,7 @@ class DUTAnalysis(Analysis):
     def get_end_time(self):
         return datetime.fromtimestamp(self.Run.EndTime)
 
-    def get_time(self, cut=None, trk_cut=-1):
+    def get_time(self, cut=None, trk_cut: Any = -1):
         t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
         t = t[self.Tracks.get_events()]  # map the event times to the track times
         return t[self.Cuts.get('cluster')()][self.Cuts(cut)] if trk_cut == -1 else t[self.Tracks.Cuts(trk_cut)]
@@ -313,7 +313,7 @@ class DUTAnalysis(Analysis):
         return fit
 
     def draw_efficiency(self, bin_width=30, show=True):
-        t, e = self.get_time(), self.get_efficiency()
+        t, e = self.get_time(trk_cut=None), self.get_efficiency()
         return self.draw_prof(t, e, bins.get_time(t, bin_width), x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
 
     def fit_efficiency(self, bin_width=30):
