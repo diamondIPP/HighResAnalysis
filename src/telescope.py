@@ -6,6 +6,7 @@
 
 from analysis import *
 from dut import Plane
+from cut import Cut
 
 
 class TelescopeAnalysis(Analysis):
@@ -20,9 +21,23 @@ class TelescopeAnalysis(Analysis):
         self.NPlanes = self.Config.getint('TELESCOPE', 'planes')
 
         self.init_cuts()
-        
+
+    # ----------------------------------------
+    # region CUT
     def init_cuts(self):
-        self.Cuts.register('1cluster', self.get_n('Clusters', plane=2, cut=False) == 1, 90, 'events with 1 cluster in plane 2')
+        self.Cuts.register('1cluster', self.make_1cluster_cut(plane=2).Values, 90, 'events with 1 cluster in plane 2')
+
+    def make_1cluster_cut(self, plane):
+        n = self.get_n('Clusters', plane=plane, cut=False)
+        return Cut('1cluster', n.repeat(n) == 1, 90, '1 cluster per event in plane {}'.format(plane))
+
+    def make_correlation(self, plane):
+        npl = self.get_n('Clusters', plane=plane, cut=False)
+        dut_events = zeros(npl.size, dtype='?')
+        dut_events[self.Ana.get_events()] = True
+        return Cut('correlation', (self.make_1cluster_cut(plane) + dut_events.repeat(npl)).Values, 90, '1 cluster per event in plane {} and cluster and dut'.format(plane))
+    # endregion CUT
+    # ----------------------------------------
 
     # ----------------------------------------
     # region GET
@@ -48,16 +63,15 @@ class TelescopeAnalysis(Analysis):
 
     def get_coods(self, plane=0, cluster=True, cut=None):
         return self.get_x(plane, cluster, cut), self.get_y(plane, cluster, cut)
-
-    def get_1_cluster_cut(self, plane=0):
-        return self.get_n('Clusters', plane, cut=False) == 1
     # endregion GET
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region DRAW
     def draw_n(self, plane=0, name='Hits', show=True):
         self.format_statbox(all_stat=True)
         n, n_pl = name, self.Plane(plane).get_name()
-        self.draw_disto(self.get_n(n, plane), 'Number of {} in {}'.format(n, n_pl), bins.make(0, 30), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
+        self.draw_disto(self.get_n(n, plane), bins.make(0, 30), 'Number of {} in {}'.format(n, n_pl), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
 
     def draw_occupancy(self, plane=0, cluster=True, bin_width=10, cut=None, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
@@ -73,3 +87,12 @@ class TelescopeAnalysis(Analysis):
 
     def draw_n_intercepts(self, plane=0, show=True):
         self.draw_n(plane, 'Intercepts', show)
+
+    def draw_correlation(self, mode='y', res=1, plane=2):
+        self.format_statbox(entries=True, x=.84)
+        v0 = getattr(self, 'get_{}'.format(mode.lower()))(plane, cut=self.make_correlation(plane))
+        v1 = getattr(self.Ana, 'get_{}'.format(mode.lower()))(cut=self.Ana.make_correlation(plane))
+        h = self.draw_histo_2d(v0, v1, bins.get_corr(mode, self.Plane, self.Ana.Plane, res))
+        return h
+    # endregion DRAW
+    # ----------------------------------------
