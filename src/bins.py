@@ -36,8 +36,8 @@ def get_local_y(plane, bin_width=1, aspect_ratio=False):
     return make(-extra_pixel - .5, plane.NRows + extra_pixel - .5, bin_width)
 
 
-def get_corr(mode, plane0, plane1):
-    return list(concatenate([get_local_x(pl) if mode.lower() == 'x' else get_local_y(pl) for pl in [plane0, plane1]]))
+def get_corr(mode, plane0, plane1, bin_width=1):
+    return list(concatenate([get_local_x(pl, bin_width) if mode.lower() == 'x' else get_local_y(pl, bin_width) for pl in [plane0, plane1]]))
 
 
 def get_global(plane, res=1):
