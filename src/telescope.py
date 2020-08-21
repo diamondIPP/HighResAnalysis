@@ -88,11 +88,12 @@ class TelescopeAnalysis(Analysis):
     def draw_n_intercepts(self, plane=0, show=True):
         self.draw_n(plane, 'Intercepts', show)
 
-    def draw_correlation(self, mode='y', res=1, plane=2):
+    def draw_correlation(self, mode='y', res=1, plane=2, show=True):
         self.format_statbox(entries=True, x=.84)
         v0 = getattr(self, 'get_{}'.format(mode.lower()))(plane, cut=self.make_correlation(plane))
         v1 = getattr(self.Ana, 'get_{}'.format(mode.lower()))(cut=self.Ana.make_correlation(plane))
-        h = self.draw_histo_2d(v0, v1, bins.get_corr(mode, self.Plane, self.Ana.Plane, res))
+        tit = '{} Correlation between {} and {}'.format(mode.upper(), self.Plane, self.Ana.Plane)
+        h = self.draw_histo_2d(v0, v1, bins.get_corr(mode, self.Plane, self.Ana.Plane, res), tit, x_tit=mode.upper(), y_tit=mode.upper(), show=show)
         return h
     # endregion DRAW
     # ----------------------------------------
