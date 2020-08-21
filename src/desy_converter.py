@@ -62,6 +62,8 @@ class DESYConverter(Converter):
         return names[0] if names else None
 
     def get_steps(self):
+        if file_exists(self.FinalFileName):
+            return []
         steps = [self.convert_raw_to_root, self.noise_scan, self.align, self.track, self.match, self.convert_root_to_hdf5]
         final_steps = []
         for step, f in zip(steps, self.FileNames):
