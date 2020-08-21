@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from utils import *
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile, TH2F, TProfile2D
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TProfile, TH2F, TProfile2D, TEllipse
 from ROOT import gROOT, gStyle, TColor, TH1F
 from os.path import dirname, join
 from numpy import ndarray, zeros, array, ones, linspace
@@ -303,6 +303,17 @@ class Draw:
         format_histo(g, **kwargs)
         self.draw_histo(g, show, lm, draw_opt='ap')
         return g
+
+    def draw_ellipse(self, a, b=0, x_off=0, y_off=0, color=2, w=2):
+        e = TEllipse(x_off, y_off, a, b)
+        do(e.SetLineColor, color)
+        do(e.SetLineWidth, w)
+        e.SetFillStyle(4000)
+        e.Draw()
+        self.add(e)
+
+    def draw_circle(self, r, x_off=0, y_off=0, color=None, w=None):
+        self.draw_ellipse(r, 0, x_off, y_off, color, w)
     # endregion DRAWING
     # ----------------------------------------
 
