@@ -101,7 +101,7 @@ class DESYConverter(Converter):
     def convert_raw_to_root(self):
         """ step 0: convert raw file to root file with eudaq"""
         if self.RawFilePath is None:
-            critical('raw file does not for run: {}'.format(self.RunNumber))
+            critical('raw file does not exist for run: {}'.format(self.RunNumber))
         ensure_dir(self.SaveDir)
         chdir(self.SaveDir)
         cmd = '{} -i {} -o {}'.format(join(self.EUDAQDir, 'bin', 'euCliConverter'), self.RawFilePath, self.ROOTFileName)
@@ -217,7 +217,7 @@ class DESYConverter(Converter):
             self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
 
     @staticmethod
-    def remove_doubles(group, tree):
+    def remove_doubles(group, tree, only_1cluster=False):
         """ find the tracks which are closer to the cluster in case there are more than 1 track per cluster. """
         s = array(group['Clusters']['Size'])
         cut = s > 0
@@ -232,11 +232,12 @@ class DESYConverter(Converter):
         r2c = concatenate(array([r2, invert(r2)]).T)  # merge with zipper method
         good[c2] = r2c
         # more than 1 cluster
-        for nt_i in arange(2, 5):
-            for nc_i in arange(4, 7, 2):
-                c = (nt == nt_i) & (nc == nc_i)
-                ri = array(split(r[c], arange(nt_i, r[c].size, nt_i)))
-                good[c] = concatenate(ri) == min(ri, axis=1).repeat(nt_i)
+        if not only_1cluster:
+            for nt_i in arange(2, 5):
+                for nc_i in arange(4, 7, 2):
+                    c = (nt == nt_i) & (nc == nc_i)
+                    ri = array(split(r[c], arange(nt_i, r[c].size, nt_i)))
+                    good[c] = concatenate(ri) == min(ri, axis=1).repeat(nt_i)
         # write changes to the file
         s0 = s[cut]
         s0[invert(good)] = 0
