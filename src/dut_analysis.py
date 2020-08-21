@@ -112,6 +112,10 @@ class DUTAnalysis(Analysis):
         low, high = self.Cuts.get_config('trigger phase', lst=True)
         return (tp >= low) & (tp <= high)
 
+    def make_correlation(self, plane=2):
+        n = self.Telescope.get_n('Clusters', plane, cut=False)
+        return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
+
     def add_cuts(self):
         self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
@@ -206,6 +210,10 @@ class DUTAnalysis(Analysis):
 
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
+
+    def get_events(self):
+        """ returns: event numbers with clusters. """
+        return self.Tracks.get_events(self.Cuts.get('cluster'))
     # endregion GET
     # ----------------------------------------
 
