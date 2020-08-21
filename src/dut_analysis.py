@@ -37,7 +37,7 @@ class DUTAnalysis(Analysis):
         # DATA
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
         self.Dummy = Dummy(self.TCDir, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
-        self.Data = self.load_file(test)
+        self.Data = self.load_data(test)
         self.init_cuts()
 
         # SUBCLASSES
@@ -65,11 +65,11 @@ class DUTAnalysis(Analysis):
     def get_entries(self):
         return self.Data['Tracks']['NTracks'].size
 
-    def load_file(self, test=False):
+    def load_data(self, test=False):
         if not test:
             self.Converter.run()
             try:
-                f = h5py.File(self.Run.FileName, 'r')
+                f = self.load_file()
                 _ = f['Tracks']
                 _ = f[self.Plane.get_name()]
                 return f
@@ -77,8 +77,11 @@ class DUTAnalysis(Analysis):
                 warning('could not load data file {} -> start with dummy'.format(self.Run.FileName))
         return self.Dummy.load_file()
 
-    def reload_file(self):
-        self.Data = self.load_file()
+    def load_file(self):
+        return h5py.File(self.Run.FileName, 'r')
+
+    def reload_data(self):
+        self.Data = self.load_data()
     # endregion INIT
     # ----------------------------------------
 
