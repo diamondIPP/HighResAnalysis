@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from utils import *
-from numpy.random import poisson, normal
+from numpy.random import poisson, normal, randint
 from numpy import round, invert, delete
 from dut import Plane
 from ROOT.gRandom import Landau
@@ -81,6 +81,7 @@ class Dummy:
             g_clu = g.create_group('Clusters')
             g_clu.create_dataset('X', data=x, dtype='u2')
             g_clu.create_dataset('Y', data=y, dtype='u2')
+            g_clu.create_dataset('NClusters', data=n_hits)
             self.PBar.update()
 
     def add_dut(self):
@@ -94,6 +95,7 @@ class Dummy:
             a_cut = size > 0
             size_g0 = size[a_cut]
             x_tra, y_tra = array(self.File['Tracks']['X']), array(self.File['Tracks']['Y'])
+            g.create_dataset('TriggerPhase', data=randint(0, 10, x_tra.size), dtype='f2')
             x, y = self.tel_2_dut(x_tra, y_tra)
             x, y = x[a_cut], y[a_cut]
             cut = invert((x >= 0) & (x < dut_plane.NCols) & (y >= 0) & (y < dut_plane.NRows))
@@ -110,9 +112,12 @@ class Dummy:
             g_clu.create_dataset('U', data=u, dtype='f2')
             g_clu.create_dataset('V', data=v, dtype='f2')
             g_tra = g.create_group('Tracks')
-            u_tra, v_tra = self.l2g(x_tra, y_tra)
-            g_tra.create_dataset('U', data=u_tra + normal(0, .02, x_tra.size), dtype='f2')
-            g_tra.create_dataset('V', data=v_tra + normal(0, .02, x_tra.size), dtype='f2')
+            x_tra_clu, y_tra_clu = x_tra + normal(0, .02 / dut_plane.PX, x_tra.size), y_tra + normal(0, .02 / dut_plane.PY, x_tra.size)
+            u_tra_clu, v_tra_clu = self.l2g(x_tra_clu, y_tra_clu)
+            g_tra.create_dataset('X', data=x_tra_clu, dtype='f2')
+            g_tra.create_dataset('Y', data=y_tra_clu, dtype='f2')
+            g_tra.create_dataset('U', data=u_tra_clu, dtype='f2')
+            g_tra.create_dataset('V', data=v_tra_clu, dtype='f2')
 
     def l2g(self, x, y, is_dut=False):
         x, y = self.dut_2_tel(x, y) if is_dut else (x, y)
