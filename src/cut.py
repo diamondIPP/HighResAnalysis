@@ -108,3 +108,10 @@ class Cut:
         if isinstance(cut, Cut):
             return cut.Values
         return cut if cut else ...
+
+    @staticmethod
+    def add(*args):
+        c = Cut('', args[0])
+        for cut in args[1:]:
+            c += cut
+        return c()
