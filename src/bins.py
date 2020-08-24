@@ -81,3 +81,7 @@ def get_ph(vcal=False, adc=False, bin_width=None):
 def make(min_val, max_val, bin_width=1, last=False):
     bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d')
     return [bins.size - 1, bins]
+
+
+def make2d(x, y):
+    return make(x[0], x[-1], x[1] - x[0], last=True) + make(y[0], y[-1], y[1] - y[0], last=True)
