@@ -93,6 +93,16 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')
         self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
 
+    def add_cuts(self):
+        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
+        self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
+
+    def make_res(self):
+        x, y = self.get_du(cut=0), self.get_dv(cut=0)
+        x0, y0 = self.get_du(), self.get_dv()
+        mx, my = mean(x0[abs(x0) < .3]), mean(y0[abs(y0) < .3])
+        return sqrt((x-mx) ** 2 + (y-my) ** 2) < .1
+
     def make_fiducial(self, tracks=False):
         x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
         x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
@@ -115,10 +125,6 @@ class DUTAnalysis(Analysis):
     def make_correlation(self, plane=2):
         n = self.Telescope.get_n('Clusters', plane, cut=False)
         return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
-
-    def add_cuts(self):
-        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
-        self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
 
     def add_track_cuts(self):
         self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True), 10, 'track trigger phase')
