@@ -10,7 +10,7 @@ from numpy import arange, concatenate
 # Pixel
 MaxADC = 2**8 - 1
 MinPH = -5000
-MaxPH = 50000
+MaxPH = 65000
 PHBinWidth = 200
 MinVcal = -100
 MaxVcal = 1250
