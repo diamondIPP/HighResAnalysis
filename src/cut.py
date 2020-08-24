@@ -110,8 +110,8 @@ class Cut:
         return cut if cut else ...
 
     @staticmethod
-    def add(*args):
-        c = Cut('', args[0])
-        for cut in args[1:]:
+    def add(*cuts):
+        c = Cut('added', cuts[0])
+        for cut in cuts[1:]:
             c += cut
         return c()
