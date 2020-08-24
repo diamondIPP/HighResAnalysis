@@ -45,7 +45,9 @@ class Cuts:
     def get(self, name):
         return self.Cuts[name]
 
-    def get_special(self, exclude):
+    def exclude(self, exclude, cut=None):
+        if cut is not None:
+            return self(cut)
         exclude = make_list(exclude)
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80 and cut.Name not in exclude]
         return all(cuts, axis=0).flatten() if len(cuts) else ...

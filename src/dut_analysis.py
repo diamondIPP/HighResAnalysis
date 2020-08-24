@@ -233,13 +233,14 @@ class DUTAnalysis(Analysis):
 
     def draw_occupancy(self, local=True, bin_width=1, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
-        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         x, y = self.get_coods(local, cut)
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, bin_width), title, x_tit='Column', y_tit='Row', show=show)
 
-    def draw_hit_map(self, res=.3, local=True, cut=None, show=True):
+    def draw_hit_map(self, res=.3, local=True, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.84)
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         x, y = self.Tracks.get_coods(local, cut)
         self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_ax_tits(local))
 
@@ -250,12 +251,13 @@ class DUTAnalysis(Analysis):
 
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.84)
-        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         x, y = self.Tracks.get_coods(local, cut)
         self.draw_prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', show=show, z_tit='Cluster Size', **self.get_ax_tits(local))
 
     def draw_trigger_phase(self, cut=None, raw=False):
         self.format_statbox(entries=True)
+
         h = self.draw_disto(self.get_trigger_phase(raw, cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
@@ -284,7 +286,7 @@ class DUTAnalysis(Analysis):
 
     def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.84)
-        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         x, y = self.Tracks.get_coods(local, cut)
         self.draw_prof2d(x, y, self.get_residuals(cut), bins.get_coods(local, self.Plane, res), 'Residuals', z_tit='Residuals', show=show, **self.get_ax_tits(local))
     # endregion RESIDUALS
@@ -321,11 +323,11 @@ class DUTAnalysis(Analysis):
     # region SIGNAL
     def draw_ped_map(self, c_max, c_min=None):
         charge = self.get_charges(cut=False)
-        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts.get_special('fid')
+        cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts.exclude('fid')
         self.draw_hit_map(cut=cut)
 
     def draw_charge_map(self, res=.3, cluster=False, fid=False, cut=None):
-        cut = self.Cuts(cut) if fid else self.Cuts.get_special('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         res = 1 if cluster else res
         x, y = (self.get_x(cut), self.get_y(cut)) if cluster else (self.Tracks.get_x(cut), self.Tracks.get_y(cut))
         self.format_statbox(entries=True, x=.84)
@@ -379,12 +381,12 @@ class DUTAnalysis(Analysis):
 
     def draw_efficiency_vs_trigger_phase(self, show=True):
         self.format_statbox(entries=True)
-        cut = self.Tracks.Cuts.get_special('triggerphase')
+        cut = self.Tracks.Cuts.exclude('triggerphase')
         x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
         return self.draw_prof(x, y, bins.make(0, 11), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
     def draw_efficiency_map(self, res=.3, local=True, fid=False, cut=None):
-        cut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.get_special('fid')
+        cut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
         x, y = self.Tracks.get_x(trk_cut=cut, local=local), self.Tracks.get_y(trk_cut=cut, local=local)
         self.format_statbox(entries=True, x=.84)
         self.draw_prof2d(x, y, self.get_efficiencies(cut), bins.get_coods(local, self.Plane, res), 'Efficiency Map', **self.get_ax_tits(local))
