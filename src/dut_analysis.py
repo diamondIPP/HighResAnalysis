@@ -322,16 +322,19 @@ class DUTAnalysis(Analysis):
         cut = Cut('charge', charge < c_max if c_min is None else (charge > c_min) & (charge < c_max)) + self.Cuts.exclude('fid')
         self.draw_hit_map(cut=cut)
 
-    def draw_charge_map(self, res=.3, cluster=False, fid=False, cut=None):
+    def draw_charge_map(self, res=.3, cluster=False, fid=False, cut=None, show=True):
         cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
         res = 1 if cluster else res
         x, y = (self.get_x(cut), self.get_y(cut)) if cluster else (self.Tracks.get_x(cut), self.Tracks.get_y(cut))
         self.format_statbox(entries=True, x=.84)
-        self.draw_prof2d(x, y, self.get_charges(cut=cut), bins.get_local(self.Plane, res), 'Charge Map', x_tit='Column', y_tit='Row', z_tit='Charge [vcal]')
+        self.draw_prof2d(x, y, self.get_charges(cut=cut), bins.get_local(self.Plane, res), 'Charge Map', x_tit='Column', y_tit='Row', z_tit='Charge [vcal]', show=show)
+        self.draw_fid_area(not fid and show)
 
     def draw_charge_distribution(self, bin_width=4, cut=None, x_range=None, show=True):
         self.format_statbox(all_stat=True)
         self.draw_disto(self.get_charges(cut=cut), bins.get_vcal(bin_width), 'Cluster Charge', x_tit='Charge [vcal]', x_range=x_range, show=show, y_off=1.8, lm=.12)
+        self.draw_vertical_line(self.Calibration.Trim, 0, 1e5, w=2)
+        self.draw_tlatex(.2, .5, 'Threshold = {} vcal'.format(self.Calibration.Trim), ndc=True, angle=90, size=.04)
 
     def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, show=True):
         self.format_statbox(all_stat=True)
