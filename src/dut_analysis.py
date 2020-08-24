@@ -113,9 +113,9 @@ class DUTAnalysis(Analysis):
         mx, my = array(self.Cuts.get_config('mask', lst=True)).T
         return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
 
-    def draw_fid_area(self):
+    def draw_fid_area(self, show=True):
         x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
-        self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid')
+        self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid', show=show)
 
     def make_trigger_phase(self, tracks=False):
         tp = self.get_trigger_phase(cut=False, trk_cut=False if tracks else -1)
