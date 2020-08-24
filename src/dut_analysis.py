@@ -209,9 +209,12 @@ class DUTAnalysis(Analysis):
     def get_efficiencies(self, trk_cut=None):
         return (self.get_cluster_size(trk_cut=trk_cut) > 0).astype('u2') * 100
 
-    def get_efficiency(self, trk_cut=None):
+    def get_segment_efficiecies(self, nx=2, ny=3, cut=None):
+        return get_2d_hist_vec(self.draw_efficiency_map(local=True, cut=cut, binning=bins.make2d(*self.get_segments(nx, ny)), show=False), err=False, flat=False)
+
+    def get_efficiency(self, trk_cut=None, prnt=True):
         eff = calc_eff(values=self.get_efficiencies(trk_cut))
-        print('{:.1f}(-{:.1f}+{:.1f})%'.format(*eff))
+        self.info('{:.1f}(-{:.1f}+{:.1f})%'.format(*eff), prnt=prnt)
         return eff
 
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
@@ -220,6 +223,10 @@ class DUTAnalysis(Analysis):
     def get_events(self):
         """ returns: event numbers with clusters. """
         return self.Tracks.get_events(self.Cuts.get('cluster'))
+
+    def get_segments(self, nx, ny):
+        x0, x1, y0, y1 = self.Cuts.get_config('full size', lst=True)
+        return arange(x0, x1 + bool((x1 - x0 + 1) % nx) * nx + 1.1, nx, dtype='u2'), arange(y0, y1 + bool((y1 - y0 + 1) % ny) * ny + 1.1, ny, dtype='u2')
     # endregion GET
     # ----------------------------------------
 
@@ -268,6 +275,10 @@ class DUTAnalysis(Analysis):
         format_histo(g, x_tit='Event Number', y_tit='Time [hh:mm]', y_off=1.8)
         set_time_axis(g, axis='Y')
         self.draw_histo(g, show, .13, draw_opt='al')
+
+    def draw_segments(self, nx=2, ny=3, w=1):
+        x, y = array(self.get_segments(nx, ny)) - .5
+        self.draw_grid(x, y, w)
     # endregion DRAW
     # ----------------------------------------
 
@@ -371,24 +382,38 @@ class DUTAnalysis(Analysis):
         p = self.draw_eff(t, e, bins.get_time(t, bin_width), 'Efficiency', x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
         return p
 
-    def fit_efficiency(self, bin_width=30):
-        self.format_statbox(only_fit=True, y=.35)
-        h = self.draw_efficiency(bin_width=bin_width)
-        format_histo(h, stats=1, name='Fit Result')
-        fit = h.Fit('pol0', 'sq')
-        return fit
-
     def draw_efficiency_vs_trigger_phase(self, show=True):
         self.format_statbox(entries=True)
         cut = self.Tracks.Cuts.exclude('triggerphase')
         x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
         return self.draw_prof(x, y, bins.make(0, 11), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
-    def draw_efficiency_map(self, res=.3, local=True, fid=False, cut=None):
-        cut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
-        x, y = self.Tracks.get_x(trk_cut=cut, local=local), self.Tracks.get_y(trk_cut=cut, local=local)
+    def draw_efficiency_map(self, res=.25, local=True, eff=True, fid=False, cut=None, binning=None, show=True):
+        mcut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
+        x, y = self.Tracks.get_x(trk_cut=mcut, local=local), self.Tracks.get_y(trk_cut=mcut, local=local)
         self.format_statbox(entries=True, x=.84)
-        self.draw_prof2d(x, y, self.get_efficiencies(cut), bins.get_coods(local, self.Plane, res), 'Efficiency Map', **self.get_ax_tits(local))
+        binning = choose(binning, bins.get_coods, 'None', local, self.Plane, res)
+        p = self.draw_prof2d(x, y, self.get_efficiencies(mcut), binning, 'Efficiency Map', show=show, draw_opt='colz', **self.get_ax_tits(local))
+        self.draw_fid_area(show=not fid and show)
+        if eff:
+            x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
+            self.draw_tlatex(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, '{:2.1f}%'.format(self.get_efficiency(cut, False)[0]), 'eff', 22, size=.04)
+        return p
+
+    def draw_segment_efficiencies(self, res=.25, local=True, nx=2, ny=3, cut=None, show=True):
+        e = self.get_segment_efficiecies(nx, ny, cut)
+        self.draw_efficiency_map(res, local, cut=cut, show=show, eff=False)
+        x, y = self.get_segments(nx, ny)
+        for i, ix in enumerate(x[:-1]):
+            for j, iy in enumerate(y[:-1]):
+                self.draw_tlatex(ix + nx / 2 - .5, iy + ny / 2 - .5, '{:2.1f}'.format(e[i][j]), str(i * y.size + j), 22, size=.02)
+        self.draw_segments(nx, ny)
+
+    def draw_segment_distribution(self, nx=2, ny=3, full=False, cut=None, show=True):
+        e = self.get_segment_efficiecies(nx, ny, cut).flatten()
+        self.format_statbox(all_stat=True)
+        binning = bins.make(0, 100, last=True) if full else bins.make(95, 100.5, .1, last=True)
+        self.draw_disto(e, binning, 'Segment Efficiencies', x_tit='Efficiency [%]', show=show)
     # endregion EFFICIENCY
     # ----------------------------------------
 
