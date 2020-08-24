@@ -4,7 +4,7 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F
-from numpy import cumsum, split, histogram, corrcoef, diff, all, invert
+from numpy import cumsum, split, histogram, corrcoef, diff, all, invert, histogram2d, max
 
 from analysis import *
 from calibration import Calibration
@@ -53,6 +53,7 @@ class DUTAnalysis(Analysis):
         self.NEvents = self.get_entries()
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
+        self.Duration = (self.EndTime - self.StartTime).seconds
 
     # ----------------------------------------
     # region INIT
@@ -314,15 +315,24 @@ class DUTAnalysis(Analysis):
     def draw_y_correlation(self, res=1, plane=2, show=True):
         self.draw_correlation('y', res, plane, show)
 
-    def draw_alignment(self, mode='y', plane=2, bin_width=30, show=True):
-        tel_plane = self.Telescope.Plane(plane)
-        evnt_cut, dut_cut, tel_cut = self.get_corr_cuts(plane)
-        splits, x = histogram(self.Time[evnt_cut], bins.get_time(self.Time, bin_width)[1])
-        y, z_ = (self.get_x(cut=dut_cut), self.get_x(tel_plane, cut=tel_cut)) if mode.lower() == 'x' else (self.get_y(cut=dut_cut), self.get_y(tel_plane, cut=tel_cut))
-        values = array([corrcoef(arr, rowvar=False)[0][1] for arr in split(array([y, z_]).T, cumsum(splits)[:-1])])
-        g = self.make_tgrapherrors('gal', 'Event Alignment', x=x[:-1] + diff(x) / 2, y=values)
-        format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args())
+    def draw_correlation_trend(self, plane=2, bin_width=120, thresh=.5, show=True):
+        v0, v1 = self.get_y(cut=self.make_correlation(plane)), self.Telescope.get_y(plane, cut=self.Telescope.make_correlation(plane))
+        splits, t = histogram(self.get_time(self.make_correlation(plane)), bins.get_time(self.get_time(), min(int(self.Duration / 3), bin_width))[1])
+        hs = [histogram2d(v[0], v[1], [bins.get_local_y(self.Plane, 2)[1], bins.get_local_y(self.Telescope.Plane, 4)[1]])[0] for v in split(array([v0, v1]), cumsum(splits)[:-1], axis=1)]
+        # take only bins with >25% of max entries (noise filter)
+        values = [corrcoef(array(where(h > max(h) * thresh)).repeat(h[h > max(h) * thresh].astype('i'), axis=1).T, rowvar=False)[0][1] for h in hs]
+        g = self.make_tgrapherrors('gal', 'Event Correlation', x=t[:-1] + diff(t) / 2, y=values)
+        format_histo(g, y_tit='Correlation Factor', y_off=1.6, **self.get_time_args(), y_range=[0, 1.05])
         self.draw_histo(g, show, .13, draw_opt='ap')
+        return g
+
+    def draw_alignment(self, plane=2, bin_width=120, thresh=.5, show=True):
+        x, c = get_graph_vecs(self.draw_correlation_trend(plane, bin_width, show=False), err=False)
+        r = [1 if ic < thresh else 2 for ic in c]
+        x, y = x.repeat(r), ones(sum(r))
+        binning = bins.get_time(self.get_time(), min(int(self.Duration / 3), bin_width)) + [3, 0, 3]
+        gStyle.SetPalette(3, array([1, 2, 3], 'i'))
+        self.draw_histo_2d(x, y, binning, 'Event Alignment', show=show, t_ax_off=0, x_tit='Time [hh:mm]', y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', rm=.03)
     # endregion CORRELATION
     # ----------------------------------------
 
@@ -362,6 +372,7 @@ class DUTAnalysis(Analysis):
         t, charges = self.get_time(cut), self.get_charges(e=e, cut=cut)
         p = self.draw_prof(t, charges, bins.get_time(t, bin_width), x_tit='Time [hh:mm}', y_tit='Charge [{}]'.format('e' if e else 'vcal'), show=show, t_ax_off=0)
         values = get_hist_vec(p)
+        # noinspection PyUnresolvedReferences
         format_histo(p, y_range=choose(y_range, increased_range([min(values).n, max(values).n], 1, 2)))
         update_canvas()
         return p
