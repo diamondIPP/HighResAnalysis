@@ -255,10 +255,10 @@ class DUTAnalysis(Analysis):
         x, y = self.Tracks.get_coods(local, cut)
         self.draw_prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', show=show, z_tit='Cluster Size', **self.get_ax_tits(local))
 
-    def draw_trigger_phase(self, cut=None, raw=False):
+    def draw_trigger_phase(self, cut=None, trk_cut=-1):
         self.format_statbox(entries=True)
-
-        h = self.draw_disto(self.get_trigger_phase(raw, cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        cut, trk_cut = self.Cuts.exclude('triggerphase', cut), self.Tracks.Cuts.exclude('triggerphase', trk_cut)
+        h = self.draw_disto(self.get_trigger_phase(cut, trk_cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
 
