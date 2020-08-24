@@ -294,18 +294,14 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CORRELATION
-    def draw_correlation(self, mode, plane=2, show=True):
-        tel_plane = self.Telescope.Plane(plane)
-        evnt_cut, dut_cut, tel_cut = self.get_corr_cuts(plane)
-        x, y = (self.get_x(cut=dut_cut), self.get_x(tel_plane, cut=tel_cut)) if mode.lower() == 'x' else (self.get_y(cut=dut_cut), self.get_y(tel_plane, cut=tel_cut))
-        self.format_statbox(entries=True, x=.83)
-        self.draw_histo_2d(x, y, 'Cluster Correlation in {} with Plane {}'.format(mode.upper(), plane), bins.get_corr(mode, self.Plane, tel_plane), x_tit='Col', y_tit='Row', show=show)
+    def draw_correlation(self, mode='y', res=1, plane=2, show=True):
+        return self.Telescope.draw_correlation(mode, res, plane, show)
 
-    def draw_x_correlation(self, plane=2, show=True):
-        self.draw_correlation('x', plane, show)
+    def draw_x_correlation(self, res=1, plane=2, show=True):
+        self.draw_correlation('x', res, plane, show)
 
-    def draw_y_correlation(self, plane=2, show=True):
-        self.draw_correlation('y', plane, show)
+    def draw_y_correlation(self, res=1, plane=2, show=True):
+        self.draw_correlation('y', res, plane, show)
 
     def draw_alignment(self, mode='y', plane=2, bin_width=30, show=True):
         tel_plane = self.Telescope.Plane(plane)
