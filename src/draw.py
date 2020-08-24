@@ -637,16 +637,18 @@ def load_resolution(default=800):
         return default
 
 
-def get_graph_vecs(g):
-    return get_graph_x(g), get_graph_y(g)
+def get_graph_vecs(g, err=True):
+    return get_graph_x(g, err), get_graph_y(g, err)
 
 
-def get_graph_x(g):
-    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
+def get_graph_x(g, err=True):
+    values = array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
+    return values if err else array([v.n for v in values])
 
 
-def get_graph_y(g):
-    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
+def get_graph_y(g, err=True):
+    values = array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
+    return values if err else array([v.n for v in values])
 
 
 def get_hist_vec(p, err=True):
