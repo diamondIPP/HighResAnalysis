@@ -286,7 +286,7 @@ def get_p0(x1, y1, p1):
 
 def calc_eff(k=0, n=0, values=None):
     values = array(values) if values is not None else None
-    if not values.size:
+    if n == 0 and not values.size:
         return zeros(3)
     k = float(k if values is None else count_nonzero(values))
     n = float(n if values is None else values.size)
