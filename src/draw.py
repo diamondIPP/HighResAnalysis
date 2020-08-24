@@ -304,6 +304,12 @@ class Draw:
         self.draw_histo(g, show, lm, draw_opt='ap')
         return g
 
+    def draw_grid(self, x_vals, y_vals, width=1, color=1):
+        for x in x_vals:
+            self.draw_line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width, color=color)
+        for y in y_vals:
+            self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width, color=color)
+
     def draw_ellipse(self, a, b=0, x_off=0, y_off=0, color=2, w=2):
         e = TEllipse(x_off, y_off, a, b)
         do(e.SetLineColor, color)
@@ -663,9 +669,11 @@ def get_h_args(h):
     return get_graph_x(h) if 'Graph' in h.ClassName() else get_hist_args(h)
 
 
-def get_2d_hist_vec(h):
+def get_2d_hist_vec(h, err=True, flat=True):
     xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
-    return array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
+    values = array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
+    values = values if err else array([v.n for v in values])
+    return values if flat else values.reshape(len(xbins), len(ybins))
 
 
 def get_color_gradient(n):
