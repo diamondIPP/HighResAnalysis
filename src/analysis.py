@@ -97,6 +97,11 @@ class Analysis(Draw):
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
 
+    def remove_metadata(self):
+        if self.make_run_str():
+            for f in glob(join(self.MetaDir, '*', '*_{}_{}*'.format(self.TestCampaign.strftime('%Y%m'), self.make_run_str()))):
+                remove_file(f, join(basename(dirname(f)), basename(f)))
+
     def print_start(self, run=None, prnt=True, tc=True):
         if prnt:
             ana_name = self.__class__.__name__.replace('Analysis', '')

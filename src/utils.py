@@ -102,9 +102,9 @@ def ensure_dir(path):
         makedirs(path)
 
 
-def remove_file(file_path):
+def remove_file(file_path, string=None):
     if file_exists(file_path):
-        warning('removing {}'.format(file_path))
+        warning('removing {}'.format(choose(string, file_path)))
         remove(file_path)
 
 
