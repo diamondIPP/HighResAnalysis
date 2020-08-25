@@ -33,6 +33,7 @@ class DUTAnalysis(Analysis):
         self.Run = self.init_run()(run_number, dut_number, self.TCDir, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Plane = self.DUT.Plane
+        self.MetaSubDir = 'DUT'
 
         # DATA
         self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
@@ -98,16 +99,23 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
 
+    def add_track_cuts(self):
+        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True), 10, 'track trigger phase')
+        self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
+
     def make_res(self):
         x, y = self.get_du(cut=0), self.get_dv(cut=0)
         x0, y0 = self.get_du(), self.get_dv()
         mx, my = mean(x0[abs(x0) < .3]), mean(y0[abs(y0) < .3])
         return sqrt((x-mx) ** 2 + (y-my) ** 2) < .1
 
-    def make_fiducial(self, tracks=False):
-        x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
-        x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
-        return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
+    def make_fiducial(self, tracks=False, redo=False):
+        def f():
+            x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
+            x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
+            return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
+        return array(do_hdf5(self.make_hdf5_path('fid', sub_dir='tracks' if tracks else None), f, redo))
 
     def make_mask(self):
         x, y = self.get_coods(local=True, cut=False)
@@ -118,19 +126,16 @@ class DUTAnalysis(Analysis):
         x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
         self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid', show=show)
 
-    def make_trigger_phase(self, tracks=False):
-        tp = self.get_trigger_phase(cut=False, trk_cut=False if tracks else -1)
-        low, high = self.Cuts.get_config('trigger phase', lst=True)
-        return (tp >= low) & (tp <= high)
+    def make_trigger_phase(self, tracks=False, redo=False):
+        def f():
+            tp = self.get_trigger_phase(cut=False, trk_cut=False if tracks else -1)
+            low, high = self.Cuts.get_config('trigger phase', lst=True)
+            return (tp >= low) & (tp <= high)
+        return array(do_hdf5(self.make_hdf5_path('tp', sub_dir='tracks' if tracks else None), f, redo))
 
     def make_correlation(self, plane=2):
         n = self.Telescope.get_n('Clusters', plane, cut=False)
         return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
-
-    def add_track_cuts(self):
-        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True), 10, 'track trigger phase')
-        self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
     # endregion CUTS
     # ----------------------------------------
 

@@ -4,7 +4,7 @@
 # created on August 19th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis import Analysis, warning, bins
+from analysis import Analysis, warning, bins, do_hdf5
 from draw import array
 from dut import Plane
 from numpy import sqrt, zeros
@@ -15,7 +15,10 @@ class RefAnalysis(Analysis):
     def __init__(self, dut_analysis):
         self.Ana = dut_analysis
         Analysis.__init__(self, verbose=self.Ana.Verbose)
+        self.MetaSubDir = 'REF'
 
+        self.Run = self.Ana.Run
+        self.DUT = self.Ana.DUT
         self.Plane = Plane(self.Config.getint('DUT', 'reference plane'), self.Config, 'DUT')
         self.Data = self.Ana.Data[self.Plane.get_name()]
         self.init_cuts()
@@ -23,13 +26,25 @@ class RefAnalysis(Analysis):
     # ----------------------------------------
     # region INIT
     def init_cuts(self):
-        self.Cuts.register('cluster', self.get('Clusters', 'Size') > 0, 90, 'tracks with a cluster')
-        self.Cuts.register('cluster2', (self.Cuts.get('cluster') + self.Ana.Cuts.get('cluster')).Values, 90, 'tracks a cluster in DUT and REF')
+        self.Cuts.register('cluster', self.make_cluster(), 90, 'tracks with a cluster')
+        self.Cuts.register('cluster2', self.make_cluster_corr(), 90, 'tracks a cluster in DUT and REF')
 
-    def make_residuals(self):
-        cut = zeros(self.Ana.Tracks.N, bool)
-        cut[self.Cuts.get('cluster')()] = self.get_residuals() < self.Cuts.get_config('residuals', dtype=float)
-        return cut
+    def make_cluster(self, redo=False):
+        def f():
+            return self.get('Clusters', 'Size') > 0
+        return array(do_hdf5(self.make_hdf5_path('clu'), f, redo))
+
+    def make_cluster_corr(self, redo=False):
+        def f():
+            return (self.Cuts.get('cluster') + self.Ana.Cuts.get('cluster')).Values
+        return array(do_hdf5(self.make_hdf5_path('cluCorr'), f, redo))
+
+    def make_residuals(self, redo=False):
+        def f():
+            cut = zeros(self.Ana.Tracks.N, bool)
+            cut[self.Cuts.get('cluster')()] = self.get_residuals() < self.Cuts.get_config('residuals', dtype=float)
+            return cut
+        return array(do_hdf5(self.make_hdf5_path('res'), f, redo))
 
     def make_dut_residuals(self):
         return self.make_residuals()[self.Ana.Cuts.get('cluster')()]
