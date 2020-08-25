@@ -14,7 +14,10 @@ class TelescopeAnalysis(Analysis):
     def __init__(self, dut_analysis):
         self.Ana = dut_analysis
         Analysis.__init__(self, verbose=self.Ana.Verbose)
+        self.MetaSubDir = 'tel'
 
+        self.Run = self.Ana.Run
+        self.DUT = self.Ana.DUT
         self.Data = self.Ana.Data
         self.Mask = None
         self.Plane = Plane(0, self.Ana.Config)
@@ -25,17 +28,19 @@ class TelescopeAnalysis(Analysis):
     # ----------------------------------------
     # region CUT
     def init_cuts(self):
-        self.Cuts.register('1cluster', self.make_1cluster_cut(plane=2).Values, 90, 'events with 1 cluster in plane 2')
+        self.Cuts.register('1cluster', self.make_1cluster_cut(plane=2), 90, 'events with 1 cluster in plane 2')
 
-    def make_1cluster_cut(self, plane):
-        n = self.get_n('Clusters', plane=plane, cut=False)
-        return Cut('1cluster', n.repeat(n) == 1, 90, '1 cluster per event in plane {}'.format(plane))
+    def make_1cluster_cut(self, plane, redo=False):
+        def f():
+            n = self.get_n('Clusters', plane=plane, cut=False)
+            return n.repeat(n) == 1
+        return array(do_hdf5(self.make_hdf5_path('clu1', plane), f, redo))
 
     def make_correlation(self, plane):
         npl = self.get_n('Clusters', plane=plane, cut=False)
         dut_events = zeros(npl.size, dtype='?')
         dut_events[self.Ana.get_events()] = True
-        return Cut('correlation', (self.make_1cluster_cut(plane) + dut_events.repeat(npl)).Values, 90, '1 cluster per event in plane {} and cluster and dut'.format(plane))
+        return Cut('correlation', Cut.add(self.make_1cluster_cut(plane), dut_events.repeat(npl)), 90, '1 cluster per event in plane {} and cluster and dut'.format(plane))
     # endregion CUT
     # ----------------------------------------
 
