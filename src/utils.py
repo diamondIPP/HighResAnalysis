@@ -332,6 +332,7 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
     else:
         data = func(*args, **kwargs)
         f = h5py.File(path, 'w')
+        info('creating {}'.format(join(basename(dirname(path)), basename(path))))
         f.create_dataset('data', data=data)
         return f['data']
 
