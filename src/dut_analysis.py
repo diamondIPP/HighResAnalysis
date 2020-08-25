@@ -55,6 +55,7 @@ class DUTAnalysis(Analysis):
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()
         self.Duration = (self.EndTime - self.StartTime).seconds
+        self.Surface = False
 
     # ----------------------------------------
     # region INIT
@@ -104,26 +105,36 @@ class DUTAnalysis(Analysis):
         self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
         self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
 
+    def activate_surface(self):
+        self.Cuts.register('fid', self.make_fiducial(option='surface fiducial'), 10)
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, option='surface fiducial'), 30)
+        self.Surface = True
+
+    def deactivate_surface(self):
+        self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
+        self.Surface = False
+
     def make_res(self):
         x, y = self.get_du(cut=0), self.get_dv(cut=0)
         x0, y0 = self.get_du(), self.get_dv()
         mx, my = mean(x0[abs(x0) < .3]), mean(y0[abs(y0) < .3])
         return sqrt((x-mx) ** 2 + (y-my) ** 2) < .1
 
-    def make_fiducial(self, tracks=False, redo=False):
+    def make_fiducial(self, tracks=False, redo=False, option='fiducial'):
         def f():
             x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
-            x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
+            x0, x1, y0, y1 = self.Cuts.get_config(option, lst=True)
             return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
-        return array(do_hdf5(self.make_hdf5_path('fid', sub_dir='tracks' if tracks else None), f, redo))
+        return array(do_hdf5(self.make_hdf5_path(option[:3], sub_dir='tracks' if tracks else None), f, redo))
 
     def make_mask(self):
         x, y = self.get_coods(local=True, cut=False)
         mx, my = array(self.Cuts.get_config('mask', lst=True)).T
-        return all([invert((x > mx[i] - .5) & (x < mx[i] + .5) & (y > my[i] - .5) & (y < my[i] + .5)) for i in range(mx.size)], axis=0)
+        return all([invert((x >= mx[i] - .5) & (x <= mx[i] + .5) & (y >= my[i] - .5) & (y <= my[i] + .5)) for i in range(mx.size)], axis=0)
 
-    def draw_fid_area(self, show=True):
-        x1, x2, y1, y2 = self.Cuts.get_config('fiducial', lst=True)
+    def draw_fid_area(self, show=True, off=-.5):
+        x1, x2, y1, y2 = self.Cuts.get_fid_config(self.Surface) + off
         self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid', show=show)
 
     def make_trigger_phase(self, tracks=False, redo=False):
@@ -246,7 +257,7 @@ class DUTAnalysis(Analysis):
 
     def draw_occupancy(self, local=True, bin_width=1, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.83, m=True)
-        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid', cut)
         x, y = self.get_coods(local, cut)
         title = '{} Cluster Occupancy'.format('Local' if local else 'Global')
         self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, bin_width), title, x_tit='Column', y_tit='Row', show=show)
@@ -311,8 +322,8 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CORRELATION
-    def draw_correlation(self, mode='y', res=1, plane=2, show=True):
-        return self.Telescope.draw_correlation(mode, res, plane, show)
+    def draw_correlation(self, mode='y', res=1, plane=2, thresh=.1, show=True):
+        return self.Telescope.draw_correlation(mode, res, plane, thresh, show)
 
     def draw_x_correlation(self, res=1, plane=2, show=True):
         self.draw_correlation('x', res, plane, show)
@@ -349,12 +360,15 @@ class DUTAnalysis(Analysis):
         self.draw_hit_map(cut=cut)
 
     def draw_charge_map(self, res=.3, cluster=False, fid=False, cut=None, show=True):
-        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid', cut)
         res = 1 if cluster else res
         x, y = (self.get_x(cut), self.get_y(cut)) if cluster else (self.Tracks.get_x(cut), self.Tracks.get_y(cut))
         self.format_statbox(entries=True, x=.84)
         self.draw_prof2d(x, y, self.get_charges(cut=cut), bins.get_local(self.Plane, res), 'Charge Map', x_tit='Column', y_tit='Row', z_tit='Charge [vcal]', show=show)
         self.draw_fid_area(not fid and show)
+
+    def draw_charge_occupancy(self, fid=False, cut=None, show=True):
+        self.draw_charge_map(1, cluster=True, fid=fid, cut=cut, show=show)
 
     def draw_charge_distribution(self, bin_width=4, cut=None, x_range=None, show=True):
         self.format_statbox(all_stat=True)
@@ -369,6 +383,7 @@ class DUTAnalysis(Analysis):
 
     def draw_charge_vs_trigger_phase(self, cut=None, show=True):
         self.format_statbox(entries=True)
+        cut = self.Cuts.exclude('triggerphase', cut)
         x, y = self.get_trigger_phase(cut=cut), self.get_charges(cut=cut)
         self.draw_prof(x, y, bins.make(0, 10, last=True), 'Charge vs. Trigger Phase', show=show, x_tit='Trigger Phase', y_tit='Charge [vcal]')
 
@@ -402,7 +417,7 @@ class DUTAnalysis(Analysis):
         self.format_statbox(entries=True)
         cut = self.Tracks.Cuts.exclude('triggerphase')
         x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
-        return self.draw_prof(x, y, bins.make(0, 11), x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
+        return self.draw_prof(x, y, bins.make(0, 11), 'Efficiency vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
     def draw_efficiency_map(self, res=.25, local=True, eff=True, fid=False, cut=None, binning=None, show=True):
         mcut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
@@ -412,7 +427,7 @@ class DUTAnalysis(Analysis):
         p = self.draw_prof2d(x, y, self.get_efficiencies(mcut), binning, 'Efficiency Map', show=show, draw_opt='colz', **self.get_ax_tits(local))
         self.draw_fid_area(show=not fid and show)
         if eff:
-            x0, x1, y0, y1 = self.Cuts.get_config('fiducial', lst=True)
+            x0, x1, y0, y1 = self.Cuts.get_fid_config(self.Surface)
             self.draw_tlatex(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, '{:2.1f}%'.format(self.get_efficiency(cut, False)[0]), 'eff', 22, size=.04)
         return p
 
