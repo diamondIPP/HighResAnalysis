@@ -4,7 +4,7 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import array, all, in1d, invert
-from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list
+from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose
 from json import loads
 
 
@@ -26,9 +26,12 @@ class Cuts:
 
     def get_config(self, option, lst=False, dtype=None):
         if option not in self.Config.options('CUT'):
-            critical('option "{}" not found in cut config, please set it!')
+            critical('option "{}" not found in cut config, please set it!'.format(option))
         value = self.Config.get('CUT', option)
-        return loads(value) if lst else value if dtype is None else dtype(value)
+        return array(loads(value)) if lst else value if dtype is None else dtype(value)
+
+    def get_fid_config(self, surface=False):
+        return self.get_config('{}fiducial'.format('surface ' if surface else ''), lst=True)
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
@@ -37,7 +40,7 @@ class Cuts:
     def register(self, name, values=None, level=None, description=None):
         if isinstance(name, Cut):
             cut = name
-            cut.set_level(level)
+            cut.set_level(choose(level, cut.Level))
             self.Cuts[cut.Name] = cut
         else:
             self.Cuts[name] = Cut(name, values, level, description)
