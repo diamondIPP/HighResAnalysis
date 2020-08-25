@@ -20,6 +20,7 @@
 
 # ignore other stuff
 *.pickle
+*.hdf5
 *.out
 
 main.ini
