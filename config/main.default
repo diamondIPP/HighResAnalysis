@@ -6,7 +6,7 @@ default test campaign = 201912
 locations = ["CERN", "DESY"]
 
 [SAVE]
-pickle directory = pickles
+meta directory = metadata
 
 [DRAW]
 fill color = 821

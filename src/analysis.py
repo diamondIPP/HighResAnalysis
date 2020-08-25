@@ -28,8 +28,8 @@ class Analysis(Draw):
         # Directories
         self.DataDir = join(self.get_raw_data_dir(), str(self.Location.lower()))
         self.TCDir = self.generate_tc_directory()
-        self.PickleDir = join(self.Dir, self.Config.get('SAVE', 'pickle directory'))
-        self.PickleSubDir = ''
+        self.MetaDir = join(self.Dir, self.Config.get('SAVE', 'meta directory'))
+        self.MetaSubDir = ''
         self.ResultsDir = join(self.Dir, 'results')
 
         self.Cuts = Cuts()
@@ -80,17 +80,19 @@ class Analysis(Draw):
         add_to_info(t, msg, choose(prnt, self.Verbose))
 
     def set_pickle_sub_dir(self, name):
-        self.PickleSubDir = name
+        self.MetaSubDir = name
 
     def make_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
-        directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
+        directory = join(self.MetaDir, self.MetaSubDir if sub_dir is None else sub_dir)
         ensure_dir(directory)
-        campaign = self.TCString if camp is None else camp
-        run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
-        run_str = run_str if run is not None or run_str else str(self.RunNumber) if hasattr(self, 'RunNumber') else ''
+        campaign = choose(camp, self.TestCampaign.strftime('%Y%m'))
         # noinspection PyUnresolvedReferences
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
-        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, str(suf)] if v])))
+        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, self.make_run_str(run), dut, str(suf)] if v])))
+
+    def make_run_str(self, run_str=None):
+        run = self.RunPlan if hasattr(self, 'RunPlan') else self.Run.Number if hasattr(self, 'Run') and hasattr(self.Run, 'Number') else ''
+        return choose(run_str, str(run))
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
