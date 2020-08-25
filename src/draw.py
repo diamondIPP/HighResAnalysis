@@ -24,7 +24,7 @@ class Draw:
 
         # BASICS
         self.Verbose = verbose
-        self.Res = load_resolution()
+        self.load_resolution()
         self.ResultsDir = 'Results'
         self.SaveDir = save_dir
 
