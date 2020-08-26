@@ -125,6 +125,20 @@ def print_banner(msg, symbol='~', new_lines=1, color=WHITE):
     print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
 
 
+def prime_factors(n):
+    factors = []
+    while n % 2 == 0:  # even dividers
+        factors.append(2)
+        n /= 2
+    for i in range(3, int(sqrt(n)) + 1, 2):  # odd dividers
+        while n % i == 0:
+            factors.append(i)
+            n /= i
+    if n > 2:
+        factors.append(int(n))
+    return factors
+
+
 def do_nothing():
     pass
 
