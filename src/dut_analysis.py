@@ -441,10 +441,10 @@ class DUTAnalysis(Analysis):
                 self.draw_tlatex(ix + nx / 2 - .5, iy + ny / 2 - .5, '{:2.1f}'.format(e[i][j]), str(i * y.size + j), 22, size=.02)
         self.draw_segments(nx, ny)
 
-    def draw_segment_distribution(self, nx=2, ny=3, full=False, cut=None, segments=True, show=True):
+    def draw_segment_distribution(self, nx=2, ny=3, full=False, cut=None, bin_width=None, segments=True, show=True):
         e = self.get_segment_efficiecies(nx, ny, cut).flatten() if segments else get_2d_hist_vec(self.draw_efficiency_map(.5, show=False), err=False)
         self.format_statbox(all_stat=True)
-        binning = bins.make(0, 100.5, last=True) if full else bins.make(95, 100.5, 5.5 / sqrt(e.size) / 2, last=True)
+        binning = bins.make(0, 101.5, choose(bin_width, 1)) if full else bins.make(95, 100.5, choose(bin_width, 5.5 / sqrt(e.size) / 2), last=True)
         self.draw_disto(e, binning, 'Segment Efficiencies', x_tit='Efficiency [%]', show=show)
     # endregion EFFICIENCY
     # ----------------------------------------
