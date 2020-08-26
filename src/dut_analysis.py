@@ -41,6 +41,13 @@ class DUTAnalysis(Analysis):
         self.Data = self.load_data(test)
         self.init_cuts()
 
+        # INFO
+        self.NEvents = self.get_entries()
+        self.StartTime = self.get_start_time()
+        self.EndTime = self.get_end_time()
+        self.Duration = (self.EndTime - self.StartTime).seconds
+        self.Surface = False
+
         # SUBCLASSES
         self.Calibration = Calibration(self.Run)
         self.Telescope = TelescopeAnalysis(self)
@@ -49,13 +56,6 @@ class DUTAnalysis(Analysis):
         self.Currents = Currents(self)
         self.add_cuts()
         self.add_track_cuts()
-
-        # INFO
-        self.NEvents = self.get_entries()
-        self.StartTime = self.get_start_time()
-        self.EndTime = self.get_end_time()
-        self.Duration = (self.EndTime - self.StartTime).seconds
-        self.Surface = False
 
     # ----------------------------------------
     # region INIT
@@ -90,21 +90,23 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CUTS
-    def init_cuts(self):
+    def init_cuts(self, redo=False):
         self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
-        self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
+        self.Cuts.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')
         self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
 
-    def add_cuts(self):
-        self.Cuts.register('res', self.REF.make_dut_residuals(), 69, 'small residuals to REF plane')
-        self.Cuts.register('triggerphase', self.make_trigger_phase(), 61, 'trigger phase')
+    def add_cuts(self, redo=False):
+        self.Cuts.register('res', self.REF.make_dut_residuals(redo), 69, 'small residuals to REF plane')
+        self.Cuts.register('triggerphase', self.make_trigger_phase(redo=redo), 61, 'trigger phase')
+        self.Cuts.register('tstart', self.make_start_time(redo=redo), 40, 'exclude first events')
 
-    def add_track_cuts(self):
-        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True), 10, 'track trigger phase')
-        self.Tracks.Cuts.register('res', self.REF.make_residuals(), 20, 'tracks with a small residual in the REF')
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
+    def add_track_cuts(self, redo=False):
+        self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True, redo=redo), 10, 'track trigger phase')
+        self.Tracks.Cuts.register('res', self.REF.make_residuals(redo=redo), 20, 'tracks with a small residual in the REF')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, redo=redo), 30, 'tracks in fiducial area')
+        self.Tracks.Cuts.register('tstart', self.make_start_time(tracks=True, redo=redo), 30, 'exclude first events')
 
     def activate_surface(self):
         self.Cuts.register('fid', self.make_fiducial(option='surface fiducial'), 10)
@@ -115,6 +117,13 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
         self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
         self.Surface = False
+
+    def make_start_time(self, tracks=False, redo=False):
+        def f():
+            t0 = self.Cuts.get_config('start time', dtype=int) * 60
+            t = self.get_time(cut=False, trk_cut=-1 if not tracks else False)
+            return t > t[0] + t0
+        return array(do_hdf5(self.make_hdf5_path('time', sub_dir='tracks' if tracks else None), f, redo))
 
     def make_res(self):
         x, y = self.get_du(cut=0), self.get_dv(cut=0)
@@ -148,6 +157,15 @@ class DUTAnalysis(Analysis):
     def make_correlation(self, plane=2):
         n = self.Telescope.get_n('Clusters', plane, cut=False)
         return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
+
+    def remove_metadata(self):
+        if self.make_run_str():
+            for f in glob(join(self.MetaDir, '*', '*_{}_{}*'.format(self.TestCampaign.strftime('%Y%m'), self.make_run_str()))):
+                remove_file(f, join(basename(dirname(f)), basename(f)))
+        self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
+        self.init_cuts()
+        self.add_cuts()
+        self.add_track_cuts()
     # endregion CUTS
     # ----------------------------------------
 

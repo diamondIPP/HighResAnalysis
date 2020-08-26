@@ -47,8 +47,8 @@ class RefAnalysis(Analysis):
             return cut
         return array(do_hdf5(self.make_hdf5_path('res'), f, redo))
 
-    def make_dut_residuals(self):
-        return self.make_residuals()[self.Ana.Cuts.get('cluster')()]
+    def make_dut_residuals(self, redo=False):
+        return self.make_residuals(redo)[self.Ana.Cuts.get('cluster')()]
     # endregion INIT
     # ----------------------------------------
 
