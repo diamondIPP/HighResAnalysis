@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import Analysis, warning, bins, do_hdf5, ufloat
-from draw import array
+from draw import array, format_histo, update_canvas
 from dut import Plane
 from numpy import sqrt, zeros
 
@@ -97,10 +97,12 @@ class RefAnalysis(Analysis):
         self.format_statbox(entries=True)
         self.draw_disto(self.get_residuals(centred), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', lm=.13, y_off=2)
 
-    def draw_correlation(self, mode='y', show=True):
+    def draw_correlation(self, mode='y', thresh=.01, show=True):
         c1, c2 = self.Cuts.get('cluster2')()[self.Cuts.get('cluster')()], self.Cuts.get('cluster2')()[self.Ana.Cuts.get('cluster')()]
         v1, v2 = self.get('Clusters', mode.upper())[c1], self.Ana.get_data('Clusters', mode.upper(), cut=False)[c2]
         self.format_statbox(entries=True, x=.84)
-        self.draw_histo_2d(v1, v2, bins.get_corr(mode, self.Plane, self.Ana.Plane), x_tit='{} REF'.format(mode), y_tit='{} DUT'.format(mode), show=show)
+        h = self.draw_histo_2d(v1, v2, bins.get_corr(mode, self.Plane, self.Ana.Plane), x_tit='{} REF'.format(mode), y_tit='{} DUT'.format(mode), show=show)
+        format_histo(h, z_range=[thresh * h.GetMaximum(), h.GetMaximum()])
+        update_canvas()
     # endregion DRAW
     # ----------------------------------------
