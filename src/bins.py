@@ -74,6 +74,10 @@ def get_electrons(bin_width=200):
 
 def get_ph(vcal=False, adc=False, bin_width=None):
     return get_vcal() if vcal else get_adc() if adc else get_electrons(bin_width)
+
+
+def get_triggerphase():
+    return make(-.5, 10.5)
 # endregion PIXEL
 # ----------------------------------------
 

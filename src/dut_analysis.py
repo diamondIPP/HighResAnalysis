@@ -281,8 +281,8 @@ class DUTAnalysis(Analysis):
 
     def draw_trigger_phase(self, cut=None, trk_cut=-1):
         self.format_statbox(entries=True)
-        cut, trk_cut = self.Cuts.exclude('triggerphase', cut), self.Tracks.Cuts.exclude('triggerphase', trk_cut)
-        h = self.draw_disto(self.get_trigger_phase(cut, trk_cut), bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
+        cut, trk_cut = self.Cuts.exclude('triggerphase', cut), self.Tracks.Cuts.exclude('triggerphase', trk_cut) if trk_cut != -1 else trk_cut
+        h = self.draw_disto(self.get_trigger_phase(cut, trk_cut), bins.get_triggerphase(), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.8, lm=.13)
         format_histo(h, y_range=[0, h.GetMaximum() * 1.1])
         update_canvas()
 
@@ -385,7 +385,7 @@ class DUTAnalysis(Analysis):
         self.format_statbox(entries=True)
         cut = self.Cuts.exclude('triggerphase', cut)
         x, y = self.get_trigger_phase(cut=cut), self.get_charges(cut=cut)
-        self.draw_prof(x, y, bins.make(0, 10, last=True), 'Charge vs. Trigger Phase', show=show, x_tit='Trigger Phase', y_tit='Charge [vcal]')
+        self.draw_prof(x, y, bins.get_triggerphase(), 'Charge vs. Trigger Phase', show=show, x_tit='Trigger Phase', y_tit='Charge [vcal]')
 
     def draw_charge_trend(self, bin_width=30, e=False, y_range=None, cut=None, show=True, stats=True):
         self.format_statbox(entries=True, exe=stats)
@@ -414,10 +414,10 @@ class DUTAnalysis(Analysis):
         return p
 
     def draw_efficiency_vs_trigger_phase(self, show=True):
-        self.format_statbox(entries=True)
+        self.format_statbox(entries=True, y=.2)
         cut = self.Tracks.Cuts.exclude('triggerphase')
         x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
-        return self.draw_prof(x, y, bins.make(0, 11), 'Efficiency vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
+        return self.draw_prof(x, y, bins.get_triggerphase(), 'Efficiency vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
     def draw_efficiency_map(self, res=.25, local=True, eff=True, fid=False, cut=None, binning=None, show=True):
         mcut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
