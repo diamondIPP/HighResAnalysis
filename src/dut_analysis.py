@@ -377,10 +377,16 @@ class DUTAnalysis(Analysis):
         self.draw_vertical_line(self.Calibration.Trim, 0, 1e5, w=2)
         self.draw_tlatex(.2, .5, 'Threshold = {} vcal'.format(self.Calibration.Trim), ndc=True, angle=90, size=.04)
 
-    def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, show=True):
+    def draw_signal_distribution(self, bin_width=200, x_range=None, cut=None, thresh=False, show=True):
         self.format_statbox(all_stat=True)
         values = self.get_charges(cut=cut) * self.DUT.VcalToEl
-        return self.draw_disto(values, bins.get_electrons(bin_width), 'Pulse Height', x_tit='Pulse Height [e]', x_range=x_range, show=show)
+        h = self.draw_disto(values, bins.get_electrons(bin_width), 'Pulse Height', x_tit='Pulse Height [e]', x_range=x_range, show=show)
+        if thresh:
+            self.draw_vertical_line(self.Calibration.Trim * self.DUT.VcalToEl, 0, h.GetMaximum(), w=2)
+            self.draw_tlatex(.14, .5, 'Pixel Threshold #approx {:1.0f} e'.format(round(self.Calibration.Trim * self.DUT.VcalToEl, -2)), ndc=True, angle=90, size=.04, align=22)
+        self.draw_preliminary()
+        update_canvas()
+        return h
 
     def draw_charge_vs_trigger_phase(self, cut=None, show=True):
         self.format_statbox(entries=True)
