@@ -673,9 +673,9 @@ def get_h_args(h):
 
 def get_2d_hist_vec(h, err=True, flat=True):
     xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
-    values = array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
+    values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for xbin in xbins for ybin in ybins])
     values = values if err else array([v.n for v in values])
-    return values if flat else values.reshape(len(xbins), len(ybins))
+    return values[values != 0] if flat else values.reshape(len(xbins), len(ybins))
 
 
 def get_color_gradient(n):
