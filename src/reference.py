@@ -4,7 +4,7 @@
 # created on August 19th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis import Analysis, warning, bins, do_hdf5
+from analysis import Analysis, warning, bins, do_hdf5, ufloat
 from draw import array
 from dut import Plane
 from numpy import sqrt, zeros
@@ -60,30 +60,42 @@ class RefAnalysis(Analysis):
             return
         return array(self.Data[grp][key])
 
-    def get_du(self):
-        return self.get('Clusters', 'U') - self.get('Tracks', 'U')[self.Cuts.get('cluster')()]
+    def get_du(self, centred=False):
+        u = self.get('Clusters', 'U') - self.get('Tracks', 'U')[self.Cuts.get('cluster')()]
+        return u - self.get_md('x').n if centred else u
 
-    def get_dv(self):
-        return self.get('Clusters', 'V') - self.get('Tracks', 'V')[self.Cuts.get('cluster')()]
+    def get_dv(self, centred=False):
+        v = self.get('Clusters', 'V') - self.get('Tracks', 'V')[self.Cuts.get('cluster')()]
+        return v - self.get_md('y').n if centred else v
 
-    def get_residuals(self):
-        return sqrt(self.get_du() ** 2 + self.get_dv() ** 2)
+    def get_md(self, mode):
+        h = getattr(self, 'draw_{}_residuals'.format(mode))(show=False)
+        fit = h.Fit('gaus', 'sq0', '', -1, 1)
+        return ufloat(fit.Parameter(1), fit.ParError(1))
+
+    def get_residuals(self, centred=False):
+        return sqrt(self.get_du(centred) ** 2 + self.get_dv(centred) ** 2)
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
-    def draw_x_residuals(self):
+    def draw_x_residuals(self, show=True, centred=False):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_du(), bins.make(-3, 3, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
+        return self.draw_disto(self.get_du(centred), bins.make(-2, 2, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
 
-    def draw_y_residuals(self):
+    def draw_y_residuals(self, show=True, centred=False):
         self.format_statbox(all_stat=True)
-        self.draw_disto(self.get_dv(), bins.make(-3, 3, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
+        return self.draw_disto(self.get_dv(centred), bins.make(-2, 2, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
 
-    def draw_residuals(self):
+    def draw_residuals_map(self, centred=False):
+        self.format_statbox(all_stat=True, x=.84)
+        x, y = self.get_du(centred), self.get_dv(centred)
+        self.draw_histo_2d(x, y, bins.make(-1, 1, .01) * 2)
+
+    def draw_residuals(self, centred=False):
         self.format_statbox(entries=True)
-        self.draw_disto(self.get_residuals(), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]')
+        self.draw_disto(self.get_residuals(centred), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', lm=.13, y_off=2)
 
     def draw_correlation(self, mode='y', show=True):
         c1, c2 = self.Cuts.get('cluster2')()[self.Cuts.get('cluster')()], self.Cuts.get('cluster2')()[self.Ana.Cuts.get('cluster')()]
