@@ -91,6 +91,7 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region CUTS
     def init_cuts(self):
+        self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
         self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')

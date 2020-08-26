@@ -4,7 +4,7 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import array, all, in1d, invert
-from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose
+from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose, datetime
 from json import loads
 
 
@@ -24,10 +24,16 @@ class Cuts:
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
 
+    def set_config(self, test_campaign: datetime, dut_name):
+        config = load_config(join(get_base_dir(), 'config', 'cut{}'.format(test_campaign.strftime('%Y%m'))))
+        if dut_name not in config.sections():
+            critical('detector "{}" not found in cut config, please add it!'.format(dut_name))
+        self.Config = config._sections[dut_name]
+
     def get_config(self, option, lst=False, dtype=None):
-        if option not in self.Config.options('CUT'):
+        if option not in self.Config:
             critical('option "{}" not found in cut config, please set it!'.format(option))
-        value = self.Config.get('CUT', option)
+        value = self.Config[option]
         return array(loads(value)) if lst else value if dtype is None else dtype(value)
 
     def get_fid_config(self, surface=False):
