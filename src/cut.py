@@ -62,8 +62,9 @@ class Cuts:
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def show(self, raw=False):
-        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.get_p_str(), cut.Value if raw else cut.Description] for cut in self.Cuts.values()]
-        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'P', 'Description'])
+        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.get_p_str(), cut.Value if raw else cut.Description] for cut in sorted(self.Cuts.values())]
+        c = Cut('all', self.generate(), 0, 'final cut')
+        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Size', 'P', 'Description'], [c.Name, '', c.Size, c.get_p_str(), c.Description])
 
     @staticmethod
     def make_mask(x, y, masked_pixels):
@@ -98,6 +99,9 @@ class Cut:
             warning('cut array has incorrect size ({}), {} required'.format(values.size, self.Size))
             return self
         return Cut('add', all([self.Values, values], axis=0))
+
+    def __gt__(self, other):
+        return self.Level > other.Level
 
     def __str__(self):
         return '{}, {} cut, {}: {}'.format(self.Level, self.Name, self.get_p_str(), self.Description)
