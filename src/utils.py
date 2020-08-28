@@ -376,14 +376,16 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     return ret_val
 
 
-def print_table(rows, header=None, prnt=True):
-    t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
+def print_table(rows, header=None, footer=None, prnt=True):
+    head, foot = [choose([v], zeros((0, len(rows[0]))), v) for v in [header, footer]]
+    t = concatenate([head, rows, foot]).astype('str')
+    # t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
     col_width = [len(max(t[:, i], key=len)) for i in range(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
     hline = '{}'.format('~' * total_width)
     if prnt:
         for i, row in enumerate(t):
-            if i in [0, 1, t.size]:
+            if i in [0] + choose([1], [], header) + choose([t.shape[0] - 1], [], footer):
                 print(hline)
             print('| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width))))
         print('{}\n'.format(hline))
