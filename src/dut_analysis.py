@@ -94,19 +94,26 @@ class DUTAnalysis(Analysis):
         self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
         self.Cuts.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
-        self.Cuts.register('charge', self.get_charges(cut=False) != 0, 60, 'events with non-zero charge')
+        self.Cuts.register('charge', self.get_charges(cut=False) != 0, 30, 'events with non-zero charge')
         self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
 
     def add_cuts(self, redo=False):
         self.Cuts.register('res', self.REF.make_dut_residuals(redo), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.make_trigger_phase(redo=redo), 61, 'trigger phase')
         self.Cuts.register('tstart', self.make_start_time(redo=redo), 40, 'exclude first events')
+        self.Cuts.register('chi2', self.make_chi2(redo=redo), 50, 'small chi2')
 
     def add_track_cuts(self, redo=False):
         self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True, redo=redo), 10, 'track trigger phase')
         self.Tracks.Cuts.register('res', self.REF.make_residuals(redo=redo), 20, 'tracks with a small residual in the REF')
         self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, redo=redo), 30, 'tracks in fiducial area')
-        self.Tracks.Cuts.register('tstart', self.make_start_time(tracks=True, redo=redo), 30, 'exclude first events')
+        self.Tracks.Cuts.register('tstart', self.make_start_time(tracks=True, redo=redo), 40, 'exclude first events')
+        self.Tracks.Cuts.register('chi2', self.make_chi2(tracks=True, redo=redo), 50, 'small chi2')
+
+    def reload_cuts(self, redo=False):
+        self.init_cuts(redo)
+        self.add_cuts(redo)
+        self.add_track_cuts(redo)
 
     def activate_surface(self):
         self.Cuts.register('fid', self.make_fiducial(option='surface fiducial'), 10)
@@ -137,6 +144,13 @@ class DUTAnalysis(Analysis):
             x0, x1, y0, y1 = self.Cuts.get_config(option, lst=True)
             return (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
         return array(do_hdf5(self.make_hdf5_path(option[:3], sub_dir='tracks' if tracks else None), f, redo))
+
+    def make_chi2(self, tracks=False, redo=False):
+        def f():
+            chi2 = self.Tracks.get_chi2(cut=False, trk_cut=-1)
+            chi_max = quantile(chi2, self.Cuts.get_config('chi2 quantile', dtype=float))
+            return self.Tracks.get_chi2(cut=False, trk_cut=False if tracks else -1) < chi_max
+        return array(do_hdf5(self.make_hdf5_path('chi2', sub_dir='tracks' if tracks else None), f, redo))
 
     def make_mask(self):
         x, y = self.get_coods(local=True, cut=False)
