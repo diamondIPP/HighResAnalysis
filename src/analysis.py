@@ -13,12 +13,12 @@ class Analysis(Draw):
     """ The analysis class provides default behaviour objects in the analysis framework and is the parent of all other analysis objects. """
 
     def __init__(self, testcampaign=None, verbose=False):
-        Draw.__init__(self)
 
         self.Verbose = verbose
         self.Dir = get_program_dir()
         self.Config = self.load_config()
         self.Locations = loads(self.Config.get('MAIN', 'locations'))
+        Draw.__init__(self, verbose, self.Config)
 
         # test campaign
         self.TestCampaign = self.load_test_campaign(testcampaign)
