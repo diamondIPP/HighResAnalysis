@@ -284,10 +284,10 @@ class DUTAnalysis(Analysis):
         x0, x1, y0, y1 = self.Cuts.get_config('full size', lst=True)
         return arange(x0, x1 + bool((x1 - x0 + 1) % nx) * nx + 1.1, nx, dtype='u2'), arange(y0, y1 + bool((y1 - y0 + 1) % ny) * ny + 1.1, ny, dtype='u2')
 
-    @staticmethod
-    def expand_inpixel(x, y, e=None):
-        x, y = x % 1, y % 1
-        # add edges of the neighbouring cells
+    def expand_inpixel(self, x, y, e=None, cell=False):
+        cx, cy = [self.DUT.CellSize / 1000. / self.Plane.PX, self.DUT.CellSize / 1000. / self.Plane.PY]
+        x, y = [(x % cx) / cx,  (y % cy) / cy] if cell else [x % 1, y % 1]
+        # add edges of the neighbouring pixels
         xf = concatenate([x, x[x < .5] + 1, x[x >= .5] - 1, x[y < .5], x[y > .5]])
         yf = concatenate([y, y[x < .5], y[x >= .5], y[y < .5] + 1, y[y >= .5] - 1])
         ef = concatenate([e, e[x < .5], e[x >= .5], e[y < .5], e[y >= .5]]) if e is not None else None
@@ -354,9 +354,9 @@ class DUTAnalysis(Analysis):
         x = self.get_x(cut) if cluster else self.Tracks.get_x(cut)
         self.draw_disto(x, bins.make(0, self.Plane.NCols, res, last=True))
 
-    def draw_inpixel_map(self, res=.1, cut=None, show=True):
-        x, y = self.expand_inpixel(*self.Tracks.get_coods(cut=cut))
-        self.draw_histo_2d(x, y, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Hit Map in Pixel', show=show, stats=0)
+    def draw_inpixel_map(self, res=.1, cut=None, cell=False, show=True):
+        x, y = self.expand_inpixel(cell=cell, *self.Tracks.get_coods(cut=cut))
+        self.draw_histo_2d(x, y, bins.get_pixel(self.Plane, res, cell=cell), 'Hit Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.draw_box(0, 0, 1, 1)
         update_canvas()
     # endregion DRAW
@@ -503,10 +503,10 @@ class DUTAnalysis(Analysis):
         fit = h.Fit('pol0', 'sq')
         return fit
 
-    def draw_inpixel_charge(self, res=.1, cut=None, show=True):
+    def draw_inpixel_charge(self, res=.1, cut=None, show=True, cell=False):
         (x, y), c = self.Tracks.get_coods(cut), self.get_charges(cut=cut)
-        x, y, c = self.expand_inpixel(x, y, c)
-        self.draw_prof2d(x, y, c, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Charge Map in Pixel', show=show, stats=0)
+        x, y, c = self.expand_inpixel(x, y, c, cell)
+        self.draw_prof2d(x, y, c, bins.get_pixel(self.Plane, res, cell=cell), 'Charge Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.draw_box(0, 0, 1, 1)
         update_canvas()
     # endregion SIGNAL
@@ -552,10 +552,10 @@ class DUTAnalysis(Analysis):
         binning = bins.make(0, 101.5, choose(bin_width, 1)) if full else bins.make(95, 100.5, choose(bin_width, 5.5 / sqrt(e.size) / 2), last=True)
         self.draw_disto(e, binning, 'Segment Efficiencies', x_tit='Efficiency [%]', show=show)
 
-    def draw_inpixel_eff(self, res=.1, cut=None, show=True):
+    def draw_inpixel_eff(self, res=.1, cut=None, show=True, cell=False):
         (x, y), e = self.Tracks.get_coods(trk_cut=cut), self.get_efficiencies(cut)
-        x, y, e = self.expand_inpixel(x, y, e)
-        self.draw_prof2d(x, y, e, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Efficiency Map in Pixel', show=show, stats=0)
+        x, y, e = self.expand_inpixel(x, y, e, cell)
+        self.draw_prof2d(x, y, e, bins.get_pixel(self.Plane, res, cell=cell), 'Efficiency Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.draw_box(0, 0, 1, 1)
         update_canvas()
     # endregion EFFICIENCY
