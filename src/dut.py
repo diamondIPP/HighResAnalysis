@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from analysis import load_json, get_base_dir, OrderedDict, critical, join, ufloat, expanduser, choose
+from analysis import load_json, get_base_dir, OrderedDict, critical, join, ufloat, expanduser, choose, array
 from json import load, loads
 
 
@@ -73,6 +73,7 @@ class Plane:
         self.NCols, self.NRows = loads(config.get(section, 'pixel'))
         self.NPixels = self.NCols * self.NRows
         self.PX, self.PY = loads(config.get(section, 'pitch'))
+        self.M = array([[self.PX, 0], [0, self.PY]])
 
     def __str__(self):
         return 'DUT Plane' if self.IsDUT else 'Plane {}'.format(self.Number)
