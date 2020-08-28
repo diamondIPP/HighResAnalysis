@@ -60,6 +60,12 @@ def get_global_y(plane, res=1):
     return make(-ymax, ymax, res * plane.PY)
 
 
+def get_pixel(plane, res, outer=.5, cell=False):
+    x0 = outer if plane.PX > plane.PY or cell else (2 * outer + 1) * (plane.R - 1) / 2 + outer
+    y0 = outer if plane.PY > plane.PX or cell else (2 * outer + 1) * (plane.R - 1) / 2 + outer
+    return make(-x0, 1 + x0, res, last=True) + make(-y0, 1 + y0, res, last=True)
+
+
 def get_adc():
     return make(0, MaxADC)
 
