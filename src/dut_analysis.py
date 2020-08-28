@@ -159,7 +159,7 @@ class DUTAnalysis(Analysis):
 
     def draw_fid_area(self, show=True, off=-.5):
         x1, x2, y1, y2 = self.Cuts.get_fid_config(self.Surface) + off
-        self.draw_box(x1, y1, x2, y2, color=2, width=2, name='fid', show=show)
+        self.draw_box(x1, y1, x2 + 1, y2 + 1, color=2, width=2, name='fid', show=show)
 
     def make_trigger_phase(self, tracks=False, redo=False):
         def f():
