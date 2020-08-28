@@ -73,6 +73,7 @@ class Plane:
         self.NCols, self.NRows = loads(config.get(section, 'pixel'))
         self.NPixels = self.NCols * self.NRows
         self.PX, self.PY = loads(config.get(section, 'pitch'))
+        self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
 
     def __str__(self):
