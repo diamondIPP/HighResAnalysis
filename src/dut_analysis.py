@@ -4,7 +4,7 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F
-from numpy import cumsum, split, histogram, corrcoef, diff, all, invert, histogram2d, max
+from numpy import cumsum, split, histogram, corrcoef, diff, all, invert, histogram2d, max, quantile, rad2deg, arctan
 
 from analysis import *
 from calibration import Calibration
@@ -228,10 +228,16 @@ class DUTAnalysis(Analysis):
         return self.get_data('Clusters', 'V', cut=cut)
 
     def get_du(self, cut=None):
-        return self.get_u(cut=cut) - self.Tracks.get_u(cut)
+        return self.get_u(cut) - self.Tracks.get_u(cut)
+
+    def get_dx(self, cut=None):
+        return self.get_x(cut) - self.Tracks.get_x(cut)
 
     def get_dv(self, cut=None):
         return self.get_v(cut=cut) - self.Tracks.get_v(cut)
+
+    def get_dy(self, cut=None):
+        return self.get_y(cut) - self.Tracks.get_y(cut)
 
     def get_residuals(self, cut=None):
         return sqrt(self.get_du(cut) ** 2 + self.get_dv(cut) ** 2)
@@ -277,6 +283,19 @@ class DUTAnalysis(Analysis):
     def get_segments(self, nx, ny):
         x0, x1, y0, y1 = self.Cuts.get_config('full size', lst=True)
         return arange(x0, x1 + bool((x1 - x0 + 1) % nx) * nx + 1.1, nx, dtype='u2'), arange(y0, y1 + bool((y1 - y0 + 1) % ny) * ny + 1.1, ny, dtype='u2')
+
+    @staticmethod
+    def expand_inpixel(x, y, e=None):
+        x, y = x % 1, y % 1
+        # add edges of the neighbouring cells
+        xf = concatenate([x, x[x < .5] + 1, x[x >= .5] - 1, x[y < .5], x[y > .5]])
+        yf = concatenate([y, y[x < .5], y[x >= .5], y[y < .5] + 1, y[y >= .5] - 1])
+        ef = concatenate([e, e[x < .5], e[x >= .5], e[y < .5], e[y >= .5]]) if e is not None else None
+        # add corners
+        xf = concatenate([xf, x[(x < .5) & (y < .5)] + 1, x[(x >= .5) & (y >= .5)] - 1, x[(x < .5) & (y >= .5)] + 1, x[(x >= .5) & (y < .5)] - 1])
+        yf = concatenate([yf, y[(x < .5) & (y < .5)] + 1, y[(x >= .5) & (y >= .5)] - 1, y[(x < .5) & (y >= .5)] - 1, y[(x >= .5) & (y < .5)] + 1])
+        ef = concatenate([ef, e[(x < .5) & (y < .5)], e[(x >= .5) & (y >= .5)], e[(x < .5) & (y >= .5)], e[(x >= .5) & (y < .5)]]) if e is not None else None
+        return [xf, yf] if e is None else [xf, yf, ef]
     # endregion GET
     # ----------------------------------------
 
@@ -297,7 +316,7 @@ class DUTAnalysis(Analysis):
 
     def draw_hit_map(self, res=.3, local=True, cut=None, fid=False, show=True):
         self.format_statbox(entries=True, x=.84)
-        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
+        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid', cut)
         x, y = self.Tracks.get_coods(local, cut)
         self.draw_histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', show=show, **self.get_ax_tits(local))
 
@@ -329,6 +348,17 @@ class DUTAnalysis(Analysis):
     def draw_segments(self, nx=2, ny=3, w=1):
         x, y = array(self.get_segments(nx, ny)) - .5
         self.draw_grid(x, y, w)
+
+    def draw_x(self, res=.1, cluster=False, cut=None):
+        self.format_statbox(all_stat=True)
+        x = self.get_x(cut) if cluster else self.Tracks.get_x(cut)
+        self.draw_disto(x, bins.make(0, self.Plane.NCols, res, last=True))
+
+    def draw_inpixel_map(self, res=.1, cut=None, show=True):
+        x, y = self.expand_inpixel(*self.Tracks.get_coods(cut=cut))
+        self.draw_histo_2d(x, y, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Hit Map in Pixel', show=show, stats=0)
+        self.draw_box(0, 0, 1, 1)
+        update_canvas()
     # endregion DRAW
     # ----------------------------------------
 
@@ -337,6 +367,36 @@ class DUTAnalysis(Analysis):
     def draw_x_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
         self.draw_disto(self.get_du(cut), bins.make(-3, 3, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
+
+    def draw_udv(self, cut=None, tv=None, show=True):
+        self.format_statbox(entries=True, x=.84)
+        u, dv = self.get_u(cut), (self.get_dv(cut) if tv is None else self.get_v() - tv)
+        h = self.draw_histo_2d(u, dv, bins.get_global_x(self.Plane) + bins.make(-1, 1, .02), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
+        # h = self.draw_prof(u, dv, bins.get_global_x(self.Plane), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
+        fit = h.Fit('pol1', 'qs')
+        return arctan(fit.Parameter(1))
+
+    def draw_vdu(self, cut=None, tu=None, show=True):
+        self.format_statbox(entries=True, x=.84)
+        v, du = self.get_v(cut), (self.get_du(cut) if tu is None else self.get_u() - tu)
+        h = self.draw_histo_2d(v, du, bins.get_global_y(self.Plane) + bins.make(-1, 1, .02), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
+        # h = self.draw_prof(v, du, bins.get_global_y(self.Plane), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
+        fit = h.Fit('pol1', 'qs')
+        return arctan(fit.Parameter(1))
+
+    def draw_xdy(self, cut=None, ty=None):
+        self.format_statbox(entries=True, x=.84)
+        x, dy = self.get_x(cut), (self.get_dy(cut) if ty is None else self.get_y() - ty)
+        h = self.draw_histo_2d(x, dy, bins.get_local_x(self.Plane) + bins.make(-3, 3, .1), 'X dY', x_tit='X [col]', y_tit='dY [row]')
+        fit = h.Fit('pol1', 'qs')
+        return arctan(fit.Parameter(1))
+
+    def draw_ydx(self, cut=None, tx=None):
+        self.format_statbox(entries=True, x=.84)
+        y, dx = self.get_y(cut), (self.get_dx(cut) if tx is None else self.get_x() - tx)
+        h = self.draw_histo_2d(y, dx, bins.get_local_y(self.Plane) + bins.make(-3, 3, .1), 'Y dX', x_tit='Y [row]', y_tit='dX [col]')
+        fit = h.Fit('pol1', 'qs')
+        return rad2deg(arctan(fit.Parameter(1)))
 
     def draw_y_residuals(self, cut=None):
         self.format_statbox(all_stat=True)
@@ -442,6 +502,13 @@ class DUTAnalysis(Analysis):
         format_histo(h, stats=1, name='Fit Result')
         fit = h.Fit('pol0', 'sq')
         return fit
+
+    def draw_inpixel_charge(self, res=.1, cut=None, show=True):
+        (x, y), c = self.Tracks.get_coods(cut), self.get_charges(cut=cut)
+        x, y, c = self.expand_inpixel(x, y, c)
+        self.draw_prof2d(x, y, c, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Charge Map in Pixel', show=show, stats=0)
+        self.draw_box(0, 0, 1, 1)
+        update_canvas()
     # endregion SIGNAL
     # ----------------------------------------
 
@@ -484,6 +551,13 @@ class DUTAnalysis(Analysis):
         self.format_statbox(all_stat=True)
         binning = bins.make(0, 101.5, choose(bin_width, 1)) if full else bins.make(95, 100.5, choose(bin_width, 5.5 / sqrt(e.size) / 2), last=True)
         self.draw_disto(e, binning, 'Segment Efficiencies', x_tit='Efficiency [%]', show=show)
+
+    def draw_inpixel_eff(self, res=.1, cut=None, show=True):
+        (x, y), e = self.Tracks.get_coods(trk_cut=cut), self.get_efficiencies(cut)
+        x, y, e = self.expand_inpixel(x, y, e)
+        self.draw_prof2d(x, y, e, bins.make2d(arange(-.5, 1.5001, res), arange(-1, 2.001, res)), 'Efficiency Map in Pixel', show=show, stats=0)
+        self.draw_box(0, 0, 1, 1)
+        update_canvas()
     # endregion EFFICIENCY
     # ----------------------------------------
 
