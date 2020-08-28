@@ -15,7 +15,7 @@ from json import load
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
@@ -155,6 +155,14 @@ def has_root():
         return True
     except ImportError:
         return False
+
+
+def get_rot_matrix(alpha):
+    return array([[cos(alpha), -sin(alpha)], [sin(alpha), cos(alpha)]])
+
+
+def rotate(alpha, v):
+    return dot(get_rot_matrix(alpha), v)
 
 
 def read_root_file(filename):
