@@ -24,36 +24,35 @@ class Draw:
 
         # BASICS
         self.Verbose = verbose
-        self.load_resolution()
         self.ResultsDir = 'Results'
         self.SaveDir = save_dir
 
         # COLORS/SETTINGS
         self.Config = self.init_config(config)
+        self.load_resolution()
         self.Color = 0
-        self.FillColor = self.get_config('fill color', default=821, typ=int)
+        self.FillColor = self.get_config('fill color', default=821, dtype=int)
         self.FileTypes = self.get_config('file types', default='["pdf", "root"]', lst=True)
-        self.ActivateTitle = self.get_config('activate title', default=True, typ=bool)
-        self.HasLegend = self.get_config('info legend', default=False, typ=bool)
-        gStyle.SetLegendFont(self.get_config('legend font', default=42, typ=int))
+        self.ActivateTitle = self.get_config('activate title', default=True, dtype=bool)
+        self.HasLegend = self.get_config('info legend', default=False, dtype=bool)
+        gStyle.SetLegendFont(self.get_config('legend font', default=42, dtype=int))
         gStyle.SetOptTitle(self.ActivateTitle)
 
         self.Objects = []
 
     # ----------------------------------------
     # region BASIC
-    @staticmethod
-    def load_resolution(default=800):
+    def load_resolution(self, default=800):
         if Draw.Res is None:
-            Draw.Res = load_resolution(default)
+            Draw.Res = load_resolution(default, self.get_config('monitor number', 0, dtype=int), self.get_config('plot height ndc', .5, dtype=float))
 
     @staticmethod
     def init_config(config):
         return config if isinstance(config, ConfigParser) else load_config(config) if config is not None else None
 
-    def get_config(self, option, default, lst=False, typ=None):
+    def get_config(self, option, default, lst=False, dtype=None):
         cfg = self.Config.get('DRAW', option) if self.Config is not None and self.Config.has_option('DRAW', option) else default
-        return loads(cfg) if lst else typ(cfg) if typ is not None else cfg
+        return loads(cfg) if lst else dtype(cfg) if dtype is not None else cfg
 
     def set_save_directory(self, name):
         self.ResultsDir = name
@@ -431,9 +430,10 @@ class Draw:
         self.add(leg)
         return leg
 
-    def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
+    def make_canvas(self, name='c', title='c', x=None, y=None, w=1., h=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
         set_root_output(show)
-        c = TCanvas(name, title, int(x * self.Res), int(y * self.Res))
+        pos = ([] if x is None else [int(x), int(y)]) + [int(w * self.Res), int(h * self.Res)]
+        c = TCanvas(name, title, *pos)
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
@@ -628,10 +628,10 @@ def set_z_range(zmin, zmax):
     h.GetZaxis().SetRangeUser(zmin, zmax)
 
 
-def load_resolution(default=800):
+def load_resolution(default, monitor, height_ndc):
     try:
         from screeninfo import get_monitors
-        return int(round_up_to(get_monitors()[0].height / 2, 100))
+        return int(round_up_to(get_monitors()[monitor].height * height_ndc, 100))
     except Exception as err:
         warning(err)
         return default
