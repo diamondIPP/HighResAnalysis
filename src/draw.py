@@ -99,7 +99,7 @@ class Draw:
 
     # ----------------------------------------
     # region DRAWING
-    def draw_histo(self, histo, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=False, logx=False, logz=False,
+    def draw_histo(self, histo, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=1., y=1., leg=None, logy=False, logx=False, logz=False,
                    canvas=None, grid=False, gridy=False, gridx=False, prnt=True, phi=None, theta=None):
         return self.save_histo(histo, '', show, '', lm, rm, bm, tm, draw_opt, x, y, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, prnt, phi, theta)
 
@@ -258,7 +258,7 @@ class Draw:
         self.draw_histo(h, show, lm, rm)
         return h
 
-    def draw_prof(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, cx=None, cy=None, show=True, **kwargs):
+    def draw_prof(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, cx=1, cy=1, show=True, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
@@ -268,7 +268,7 @@ class Draw:
         self.draw_histo(p, show, lm, rm, x=cx, y=cy)
         return p
 
-    def draw_prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, cx=None, cy=None, show=True, draw_opt='colz', **kwargs):
+    def draw_prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, cx=1, cy=1, show=True, draw_opt='colz', **kwargs):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
@@ -350,17 +350,13 @@ class Draw:
             info('Saving plots: {nam}'.format(nam=file_name), prnt=self.Verbose)
         set_root_output(True)
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, leg=None, logy=None, logx=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=1., y=1., leg=None, logy=None, logx=None,
                    logz=None, canvas=None, grid=False, gridx=False, gridy=False, save=True, prnt=True, phi=None, theta=None):
         tm = (.1 if self.ActivateTitle else .03) if tm is None else tm
-        x = self.Res if x is None else int(x * self.Res)
-        y = self.Res if y is None else int(y * self.Res)
         h = histo
         set_root_output(show)
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
+        c = self.make_canvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], None, None, x, y, logx, logy, logz, gridx or grid, gridy or grid) if canvas is None else canvas
         self.set_pad_margins(c, lm, rm, bm, tm)
-        do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
-        do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
         do([c.SetPhi, c.SetTheta], [phi, theta])
         h.Draw(draw_opt)
         if leg is not None:
@@ -432,8 +428,10 @@ class Draw:
 
     def make_canvas(self, name='c', title='c', x=None, y=None, w=1., h=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
         set_root_output(show)
-        pos = ([] if x is None else [int(x), int(y)]) + [int(w * self.Res), int(h * self.Res)]
-        c = TCanvas(name, title, *pos)
+        c0 = get_last_canvas(warn=False)
+        x = x if x is not None else 0 if c0 is None else c0.GetWindowTopX() + 50
+        y = y if y is not None else 0 if c0 is None else c0.GetWindowTopY() + 20
+        c = TCanvas(name, title, int(x), int(y), int(w * self.Res), int(h * self.Res))
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
@@ -583,11 +581,11 @@ def make_transparent(pad):
     pad.SetFrameFillStyle(4000)
 
 
-def get_last_canvas():
+def get_last_canvas(warn=True):
     try:
         return gROOT.GetListOfCanvases()[-1]
     except IndexError:
-        warning('There is no canvas is in the list...')
+        warning('There is no canvas is in the list...', prnt=warn)
 
 
 def set_root_output(status=True):
