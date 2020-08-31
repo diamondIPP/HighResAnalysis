@@ -3,9 +3,10 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, all, in1d, invert
+from numpy import array, all, in1d, invert, ones
 from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose, datetime
 from json import loads
+from typing import Any
 
 
 class Cuts:
@@ -54,6 +55,17 @@ class Cuts:
     def get(self, name):
         return self.Cuts[name]
 
+    def get_consecutive(self):
+        cuts = sorted([cut for cut in self.Cuts.values() if cut.Level < 80])
+        consecutive = ones(cuts[0].Size, dtype=bool)
+        p0 = 0
+        for cut in cuts:
+            consecutive = Cut.add(cut, consecutive)
+            cut.set_values(consecutive)
+            cut.set_p(cut.P - p0)
+            p0 += cut.P
+        return cuts
+
     def exclude(self, exclude, cut=None):
         if cut is not None:
             return self(cut)
@@ -62,7 +74,7 @@ class Cuts:
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def show(self, raw=False):
-        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.get_p_str(), cut.Value if raw else cut.Description] for cut in sorted(self.Cuts.values())]
+        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.get_p_str(), cut.Value if raw else cut.Description] for cut in self.get_consecutive()]
         c = Cut('all', self.generate(), 0, 'final cut')
         print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Size', 'P', 'Description'], [c.Name, '', c.Size, c.get_p_str(), c.Description])
 
@@ -77,14 +89,14 @@ class Cuts:
 class Cut:
     """ Base class to describe a single cut """
 
-    def __init__(self, name, values, level=99, description=None):
+    def __init__(self, name, values: Any, level=99, description=None):
 
         self.Name = name
-        self.Values = array(values)
+        self.Values = values.Values if isinstance(values, Cut) else array(values)
         self.Level = level
         self.Description = description
         self.Size = self.Values.size
-        self.P = invert(self.Values).nonzero()[0].size / self.Size
+        self.P = self.calc_p()
 
     def __call__(self):
         return self.Values
@@ -109,12 +121,22 @@ class Cut:
     def __repr__(self):
         return self.__str__()
 
+    def calc_p(self):
+        return invert(self.Values).nonzero()[0].size / self.Size
+
     def get_p_str(self):
         return '{:.1f}%'.format(self.P * 100)
+
+    def set_p(self, p):
+        self.P = p
 
     def set_level(self, level):
         if level is not None:
             self.Level = level
+
+    def set_values(self, values):
+        self.Values = values
+        self.P = self.calc_p()
 
     @staticmethod
     def make(cut):
