@@ -158,7 +158,7 @@ class DUTAnalysis(Analysis):
 
     def draw_fid_area(self, show=True, off=-.5):
         x1, x2, y1, y2 = self.Cuts.get_fid_config(self.Surface) + off
-        self.draw_box(x1, y1, x2 + 1, y2 + 1, color=2, width=2, name='fid', show=show)
+        self.draw_box(x1, y1, x2 + 1, y2 + 1, color=2, width=2, name='fid{}'.format(int(self.Surface)), show=show)
 
     def make_trigger_phase(self, tracks=False, redo=False):
         def f():
@@ -524,17 +524,23 @@ class DUTAnalysis(Analysis):
         x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
         return self.draw_prof(x, y, bins.get_triggerphase(), 'Efficiency vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
 
-    def draw_efficiency_map(self, res=.25, local=True, eff=True, fid=False, cut=None, binning=None, show=True):
+    def draw_efficiency_map(self, res=.25, local=True, eff=True, both=False, fid=False, cut=None, binning=None, show=True):
         mcut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
         x, y = self.Tracks.get_x(trk_cut=mcut, local=local), self.Tracks.get_y(trk_cut=mcut, local=local)
         self.format_statbox(entries=True, x=.84)
         binning = choose(binning, bins.get_coods, 'None', local, self.Plane, res)
         p = self.draw_prof2d(x, y, self.get_efficiencies(mcut), binning, 'Efficiency Map', show=show, draw_opt='colz', **self.get_ax_tits(local))
         self.draw_fid_area(show=not fid and show)
-        if eff:
-            x0, x1, y0, y1 = self.Cuts.get_fid_config(self.Surface)
-            self.draw_tlatex(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, '{:2.1f}%'.format(self.get_efficiency(cut, False)[0]), 'eff', 22, size=.04)
+        self.draw_eff_text(self.Surface, cut, eff)
+        self.draw_eff_text(not self.Surface, cut, eff and both)
         return p
+
+    def draw_eff_text(self, surface, cut, show=True):
+        if show:
+            self.activate_surface(surface)
+            self.draw_fid_area()
+            x0, x1, y0, y1 = self.Cuts.get_fid_config(surface)
+            self.draw_tlatex(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, '{:2.1f}%'.format(self.get_efficiency(cut, False)[0]), 'eff', 22, size=.04)
 
     def draw_segment_efficiencies(self, res=.25, local=True, nx=2, ny=3, cut=None, show=True):
         e = self.get_segment_efficiecies(nx, ny, cut)
