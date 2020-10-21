@@ -115,15 +115,14 @@ class DUTAnalysis(Analysis):
         self.add_cuts(redo)
         self.add_track_cuts(redo)
 
-    def activate_surface(self):
-        self.Cuts.register('fid', self.make_fiducial(option='surface fiducial'), 10)
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, option='surface fiducial'), 30)
-        self.Surface = True
+    def activate_surface(self, on=True):
+        option = '{}fiducial'.format('surface ' if on else '')
+        self.Cuts.register('fid', self.make_fiducial(option=option), 10, 'fid cut')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, option=option), 30)
+        self.Surface = on
 
     def deactivate_surface(self):
-        self.Cuts.register('fid', self.make_fiducial(), 10, 'fid cut')
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True), 30, 'tracks in fiducial area')
-        self.Surface = False
+        self.activate_surface(False)
 
     def make_start_time(self, tracks=False, redo=False):
         def f():
