@@ -7,13 +7,20 @@ locations = ["CERN", "DESY"]
 
 [SAVE]
 meta directory = metadata
+activate title = False
+git hash = False
+date = True
+info legend = False
+save = True
+show = True
 
-[DRAW]
+[PLOTS]
+palette = 55
+contours = 255
 fill color = 821
 legend font = 42
-activate title = True
-git hash = True
-info legend = True
+
+[DRAW]
 file types = ["pdf"]
 monitor number = 0
 plot height ndc = .7
