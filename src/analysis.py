@@ -1,24 +1,23 @@
-from draw import *
 from glob import glob
-from os.path import realpath, basename, expanduser
+from os.path import basename, expanduser
 from shutil import copyfile
-from json import loads
-from cut import Cuts
+
+from plotting.draw import *
+from src.utils import PBar, BaseDir, print_banner
+from src.cut import Cuts
 
 # global test campaign
 g_test_campaign = None
 
 
-class Analysis(Draw):
+class Analysis:
     """ The analysis class provides default behaviour objects in the analysis framework and is the parent of all other analysis objects. """
 
     def __init__(self, testcampaign=None, verbose=False):
 
         self.Verbose = verbose
-        self.Dir = get_program_dir()
         self.Config = self.load_config()
         self.Locations = loads(self.Config.get('MAIN', 'locations'))
-        Draw.__init__(self, verbose, self.Config)
 
         # test campaign
         self.TestCampaign = self.load_test_campaign(testcampaign)
@@ -28,25 +27,25 @@ class Analysis(Draw):
         # Directories
         self.DataDir = join(self.get_raw_data_dir(), str(self.Location.lower()))
         self.TCDir = self.generate_tc_directory()
-        self.MetaDir = join(self.Dir, self.Config.get('SAVE', 'meta directory'))
+        self.MetaDir = join(BaseDir, self.Config.get('SAVE', 'meta directory'))
         self.MetaSubDir = ''
-        self.ResultsDir = join(self.Dir, 'results')
+        self.ResultsDir = join(BaseDir, 'results')
 
         self.Cuts = Cuts()
 
         # progress bar
         self.PBar = PBar()
+        self.Draw = Draw(self.Config.FileName, self.Verbose)
 
     # ----------------------------------------
     # region INIT
-    def load_config(self):
-        parser = ConfigParser()
-        config_file_path = join(self.Dir, 'config', 'main.ini')
+    @staticmethod
+    def load_config():
+        config_file_path = join(BaseDir, 'config', 'main.ini')
         if not isfile(config_file_path):
             warning('The main config file "config/main.ini" does not exist! Using the default!')
-            copyfile(join(self.Dir, 'config', 'main.default'), config_file_path)
-        parser.read(config_file_path)
-        return parser
+            copyfile(join(BaseDir, 'config', 'main.default'), config_file_path)
+        return Config(config_file_path)
 
     def get_raw_data_dir(self):
         return expanduser(self.Config.get('MAIN', 'data directory'))
@@ -103,10 +102,6 @@ class Analysis(Draw):
             run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
             tc = ' OF {}'.format(self.TCString) if tc else ''
             print_banner('STARTING {} ANALYSIS{}{}'.format(ana_name.upper(), run, tc), symbol='~', color=GREEN)
-
-
-def get_program_dir():
-    return dirname(dirname(realpath(__file__)))
 
 
 if __name__ == '__main__':

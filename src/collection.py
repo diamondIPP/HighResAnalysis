@@ -1,20 +1,13 @@
-from dut_analysis import DUTAnalysis
-from draw import *
+from src.dut_analysis import DUTAnalysis
+from plotting.draw import *
 
 r = []
-for i in xrange(9):
-    print i
+for i in range(9):
+    print(i)
     r.append(DUTAnalysis('data/Clustered_0{}.root'.format(i)))
 
-d = Draw()
-y = []
-x = [-60, -70, -60, -50, -40, -30, -20, -10, 0]
-x = [make_ufloat([i, -.01 * i]) for i in x]
-for t in r:
-    print t.RunNumber
-    fit = t.fit_efficiency(3 * 60, cut='Timing<5')
-    y.append(make_ufloat([fit.Parameter(0), fit.ParError(0)]))
+draw = Draw()
+x = [t.DUT.Bias * ufloat(1, .01) for t in r]
+y = [t.get_efficiency() for t in r]
 
-g = d.make_tgrapherrors('g', 'g', x=x, y=y)
-format_histo(g, x_tit='Voltage [V]', y_tit='Charge [vcal]', y_off=1.3)
-d.draw_histo(g, lm=1.1)
+draw.graph(x, y, x_tit='Voltage [V]', y_tit='Charge [vcal]')

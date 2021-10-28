@@ -4,10 +4,12 @@
 # created on August 19th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis import Analysis, warning, bins, do_hdf5, ufloat
-from draw import array, format_histo, update_canvas
-from dut import Plane
+from src.analysis import Analysis, warning
+from src.utils import do_hdf5, ufloat
+from plotting.draw import array, format_histo, update_canvas
+from src.dut import Plane
 from numpy import sqrt, zeros
+import src.bins as bins
 
 
 class RefAnalysis(Analysis):
@@ -81,27 +83,22 @@ class RefAnalysis(Analysis):
     # ----------------------------------------
     # region DRAW
     def draw_x_residuals(self, show=True, centred=False):
-        self.format_statbox(all_stat=True)
-        return self.draw_disto(self.get_du(centred), bins.make(-2, 2, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
+        return self.Draw.distribution(self.get_du(centred), bins.make(-2, 2, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
 
     def draw_y_residuals(self, show=True, centred=False):
-        self.format_statbox(all_stat=True)
-        return self.draw_disto(self.get_dv(centred), bins.make(-2, 2, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
+        return self.Draw.distribution(self.get_dv(centred), bins.make(-2, 2, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8, show=show)
 
     def draw_residuals_map(self, centred=False):
-        self.format_statbox(all_stat=True, x=.84)
         x, y = self.get_du(centred), self.get_dv(centred)
-        self.draw_histo_2d(x, y, bins.make(-1, 1, .01) * 2)
+        self.Draw.histo_2d(x, y, bins.make(-1, 1, .01) * 2)
 
     def draw_residuals(self, centred=False):
-        self.format_statbox(entries=True)
-        self.draw_disto(self.get_residuals(centred), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', lm=.13, y_off=2)
+        self.Draw.distribution(self.get_residuals(centred), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', lm=.13, y_off=2)
 
     def draw_correlation(self, mode='y', thresh=.01, show=True):
         c1, c2 = self.Cuts.get('cluster2')()[self.Cuts.get('cluster')()], self.Cuts.get('cluster2')()[self.Ana.Cuts.get('cluster')()]
         v1, v2 = self.get('Clusters', mode.upper())[c1], self.Ana.get_data('Clusters', mode.upper(), cut=False)[c2]
-        self.format_statbox(entries=True, x=.84)
-        h = self.draw_histo_2d(v1, v2, bins.get_corr(mode, self.Plane, self.Ana.Plane), x_tit='{} REF'.format(mode), y_tit='{} DUT'.format(mode), show=show)
+        h = self.Draw.histo_2d(v1, v2, bins.get_corr(mode, self.Plane, self.Ana.Plane), x_tit='{} REF'.format(mode), y_tit='{} DUT'.format(mode), show=show)
         format_histo(h, z_range=[thresh * h.GetMaximum(), h.GetMaximum()])
         update_canvas()
     # endregion DRAW

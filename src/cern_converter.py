@@ -4,19 +4,18 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TFile, vector, TF1
-from utils import *
-from os.path import basename, join, dirname
 from argparse import ArgumentParser
-from collections import OrderedDict
-from numpy import array, zeros
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from pickle import load, dump
-from draw import Draw, ufloat
 from glob import glob
-from converter import Converter, Hit, Cluster
+from pickle import load, dump
+
+from ROOT import TFile, vector, TF1
+
+from plotting.draw import Draw
+from src.converter import Converter, Hit, Cluster
+from src.utils import *
 
 
+# todo revise
 class CERNConverter(Converter):
 
     def __init__(self, filename, plane, config, save_dir=None, first_run=None):
@@ -64,13 +63,13 @@ class CERNConverter(Converter):
         return TFile(join(save_dir, 'Clustered_{}.root'.format(self.RunNumber)), 'RECREATE')
 
     def set_branches(self):
-        for key, value in self.ScalarBranches.iteritems():
+        for key, value in self.ScalarBranches.items():
             self.NewTree.Branch(key, value, '{}/{}'.format(key, type_dict[value[0].dtype.name]))
-        for key, vec in self.VectorBranches.iteritems():
+        for key, vec in self.VectorBranches.items():
             self.NewTree.Branch(key, vec)
 
     def clear_vectors(self):
-        for key in self.VectorBranches.iterkeys():
+        for key in self.VectorBranches.keys():
             self.VectorBranches[key].clear()
         self.Clusters = []
         self.ClusteredHits = []
@@ -127,7 +126,7 @@ class CERNConverter(Converter):
                 continue
             g = d.make_tgrapherrors('gcal', 'gcal', x=x1, y=y1)
             g.Fit(self.Fit, 'q', '', 0, 3000)
-            self.FitParameters[col][row] = [self.Fit.GetParameter(j) for j in xrange(4)]
+            self.FitParameters[col][row] = [self.Fit.GetParameter(j) for j in range(4)]
             self.ProgressBar.update(i + 1)
         self.ProgressBar.finish()
 

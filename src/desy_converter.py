@@ -4,16 +4,19 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
+from argparse import ArgumentParser
 from glob import glob
 from os import chdir
 from subprocess import check_call
+
 from numpy import cumsum, split, sum, nan, min, invert
 
-from calibration import Calibration
-from converter import Converter
-from desy_run import DESYRun
-from draw import *
-from dut import Plane
+from plotting.draw import *
+from src.calibration import Calibration
+from src.converter import Converter
+from src.desy_run import DESYRun
+from src.dut import Plane
+from src.utils import print_banner, file_exists, OrderedDict, get_root_vec, basename, h5py, get_root_vecs
 
 
 class DESYConverter(Converter):
@@ -131,7 +134,7 @@ class DESYConverter(Converter):
 
     @staticmethod
     def add_tracks(track_file, match_file, hdf5_file):
-        t0 = info('adding track information ...', overlay=True)
+        t0 = info('adding track information ...', endl=False)
         g = hdf5_file.create_group('Tracks')
 
         # from tracking tree
@@ -293,7 +296,7 @@ class DESYConverter(Converter):
         group['Y'][...] = y
 
     def get_hits(self, match_tree, group, dut_nr):
-        t = info('getting hit charges for DUT Plane {} ...'.format(dut_nr), overlay=True)
+        t = info('getting hit charges for DUT Plane {} ...'.format(dut_nr), endl=True)
         calibration = self.get_calibration(dut_nr)
         n = match_tree.Draw('hit_col:hit_row:hit_value', '', 'goff')
         x, y, adc = get_root_vecs(match_tree, n, 3, ['u2', 'u2', 'u1'])
@@ -347,10 +350,9 @@ class DESYConverter(Converter):
     def check_alignment(self, step=0, p1=0, p2=1):
         f = TFile(join(self.ProteusDataDir, 'align', '{}-hists.root'.format(self.AlignSteps[step])))
         tdir = f.Get('validation').Get('correlations').Get('M{}-M{}'.format(p1, p2))
-        c = self.Draw.make_canvas('c_cor{}'.format(step), 'Correlations Plane {} & {}'.format(p1, p2), divide=(2, 2))
-        self.Draw.format_statbox(all_stat=True)
+        c = self.Draw.canvas('c_cor{}'.format(step), 'Correlations Plane {} & {}'.format(p1, p2), divide=(2, 2))
         for i, h in enumerate([tdir.Get(name) for name in ['correlation_x', 'correlation_y', 'difference_x', 'difference_y']], 1):
-            self.Draw.draw_histo(h, canvas=c.cd(i), draw_opt='colz' if i in [1, 2] else '')
+            self.Draw(h, canvas=c.cd(i), draw_opt='colz' if i in [1, 2] else '')
         self.Draw.Objects.append([f])
 
     def make_toml_name(self, name=None, d='align', typ='geo'):
@@ -372,7 +374,7 @@ class DESYConverter(Converter):
         gy = d.make_tgrapherrors('gy', 'y', x=zed, y=concatenate(y) * sy)
         for g in [gx, gy]:
             format_histo(g, x_tit='z [mm]')
-            d.draw_histo(g, draw_opt='ap')
+            d.histo(g, draw_opt='ap')
         self.Draw.add(trees, f, d)
 
     def remove_root_files(self):

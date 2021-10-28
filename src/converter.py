@@ -3,10 +3,11 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from utils import *
-from os.path import expanduser
 from argparse import ArgumentParser
-from numpy import average, sum, append, delete
+from os.path import expanduser
+from numpy import sum, append, delete
+
+from src.utils import *
 
 
 class Converter:

@@ -14,6 +14,7 @@ from collections import OrderedDict
 from run import Run
 
 
+# todo revise
 class CERNRun(Run):
     """ Run class containing all the information for a single run from the tree and the json file. """
 

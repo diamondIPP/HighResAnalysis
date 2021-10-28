@@ -37,7 +37,7 @@ class Cuts:
         value = self.Config[option]
         return array(loads(value)) if lst else value if dtype is None else dtype(value)
 
-    def get_fid_config(self, surface=False):
+    def  get_fid_config(self, surface=False):
         return self.get_config('{}fiducial'.format('surface ' if surface else ''), lst=True)
 
     def generate(self):

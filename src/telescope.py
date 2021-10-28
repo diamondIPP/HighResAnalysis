@@ -4,9 +4,11 @@
 # created on June 11th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis import *
-from dut import Plane
-from cut import Cut
+from src.analysis import *
+from src.utils import do_hdf5
+from src.dut import Plane
+from src.cut import Cut
+import src.bins as bins
 
 
 class TelescopeAnalysis(Analysis):
@@ -74,15 +76,13 @@ class TelescopeAnalysis(Analysis):
     # ----------------------------------------
     # region DRAW
     def draw_n(self, plane=0, name='Hits', show=True):
-        self.format_statbox(all_stat=True)
         n, n_pl = name, self.Plane(plane).get_name()
-        self.draw_disto(self.get_n(n, plane), bins.make(0, 30), 'Number of {} in {}'.format(n, n_pl), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
+        self.Draw.distribution(self.get_n(n, plane), bins.make(0, 30), 'Number of {} in {}'.format(n, n_pl), lm=.13, show=show, x_tit='Number of {}'.format(n), y_off=2)
 
     def draw_occupancy(self, plane=0, cluster=True, bin_width=10, cut=None, show=True):
-        self.format_statbox(entries=True, x=.83, m=True)
         x, y = self.get_coods(plane, cluster, cut)
         title = '{} Occupancy of Plane {}'.format('Cluster' if cluster else 'Hit', plane)
-        self.draw_histo_2d(x, y, title, bins.get_local(self.Plane, bin_width, aspect_ratio=True), x_tit='Column', y_tit='Row', show=show)
+        self.Draw.histo_2d(x, y, title, bins.get_local(self.Plane, bin_width, aspect_ratio=True), x_tit='Column', y_tit='Row', show=show, stats=set_statbox(entries=True, m=True))
 
     def draw_n_hits(self, plane=0, show=True):
         self.draw_n(plane, 'Hits', show)
@@ -94,11 +94,10 @@ class TelescopeAnalysis(Analysis):
         self.draw_n(plane, 'Intercepts', show)
 
     def draw_correlation(self, mode='y', res=1, plane=2, thresh=.1, show=True):
-        self.format_statbox(entries=True, x=.84)
         v0 = getattr(self, 'get_{}'.format(mode.lower()))(plane, cut=self.make_correlation(plane))
         v1 = getattr(self.Ana, 'get_{}'.format(mode.lower()))(cut=self.Ana.make_correlation(plane))
         tit = '{} Correlation between {} and {}'.format(mode.upper(), self.Plane, self.Ana.Plane)
-        h = self.draw_histo_2d(v0, v1, bins.get_corr(mode, self.Plane, self.Ana.Plane, res), tit, x_tit=mode.upper(), y_tit=mode.upper(), show=show)
+        h = self.Draw.histo_2d(v0, v1, bins.get_corr(mode, self.Plane, self.Ana.Plane, res), tit, x_tit=mode.upper(), y_tit=mode.upper(), show=show)
         format_histo(h, z_range=[thresh * h.GetMaximum(), h.GetMaximum()])
         update_canvas()
         return h

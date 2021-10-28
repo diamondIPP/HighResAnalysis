@@ -1,8 +1,11 @@
 from os.path import getsize
-from numpy import genfromtxt, isnan, datetime64, invert, where, char, sign, uint32
+
+from numpy import genfromtxt, isnan, datetime64, invert, char, uint32
 from pytz import timezone
-from analysis import *
-from utils import *
+
+import src.bins as bins
+from src.analysis import *
+from src.utils import *
 
 
 class Currents(Analysis):
@@ -24,7 +27,6 @@ class Currents(Analysis):
         self.RunLogs = self.Ana.Run.Logs
         self.Run = self.load_run()
         self.HVConfig = load_config(join(self.DataDir, 'config'))
-        self.set_save_directory('currents')
         self.Bias = self.load_bias()
 
         # Times
@@ -178,15 +180,13 @@ class Currents(Analysis):
     # region PLOTTING
     def draw_profile(self, bin_width=5, show=True):
         x, y = self.Data['timestamps'], self.Data['currents']
-        self.format_statbox(entries=True)
-        return self.draw_prof(x, y, bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, cx=1.5,
+        return self.Draw.profile(x, y, bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, cx=1.5,
                               cy=.75, lm=.08, y_off=.8, show=show)
 
     def draw_distribution(self, show=True):
         m, s = mean_sigma(self.Data['currents'])
         xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
-        self.format_statbox(all_stat=True)
-        return self.draw_disto(self.Data['currents'], 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
+        return self.Draw.distribution(self.Data['currents'], 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
 
     def get_current(self):
         if self.Ana is not None and not self.Ana.DUT.Bias:
@@ -205,24 +205,19 @@ class Currents(Analysis):
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
         return current
 
-    def draw_iv(self, show=True):
-        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.DUTName), x=self.Data['voltages'], y=self.Data['currents'])
-        format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
-        self.draw_histo(g, show, .12)
-        return g
+    def draw_iv(self, **dkw):
+        return self.Draw.graph(self.Data['voltages'], self.Data['currents'], f'I-V Curve for {self.DUTName}', **prep_kw(dkw, x_tit='Voltage [V]', y_tit='Current [nA]'))
 
     def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', show=True):
         self.reload_data(ignore_jumps)
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
-        gv = self.make_tgrapherrors('gv', self.get_title(), x=t, y=v)
-        gc = self.make_tgrapherrors('gc', '', x=t, y=c)
-        format_histo(gv, y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0)
-        format_histo(gc, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]))
+        gv = self.Draw.graph(t, v, self.get_title(), y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0, show=False)
+        gc = self.Draw.graph(t, c, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]), show=False)
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=.3)
         m = [.09, .09, .2, .1]
-        self.draw_histo(gv, show, m[0], m[1], m[2], m[3], x=1.5, y=.75, draw_opt='{}y+'.format(draw_opt))
-        self.draw_tpad('pc', transparent=True, margins=m)
+        self.Draw.histo(gv, show, m[0], m[1], m[2], m[3], x=1.5, y=.75, draw_opt='{}y+'.format(draw_opt))
+        self.Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
         update_canvas()
     # endregion PLOTTING
@@ -248,6 +243,9 @@ class Currents(Analysis):
 
 
 if __name__ == '__main__':
+
+    from argparse import ArgumentParser
+
     aparser = ArgumentParser()
     aparser.add_argument('dut', nargs='?', default=1, type=int, help='dut number [default: 1] (choose from 1,2,...)')
     aparser.add_argument('begin', nargs='?', default=12)

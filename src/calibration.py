@@ -5,12 +5,12 @@
 # --------------------------------------------------------
 
 from ROOT import TF1, TGraph
-from utils import *
-from analysis import glob, join
-from run import Run
-from numpy import genfromtxt, split, all, delete, concatenate, round, zeros
-from draw import Draw, format_histo, update_canvas
-from copy import deepcopy
+from numpy import genfromtxt, split, all, delete, round
+
+from plotting.draw import Draw, update_canvas
+from src.analysis import glob
+from src.run import Run
+from src.utils import *
 
 
 class Calibration:
@@ -175,26 +175,24 @@ class Calibration:
         g.Fit(self.Fit, 'q0', '', 0, 255 * 7)
         return deepcopy(self.Fit)
 
-    def draw_fit(self, col=14, row=14, show=True):
+    def draw_fit(self, col=14, row=14, **dkw):
         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
         self.fit_erf(self.get_vcal_vec(), self.get_points(col, row))
-        self.draw(col, row, show).SetTitle('Calibration Fit for Pix {} {}'.format(col, row))
+        self.draw(col, row, **dkw).SetTitle('Calibration Fit for Pix {} {}'.format(col, row))
         self.Fit.Draw('same')
         update_canvas()
         return self.Fit
 
     # ----------------------------------------
     # region DRAW
-    def draw(self, col=14, row=14, show=True):
-        g = self.Draw.make_tgrapherrors('gcal{}{}'.format(col, row), 'Calibration Points for Pixel {} {}'.format(col, row), x=self.get_vcal_vec(), y=self.get_points(col, row))
-        format_histo(g, x_tit='vcal', y_tit='adc', y_off=1.4, markersize=.4)
-        self.Draw.draw_histo(g, show, .12, draw_opt='ap')
-        return g
+    def draw(self, col=14, row=14, **dkw):
+        x, y = self.get_vcal_vec(), self.get_points(col, row)
+        return self.Draw.graph(x, y, f'Calibration Points for Pixel {col} {row}', **prep_kw(dkw, draw_opt='ap', x_tit='vcal', y_tit='adc', markersize=.4))
 
-    def draw_calibration_fit(self, col=14, row=14, show=True):
+    def draw_calibration_fit(self, col=14, row=14, **dkw):
         """ draws the Erf fit from pXar """
         self.Fit.SetParameters(*self.read_fit_pars()[col][row])
-        self.draw(col, row, show).SetTitle('Calibration Fit for Pixel {} {}'.format(col, row))
+        self.draw(col, row, **dkw).SetTitle('Calibration Fit for Pixel {} {}'.format(col, row))
         self.Fit.Draw('same')
     # endregion DRAW
     # ----------------------------------------

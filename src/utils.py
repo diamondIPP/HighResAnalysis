@@ -8,19 +8,21 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the he
 from os.path import isfile, exists, isdir, dirname, realpath, join, basename
 from os import makedirs, _exit, environ, remove, devnull
 from subprocess import call
-from configparser import ConfigParser
+from configparser import ConfigParser, NoSectionError, NoOptionError
 from datetime import datetime
 from ROOT import TFile, gROOT
-from json import load
+from json import load, loads
 from collections import OrderedDict
-from uncertainties import ufloat
+from uncertainties import ufloat, ufloat_fromstr
 from uncertainties.core import Variable, AffineScalarFunc
 from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
 from time import time
+from copy import deepcopy
 
+BaseDir = dirname(dirname(realpath(__file__)))
 
 type_dict = {'int32': 'I',
              'uint16': 's',
@@ -421,3 +423,49 @@ class PBar:
 
     def finish(self):
         self.PBar.finish()
+
+
+def prep_kw(dic, **default):
+    d = deepcopy(dic)
+    for kw, value in default.items():
+        if kw not in d:
+            d[kw] = value
+    return d
+
+
+class Config(ConfigParser):
+
+    def __init__(self, file_name, **kwargs):
+        super(Config, self).__init__(**kwargs)
+        self.FileName = file_name
+        self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
+
+    def get_value(self, section, option, dtype: type = str, default=None):
+        dtype = type(default) if default is not None else dtype
+        try:
+            if dtype is bool:
+                return self.getboolean(section, option)
+            v = self.get(section, option)
+            return loads(v) if dtype == list or '[' in v and dtype is not str else dtype(v)
+        except (NoOptionError, NoSectionError):
+            return default
+
+    def get_values(self, section):
+        return [j for i, j in self.items(section)]
+
+    def get_list(self, section, option, default=None):
+        return self.get_value(section, option, list, choose(default, []))
+
+    def get_ufloat(self, section, option, default=None):
+        return ufloat_fromstr(self.get_value(section, option, default=default))
+
+    def show(self):
+        for key, section in self.items():
+            print(colored(f'[{key}]', YELLOW))
+            for option in section:
+                print(f'{option} = {self.get(key, option)}')
+            print()
+
+    def write(self, file_name=None, space_around_delimiters=True):
+        with open(choose(file_name, self.FileName), 'w') as f:
+            super(Config, self).write(f, space_around_delimiters)
