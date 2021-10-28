@@ -10,7 +10,7 @@ from os import makedirs, _exit, environ, remove, devnull
 from subprocess import call
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from datetime import datetime
-from ROOT import TFile, gROOT
+from ROOT import TFile
 from json import load, loads
 from collections import OrderedDict
 from uncertainties import ufloat, ufloat_fromstr
@@ -195,68 +195,12 @@ def choose(v, default, decider='None', *args, **kwargs):
     return default if use_default else v
 
 
-def get_object(name):
-    return gROOT.FindObject(name)
-
-
 def remove_letters(string):
     return ''.join(filter(lambda x: x.isdigit(), string))
 
 
 def remove_digits(string):
     return ''.join(filter(lambda x: not x.isdigit(), string))
-
-
-def get_last_canvas():
-    try:
-        return gROOT.GetListOfCanvases()[-1]
-    except IndexError:
-        warning('There is no canvas is in the list...')
-
-
-def set_z_range(zmin, zmax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetZaxis().SetRangeUser(zmin, zmax)
-
-
-def set_axes_range(xmin, xmax, ymin, ymax):
-    set_x_range(xmin, xmax)
-    set_y_range(ymin, ymax)
-
-
-def set_x_range(xmin, xmax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetXaxis().SetRangeUser(xmin, xmax)
-
-
-def set_y_range(ymin, ymax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetYaxis().SetRangeUser(ymin, ymax)
-
-
-def normalise_histo(histo, x_range=None, from_min=False):
-    h = histo
-    x_axis = h.GetXaxis()
-    x_axis.SetRangeUser(*x_range) if x_range is not None else do_nothing()
-    min_bin = h.GetMinimumBin() if from_min else 0
-    integral = h.Integral(min_bin, h.GetNbinsX() - 1)
-    return scale_histo(h, integral)
-
-
-def scale_histo(histo, value=None, to_max=False, x_range=None):
-    h = histo
-    maximum = h.GetBinContent(h.GetMaximumBin())
-    if x_range is not None:
-        h.GetXaxis().SetRangeUser(*x_range) if x_range is not None else do_nothing()
-        maximum = h.GetBinContent(h.GetMaximumBin())
-        h.GetXaxis().UnZoom()
-    value = maximum if to_max else value
-    if value:
-        h.Scale(1. / value)
-    return h
 
 
 def mean_sigma(values, weights=None):
