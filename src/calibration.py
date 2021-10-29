@@ -7,7 +7,7 @@
 from ROOT import TF1, TGraph
 from numpy import genfromtxt, split, all, delete, round
 
-from plotting.draw import Draw, update_canvas
+from plotting.draw import Draw
 from src.analysis import glob
 from src.run import Run
 from src.utils import *
@@ -167,7 +167,9 @@ class Calibration:
                     self.PBar.update()
         return v.astype('f2')
 
-    def fit_erf(self, x, y):
+    def fit_erf(self, x, y, pars=None):
+        if pars is not None:
+            self.Fit.SetParameters(*pars)
         x, y = x[y > 0], y[y > 0]  # take only non zero values
         if x.size < 5:
             return
@@ -176,18 +178,15 @@ class Calibration:
         return deepcopy(self.Fit)
 
     def draw_fit(self, col=14, row=14, **dkw):
-        self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        self.fit_erf(self.get_vcal_vec(), self.get_points(col, row))
-        self.draw(col, row, **dkw).SetTitle('Calibration Fit for Pix {} {}'.format(col, row))
-        self.Fit.Draw('same')
-        update_canvas()
-        return self.Fit
+        f = self.fit_erf(self.get_vcal_vec(), self.get_points(col, row), pars=[309.2062, 112.8961, 1.022439, 35.89524])
+        self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pix {col} {row}', leg=f))
+        return f
 
     # ----------------------------------------
     # region DRAW
     def draw(self, col=14, row=14, **dkw):
         x, y = self.get_vcal_vec(), self.get_points(col, row)
-        return self.Draw.graph(x, y, f'Calibration Points for Pixel {col} {row}', **prep_kw(dkw, draw_opt='ap', x_tit='vcal', y_tit='adc', markersize=.4))
+        return self.Draw.graph(x, y, **prep_kw(dkw, title=f'Calibration Points for Pixel {col} {row}', draw_opt='ap', x_tit='VCAL', y_tit='ADC', markersize=.7))
 
     def draw_calibration_fit(self, col=14, row=14, **dkw):
         """ draws the Erf fit from pXar """
