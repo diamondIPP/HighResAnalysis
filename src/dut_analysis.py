@@ -597,3 +597,5 @@ if __name__ == '__main__':
     args = aparser.parse_args()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
     z.add_info(t_start, prnt=True)
+
+    cal = z.Calibration
