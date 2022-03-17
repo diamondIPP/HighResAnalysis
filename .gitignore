@@ -1,28 +1,9 @@
-# root files do not belong into the repository
-*.root
-*.pdf
-*.png
-*.log
-*.raw
-*.dat
-*.conf
+*
+!*/
 
-# ignore backup files of any sort of editor:
-~*
-*~
-.idea
+!*.py
+!*.md
+!*.ini
 
-# ignore python byte code
-*.pyc
-
-# Ignore Doxygen's SQlite3 databases:
-*.db
-
-# ignore other stuff
-*.pickle
-*.hdf5
-*.out
-
-main.ini
-client_secret.json
-
+config/main.ini
+venv/
