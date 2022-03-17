@@ -3,10 +3,12 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, all, in1d, invert, ones
-from utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose, datetime
+from datetime import datetime
 from json import loads
 from typing import Any
+from numpy import array, all, in1d, invert, ones
+
+from src.utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose
 
 
 class Cuts:

@@ -106,7 +106,7 @@ class DUTAnalysis(Analysis):
     # region CUTS
     # todo: add extra class
     def init_cuts(self, redo=False):
-        self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
+        self.Cuts.set_config(self.BeamTest, self.DUT.Name)
         self.Cuts.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 30, 'events with non-zero charge')
@@ -188,9 +188,9 @@ class DUTAnalysis(Analysis):
 
     def remove_metadata(self):
         if self.make_run_str():
-            for f in glob(join(self.MetaDir, '*', '*_{}_{}*'.format(self.TestCampaign.strftime('%Y%m'), self.make_run_str()))):
+            for f in glob(join(self.MetaDir, '*', '*_{}_{}*'.format(self.BeamTest.strftime('%Y%m'), self.make_run_str()))):
                 remove_file(f, join(basename(dirname(f)), basename(f)))
-        self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
+        self.Cuts.set_config(self.BeamTest, self.DUT.Name)
         self.init_cuts()
         self.add_cuts()
         self.add_track_cuts()

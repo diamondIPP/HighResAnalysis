@@ -95,7 +95,7 @@ class Currents(Analysis):
                 self.Collection.select_runs_in_range(begin, end if end is not None else begin) if end or end is None else self.Collection.select_runs_from_runplan(begin)
                 return self.Collection.get_start_time(), self.Collection.get_end_time()
             else:  # actual time strings are provided
-                return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.TestCampaign.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
+                return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.BeamTest.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
         return [self.TimeZone.localize(datetime.fromtimestamp(self.RunLogs[key])) for key in ['start', 'end']]
 
     def get_dut_name(self):

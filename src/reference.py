@@ -28,7 +28,7 @@ class RefAnalysis(Analysis):
     # ----------------------------------------
     # region INIT
     def init_cuts(self):
-        self.Cuts.set_config(self.TestCampaign, self.DUT.Name)
+        self.Cuts.set_config(self.BeamTest, self.DUT.Name)
         self.Cuts.register('cluster', self.make_cluster(), 90, 'tracks with a cluster')
         self.Cuts.register('cluster2', self.make_cluster_corr(), 90, 'tracks a cluster in DUT and REF')
 
