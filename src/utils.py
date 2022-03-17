@@ -6,10 +6,9 @@ import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
 from os.path import isfile, exists, isdir, dirname, realpath, join, basename
-from os import makedirs, _exit, environ, remove, devnull
+from os import makedirs, environ, remove, devnull
 from subprocess import call
 from configparser import ConfigParser, NoSectionError, NoOptionError
-from datetime import datetime
 from ROOT import TFile
 from json import load, loads
 from collections import OrderedDict
@@ -19,10 +18,13 @@ from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_no
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
-from time import time
 from copy import deepcopy
+from inspect import signature
+from functools import wraps
+from plotting.utils import info, warning, critical, add_to_info
 
-BaseDir = dirname(dirname(realpath(__file__)))
+
+Dir = dirname(dirname(realpath(__file__)))
 
 type_dict = {'int32': 'I',
              'uint16': 's',
@@ -38,31 +40,6 @@ CYAN = '\033[96m'
 RED = '\033[91m'
 UP1 = '\033[1A'
 ERASE = '\033[K'
-
-
-def get_t_str():
-    return datetime.now().strftime('%H:%M:%S')
-
-
-def info(msg, overlay=False, prnt=True):
-    if prnt:
-        print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}INFO:{}'.format(CYAN, ENDC)), end=' ' if overlay else '\n', flush=True)
-    return time()
-
-
-def add_to_info(t, msg='Done', prnt=True):
-    if prnt:
-        print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
-
-
-def warning(msg, prnt=True):
-    if prnt:
-        print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head='{}WARNING:{}'.format(YELLOW, ENDC)))
-
-
-def critical(msg):
-    print('{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head='{}CRITICAL:{}'.format(RED, ENDC)))
-    _exit(1)
 
 
 def move_up(n):
@@ -108,6 +85,13 @@ def remove_file(file_path, string=None):
     if file_exists(file_path):
         warning('removing {}'.format(choose(string, file_path)))
         remove(file_path)
+
+
+def isint(x):
+    try:
+        return float(x) == int(x)
+    except (ValueError, TypeError):
+        return False
 
 
 def is_num(string):
@@ -377,39 +361,60 @@ def prep_kw(dic, **default):
     return d
 
 
-class Config(ConfigParser):
+def make_suffix(ana, *values):
+    suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in values]
+    return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
 
-    def __init__(self, file_name, **kwargs):
-        super(Config, self).__init__(**kwargs)
-        self.FileName = file_name
-        self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
 
-    def get_value(self, section, option, dtype: type = str, default=None):
-        dtype = type(default) if default is not None else dtype
-        try:
-            if dtype is bool:
-                return self.getboolean(section, option)
-            v = self.get(section, option)
-            return loads(v) if dtype == list or '[' in v and dtype is not str else dtype(v)
-        except (NoOptionError, NoSectionError):
-            return default
+def prep_suffix(f, args, kwargs, suf_args, field=None):
+    def_pars = signature(f).parameters
+    names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
+    i_arg = (arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))) + 1
+    suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
+    suf_vals += [getattr(args[0], str(field))] if field is not None and hasattr(args[0], field) else []
+    return make_suffix(args[0], *suf_vals)
 
-    def get_values(self, section):
-        return [j for i, j in self.items(section)]
 
-    def get_list(self, section, option, default=None):
-        return self.get_value(section, option, list, choose(default, []))
+def load_pickle(file_name):
+    with open(file_name, 'rb') as f:
+        return pickle.load(f)
 
-    def get_ufloat(self, section, option, default=None):
-        return ufloat_fromstr(self.get_value(section, option, default=default))
 
-    def show(self):
-        for key, section in self.items():
-            print(colored(f'[{key}]', YELLOW))
-            for option in section:
-                print(f'{option} = {self.get(key, option)}')
-            print()
+def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', field=None, verbose=False, **pkwargs):
+    def inner(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if '_no_save' in kwargs:
+                return func(*args, **kwargs)
+            run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
+            pickle_path = args[0].make_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args, field)))
+            info(f'Pickle path: {pickle_path}', prnt=verbose)
+            redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
+            if file_exists(pickle_path) and not redo:
+                return load_pickle(pickle_path)
+            prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
+            t = (args[0].info if hasattr(args[0], 'info') else info)(f'{args[0].__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
+            value = func(*args, **kwargs)
+            with open(pickle_path, 'wb') as f:
+                pickle.dump(value, f)
+            (args[0].add_to_info if hasattr(args[0], 'add_to_info') else add_to_info)(t, prnt=prnt)
+            return value
+        return wrapper
+    return inner
 
-    def write(self, file_name=None, space_around_delimiters=True):
-        with open(choose(file_name, self.FileName), 'w') as f:
-            super(Config, self).write(f, space_around_delimiters)
+
+def save_hdf5(*pargs, suf_args='[]', **pkwargs):
+    def inner(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            file_path = args[0].make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, args, kwargs, suf_args)))
+            redo = kwargs['_redo'] if '_redo' in kwargs else False
+            if file_exists(file_path) and not redo:
+                return h5py.File(file_path, 'r')['data']
+            remove_file(file_path)
+            data = f(*args, **kwargs)
+            hf = h5py.File(file_path, 'w')
+            hf.create_dataset('data', data=data)
+            return hf['data']
+        return wrapper
+    return inner
