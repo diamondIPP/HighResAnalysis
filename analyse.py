@@ -23,5 +23,7 @@ args = aparser.parse_args()
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 z.add_info(t_start, prnt=True)
 
+# aliases
 cal = z.Calibration
 cut = z.Cuts
+c = z.Currents
