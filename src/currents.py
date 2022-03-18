@@ -6,18 +6,19 @@ from pytz import timezone
 import src.bins as bins
 from src.analysis import *
 from src.utils import *
+from glob import glob
 
 
 class Currents(Analysis):
     """reads in information from the keithley log file"""
 
     def __init__(self, analysis=None, test_campaign=None, dut=None, begin=None, end=None, averaging=None, verbose=False):
-        Analysis.__init__(self, test_campaign if analysis is None else analysis.TestCampaign, verbose=verbose)
+        Analysis.__init__(self, test_campaign if analysis is None else analysis.BeamTest.Tag, verbose=verbose)
 
         # Settings
         self.Averaging = averaging
         self.TimeZone = timezone('Europe/Zurich')
-        self.DataDir = join(self.TCDir, 'hvdata')
+        self.DataDir = self.BeamTest.Path.joinpath('hvdata')
 
         # Config
         self.Ana = analysis
@@ -26,7 +27,7 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.RunLogs = self.Ana.Run.Logs
         self.Run = self.load_run()
-        self.HVConfig = load_config(join(self.DataDir, 'config'))
+        self.HVConfig = Config(self.DataDir.joinpath('config.ini'))
         self.Bias = self.load_bias()
 
         # Times
@@ -227,7 +228,7 @@ class Currents(Analysis):
         if run in self.RunLogs:
             return True
         else:
-            warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.TCString))
+            warning(f'Run {run} does not exist in {self.BeamTest}!')
             return False
 
     def print_run_times(self, run):

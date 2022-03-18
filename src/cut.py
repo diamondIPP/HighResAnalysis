@@ -3,12 +3,12 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from datetime import datetime
 from json import loads
 from typing import Any
 from numpy import array, all, in1d, invert, ones
 
-from src.utils import print_table, warning, get_base_dir, load_config, join, critical, make_list, choose
+from src.utils import print_table, warning, join, critical, make_list, choose, Dir
+from plotting.utils import Config
 
 
 class Cuts:
@@ -16,7 +16,7 @@ class Cuts:
 
     def __init__(self):
 
-        self.Config = load_config(join(get_base_dir(), 'config', 'cut'))
+        self.Config = Config(join(Dir, 'config', 'cut.ini'))
         self.Cuts = {}
 
     def __call__(self, cut=None):
@@ -27,11 +27,11 @@ class Cuts:
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
 
-    def set_config(self, test_campaign: datetime, dut_name):
-        config = load_config(join(get_base_dir(), 'config', 'cut{}'.format(test_campaign.strftime('%Y%m'))))
-        if dut_name not in config.sections():
-            critical('detector "{}" not found in cut config, please add it!'.format(dut_name))
-        self.Config = config._sections[dut_name]
+    def set_config(self, beamtest, dut):
+        config = Config(join(Dir, 'config', f'cut{beamtest}.ini'))
+        if dut not in config.sections():
+            critical(f'detector "{dut}" not found in cut config, please add it!')
+        self.Config = config._sections[dut]
 
     def get_config(self, option, lst=False, dtype=None):
         if option not in self.Config:
@@ -39,7 +39,7 @@ class Cuts:
         value = self.Config[option]
         return array(loads(value)) if lst else value if dtype is None else dtype(value)
 
-    def  get_fid_config(self, surface=False):
+    def get_fid_config(self, surface=False):
         return self.get_config('{}fiducial'.format('surface ' if surface else ''), lst=True)
 
     def generate(self):

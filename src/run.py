@@ -34,6 +34,9 @@ class Run:
         self.StartTime = self.Logs['start']
         self.EndTime = self.Logs['end']
 
+    def __str__(self):
+        return str(self.Number)
+
     def get_dut_nrs(self):
         return [int(remove_letters(key)) for key in self.Logs.keys() if key.startswith('dut')]
 

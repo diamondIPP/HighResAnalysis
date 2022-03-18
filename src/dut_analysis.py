@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
-#       small script to read simple text files written by pXar
+#       class for analysis of a single DUT
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F
-from numpy import cumsum, split, histogram, corrcoef, invert, histogram2d, max, rad2deg, arctan
+from numpy import cumsum, split, histogram, invert, histogram2d, max, rad2deg, arctan
 
 from src.analysis import *
 from src.calibration import Calibration
@@ -28,18 +28,17 @@ class DUTAnalysis(Analysis):
 
     def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True, test=False):
 
-        Analysis.__init__(self, test_campaign, verbose)
+        Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
         self.print_start(run_number)
 
         # MAIN
-        self.Run = self.init_run()(run_number, dut_number, self.TCDir, self.Config, single_mode)
+        self.Run = self.run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Plane = self.DUT.Plane
-        self.MetaSubDir = 'DUT'
 
         # DATA
-        self.Converter = self.init_converter()(self.TCDir, self.Run.Number, self.Config)
-        self.Dummy = Dummy(self.TCDir, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
+        self.Converter = self.converter(self.BeamTest.Path, self.Run.Number, self.Config)
+        self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
         self.Data = self.load_data(test)
         self.init_cuts()
 
@@ -61,11 +60,13 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region INIT
-    def init_run(self):
-        return DESYRun if self.Location == 'DESY' else CERNRun
+    @property
+    def run(self):
+        return DESYRun if self.BeamTest.Location == 'DESY' else CERNRun
 
-    def init_converter(self):
-        return DESYConverter if self.Location == 'DESY' else Converter
+    @property
+    def converter(self):
+        return DESYConverter if self.BeamTest.Location == 'DESY' else Converter
 
     def get_entries(self):
         return self.Data['Tracks']['NTracks'].size
@@ -106,7 +107,7 @@ class DUTAnalysis(Analysis):
     # region CUTS
     # todo: add extra class
     def init_cuts(self, redo=False):
-        self.Cuts.set_config(self.BeamTest, self.DUT.Name)
+        self.Cuts.set_config(self.BeamTest.Tag, self.DUT.Name)
         self.Cuts.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 30, 'events with non-zero charge')
@@ -187,10 +188,9 @@ class DUTAnalysis(Analysis):
         return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
 
     def remove_metadata(self):
-        if self.make_run_str():
-            for f in glob(join(self.MetaDir, '*', '*_{}_{}*'.format(self.BeamTest.strftime('%Y%m'), self.make_run_str()))):
-                remove_file(f, join(basename(dirname(f)), basename(f)))
-        self.Cuts.set_config(self.BeamTest, self.DUT.Name)
+        for p in self.get_meta_files():
+            remove_file(p)
+        self.Cuts.set_config(self.BeamTest.Tag, self.DUT.Name)
         self.init_cuts()
         self.add_cuts()
         self.add_track_cuts()
@@ -584,18 +584,4 @@ class DUTAnalysis(Analysis):
 
 if __name__ == '__main__':
 
-    from argparse import ArgumentParser
-
-    t_start = time()
-    aparser = ArgumentParser()
-    aparser.add_argument('run', nargs='?', default=11, type=int)
-    aparser.add_argument('dut', nargs='?', default=1, type=int)
-    aparser.add_argument('--testcampaign', '-tc', nargs='?', default=None)
-    aparser.add_argument('--verbose', '-v', action='store_true')
-    aparser.add_argument('--single_mode', '-s', action='store_false')
-    aparser.add_argument('--test', '-t', action='store_true')
-    args = aparser.parse_args()
-    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
-    z.add_info(t_start, prnt=True)
-
-    cal = z.Calibration
+    z = DUTAnalysis(11, 1, test_campaign='201912')
