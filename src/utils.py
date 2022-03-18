@@ -129,12 +129,6 @@ def do_nothing():
     pass
 
 
-def load_config(name, ext='ini'):
-    parser = ConfigParser()
-    parser.read('{}.{}'.format(name, ext))
-    return parser
-
-
 def has_root():
     try:
         import ROOT
