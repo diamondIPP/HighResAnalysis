@@ -37,6 +37,9 @@ class Run:
     def __str__(self):
         return str(self.Number)
 
+    def __repr__(self):
+        return f'Run {self}'
+
     def get_dut_nrs(self):
         return [int(remove_letters(key)) for key in self.Logs.keys() if key.startswith('dut')]
 
@@ -59,4 +62,4 @@ class Run:
 
 if __name__ == '__main__':
     a = Analysis()
-    z = Run(301, 1, a.TCDir, a.Config, single_mode=True)
+    z = Run(301, 1, a.BeamTest.Path, a.Config, single_mode=True)

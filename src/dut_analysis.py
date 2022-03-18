@@ -58,6 +58,9 @@ class DUTAnalysis(Analysis):
         self.add_cuts()
         self.add_track_cuts()
 
+    def __repr__(self):
+        return f'{super().__repr__()} ({ev2str(self.NEvents)} ev)'
+
     # ----------------------------------------
     # region INIT
     @property

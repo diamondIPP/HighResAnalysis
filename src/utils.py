@@ -13,7 +13,7 @@ from json import load, loads
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
@@ -250,6 +250,11 @@ def make_ufloat(tup):
 def byte2str(v):
     n = int(log2(v) // 10) if v else 0
     return '{:1.1f} {}'.format(v / 2 ** (10 * n), ['B', 'kB', 'MB', 'GB'][n])
+
+
+def ev2str(v):
+    n = int(log10(v) // 3)
+    return f'{v / 10 ** (3 * n):.{2 if n > 1 else 0}f}{["", "k", "M"][n]}'
 
 
 def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):

@@ -27,3 +27,5 @@ z.add_info(t_start, prnt=True)
 cal = z.Calibration
 cut = z.Cuts
 c = z.Currents
+r = z.Run
+dut = z.DUT
