@@ -144,7 +144,6 @@ class Currents(Analysis):
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.Run.Number) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
         return 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
-
     # endregion INIT
     # ----------------------------------------
 
@@ -179,10 +178,9 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region PLOTTING
-    def draw_profile(self, bin_width=5, show=True):
+    def draw_profile(self, bw=None, **dkw):
         x, y = self.Data['timestamps'], self.Data['currents']
-        return self.Draw.profile(x, y, bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, cx=1.5,
-                              cy=.75, lm=.08, y_off=.8, show=show)
+        return self.Draw.profile(x, y, find_bins(x, w=bw), 'Leakage Current', **prep_kw(dkw, x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, **Draw.mode(2)))
 
     def draw_distribution(self, show=True):
         m, s = mean_sigma(self.Data['currents'])
@@ -209,17 +207,16 @@ class Currents(Analysis):
     def draw_iv(self, **dkw):
         return self.Draw.graph(self.Data['voltages'], self.Data['currents'], f'I-V Curve for {self.DUTName}', **prep_kw(dkw, x_tit='Voltage [V]', y_tit='Current [nA]'))
 
-    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', show=True):
+    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, **dkw):
         self.reload_data(ignore_jumps)
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
         gv = self.Draw.graph(t, v, self.get_title(), y_tit='Voltage [nA]', yax_col=602, color=602, y_range=choose(v_range, [-100, 0]), l_off_x=10, x_ticks=0, show=False)
         gc = self.Draw.graph(t, c, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]), show=False)
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=.3)
-        m = [.09, .09, .2, .1]
-        self.Draw.histo(gv, show, m[0], m[1], m[2], m[3], x=1.5, y=.75, draw_opt='{}y+'.format(draw_opt))
-        self.Draw.tpad('pc', transparent=True, margins=m)
-        gc.Draw(draw_opt)
+        self.Draw(gv, **prep_kw(dkw, **Draw.mode(2, lm=.1, rm=.1), draw_opt='aly+'))
+        self.Draw.tpad('pc', transparent=True, c=get_last_canvas())
+        gc.Draw(dkw['draw_opt'] if 'draw_opt' in dkw else 'al')
         update_canvas()
     # endregion PLOTTING
     # ----------------------------------------
