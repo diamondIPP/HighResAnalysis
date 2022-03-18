@@ -4,10 +4,10 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utils import *
+from src.utils import *
 from os.path import join
-from analysis import Analysis
-from dut import DUT
+from src.analysis import Analysis
+from src.dut import DUT
 
 
 class Run:

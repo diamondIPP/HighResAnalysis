@@ -3,15 +3,10 @@
 #       run module that handles the files and information of a single run
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-
+from src.analysis import Analysis
+from src.converter import Converter
+from src.run import Run
 from utils import *
-from os.path import join, basename
-from analysis import Analysis
-from subprocess import call
-from converter import Converter
-from os import environ, remove, devnull
-from collections import OrderedDict
-from run import Run
 
 
 # todo revise

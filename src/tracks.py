@@ -7,8 +7,8 @@
 from numpy import rad2deg, ndarray, dot, array
 from numpy.linalg import inv
 
-import bins
-from analysis import Analysis
+import src.bins as bins
+from src.analysis import Analysis
 from src.utils import rotate, do_pickle, get_rot_matrix
 
 

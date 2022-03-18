@@ -8,7 +8,7 @@ from ROOT import TF1, TGraph
 from numpy import genfromtxt, split, all, delete, round
 
 from plotting.draw import Draw
-from src.analysis import glob
+from glob import glob
 from src.run import Run
 from src.utils import *
 

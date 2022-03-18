@@ -3,9 +3,8 @@
 #       run module that handles the files and information of a single run taken at DESY
 # created on February 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from utils import *
-from run import Run
-from os.path import join
+from src.run import Run
+from src.utils import *
 
 
 class DESYRun(Run):

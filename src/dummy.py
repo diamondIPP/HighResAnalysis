@@ -4,11 +4,12 @@
 # created on July 29th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utils import *
-from numpy.random import poisson, normal, randint
-from numpy import round, invert, delete
-from dut import Plane
 from ROOT.gRandom import Landau
+from numpy import round, invert, delete
+from numpy.random import poisson, normal, randint
+
+from src.dut import Plane
+from src.utils import *
 
 
 class Dummy:
