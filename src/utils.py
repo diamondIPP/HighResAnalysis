@@ -8,13 +8,12 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the he
 from os.path import isfile, exists, isdir, dirname, realpath, join, basename
 from os import makedirs, environ, remove, devnull
 from subprocess import call
-from configparser import ConfigParser, NoSectionError, NoOptionError
 from ROOT import TFile
 from json import load, loads
 from collections import OrderedDict
-from uncertainties import ufloat, ufloat_fromstr
+from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 import h5py
 import pickle
@@ -246,6 +245,11 @@ def make_ufloat(tup):
     if type(tup) in [Variable, AffineScalarFunc]:
         return tup
     return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
+
+
+def byte2str(v):
+    n = int(log2(v) // 10) if v else 0
+    return '{:1.1f} {}'.format(v / 2 ** (10 * n), ['B', 'kB', 'MB', 'GB'][n])
 
 
 def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
