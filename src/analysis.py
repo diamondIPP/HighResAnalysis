@@ -15,6 +15,7 @@ class BeamTest:
         self.Location = p.parts[-2].upper()
         self.T = datetime.strptime(p.stem, '%Y-%m')
         self.Year = self.T.year
+        self.Tag = self.T.strftime('%Y%m')
 
     def __str__(self):
         return self.T.strftime('%b %Y')
@@ -41,12 +42,12 @@ class Analysis:
     ResultsDir = join(Dir, 'results')
     MetaDir = join(Dir, Config.get('SAVE', 'meta directory'))
 
-    def __init__(self, beamtest=None, verbose=False):
+    def __init__(self, beamtest=None, meta_sub_dir='', verbose=False):
 
         self.Verbose = verbose
 
         self.BeamTest = self.load_test_campaign(beamtest)
-        self.MetaSubDir = ''
+        self.MetaSubDir = meta_sub_dir
 
         self.Cuts = Cuts()
 
@@ -57,7 +58,7 @@ class Analysis:
         return f'{self.__class__.__name__.replace("Analysis", "").upper()} ANALYSIS'
 
     def __repr__(self):
-        return f'{self} OF {self.BeamTest!r}'
+        return f'{self} of the {self.BeamTest!r}'
 
     # ----------------------------------------
     # region INIT
@@ -69,8 +70,9 @@ class Analysis:
         return critical(f'The beamtest "{bt}" does not exist!') if p is None else BeamTest(p)
 
     @staticmethod
-    def find_testcampaign(default=None):
-        return choose(default, BeamTest(Path(getcwd())))
+    def find_testcampaign():
+        p = Path(getcwd())
+        return BeamTest(p).Tag if p.parts[-2].upper() in Analysis.Locations else Analysis.Config.get('MAIN', 'default test campaign')
 
     def print_testcampaign(self):
         self.info(f'{self.BeamTest!r}')
