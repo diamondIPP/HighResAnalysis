@@ -3,7 +3,7 @@ from os import getcwd
 from shutil import copyfile
 
 from plotting.draw import *
-from src.utils import PBar, Dir, print_banner
+from src.utils import PBar, Dir, print_banner, byte2str
 from src.cut import Cuts
 
 
@@ -93,8 +93,18 @@ class Analysis:
         ensure_dir(directory)
         campaign = choose(camp, self.BeamTest.T.strftime('%Y%m'))
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
-        run = choose(run, self.RunPlan if hasattr(self, 'RunPlan') else str(self.Run) if hasattr(self, 'Run') else '')
+        run = choose(run, self.run_str)
         return join(directory, f'{"_".join([v for v in [name, campaign, run, dut, str(suf)] if v])}.pickle')
+
+    @property
+    def run_str(self):
+        return self.RunPlan if hasattr(self, 'RunPlan') else str(self.Run) if hasattr(self, 'Run') else ''
+
+    def get_meta_files(self):
+        return [*Path(self.MetaDir).rglob(f'*_{self.BeamTest.Tag}_{self.run_str}*')] if self.run_str else []
+
+    def meta_file_size(self):
+        info(f'total size of metadata: {byte2str(sum(p.stat().st_size for p in self.get_meta_files()))}')
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
