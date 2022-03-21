@@ -79,8 +79,8 @@ class Analysis:
     # endregion INIT
     # ----------------------------------------
 
-    def info(self, msg, overlay=False, prnt=None):
-        return info(msg, overlay, choose(prnt, self.Verbose))
+    def info(self, msg, blank_lines=0, endl=True, prnt=None):
+        return info(msg, blank_lines, endl, choose(prnt, self.Verbose))
 
     def add_info(self, t, msg='Done', prnt=None):
         add_to_info(t, msg, choose(prnt, self.Verbose))
@@ -105,6 +105,11 @@ class Analysis:
 
     def meta_file_size(self):
         info(f'total size of metadata: {byte2str(sum(p.stat().st_size for p in self.get_meta_files()))}')
+
+    def meta_file_sizes(self):
+        for p in self.get_meta_files():
+            info(f'{p}: {byte2str(p.stat().st_size)}')
+        self.meta_file_size()
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
