@@ -406,18 +406,19 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     return inner
 
 
-def save_hdf5(*pargs, suf_args='[]', **pkwargs):
+def save_hdf5(*pargs, arr=False, suf_args='[]', **pkwargs):
     def inner(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             file_path = args[0].make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, args, kwargs, suf_args)))
             redo = kwargs['_redo'] if '_redo' in kwargs else False
             if file_exists(file_path) and not redo:
-                return h5py.File(file_path, 'r')['data']
+                d = h5py.File(file_path, 'r')['data']
+                return array(d) if arr else d
             remove_file(file_path)
             data = f(*args, **kwargs)
             hf = h5py.File(file_path, 'w')
             hf.create_dataset('data', data=data)
-            return hf['data']
+            return array(hf['data']) if arr else hf['data']
         return wrapper
     return inner
