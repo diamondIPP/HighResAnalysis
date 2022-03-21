@@ -4,7 +4,7 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F
-from numpy import cumsum, split, histogram, invert, histogram2d, max, rad2deg, arctan
+from numpy import cumsum, split, histogram, invert, histogram2d, max, arctan
 
 from src.analysis import *
 from src.calibration import Calibration
@@ -249,17 +249,17 @@ class DUTAnalysis(Analysis):
     def get_v(self, cut=None):
         return self.get_data('Clusters', 'V', cut=cut)
 
-    def get_du(self, cut=None):
-        return self.get_u(cut) - self.Tracks.get_u(cut)
+    def get_du(self, cut=None, x=None):
+        return self.get_u(cut) - choose(x, self.Tracks.get_u, cut=cut)
 
-    def get_dx(self, cut=None):
-        return self.get_x(cut) - self.Tracks.get_x(cut)
+    def get_dx(self, cut=None, x=None):
+        return self.get_x(cut) - choose(x, self.Tracks.get_x, cut=cut)
 
-    def get_dv(self, cut=None):
-        return self.get_v(cut=cut) - self.Tracks.get_v(cut)
+    def get_dv(self, cut=None, x=None):
+        return self.get_v(cut=cut) - choose(x, self.Tracks.get_v, cut=cut)
 
-    def get_dy(self, cut=None):
-        return self.get_y(cut) - self.Tracks.get_y(cut)
+    def get_dy(self, cut=None, x=None):
+        return self.get_y(cut) - choose(x, self.Tracks.get_y, cut=cut)
 
     def get_residuals(self, cut=None):
         return sqrt(self.get_du(cut) ** 2 + self.get_dv(cut) ** 2)
@@ -384,45 +384,38 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region RESIDUALS
-    def draw_x_residuals(self, cut=None):
-        self.Draw.distribution(self.get_du(cut), bins.make(-3, 3, .01), 'X Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
+    def draw_x_residuals(self, cut=None, **dkw):
+        self.Draw.distribution(self.get_du(cut) * 1e3, **prep_kw(dkw, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]'))
 
-    def draw_udv(self, cut=None, tv=None, show=True):
-        u, dv = self.get_u(cut), (self.get_dv(cut) if tv is None else self.get_v() - tv)
-        h = self.Draw.histo_2d(u, dv, bins.get_global_x(self.Plane) + bins.make(-1, 1, .02), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
-        # h = self.Draw.profile(u, dv, bins.get_global_x(self.Plane), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
-        fit = h.Fit('pol1', 'qs')
-        return arctan(fit.Parameter(1))
+    def draw_y_residuals(self, cut=None, **dkw):
+        self.Draw.distribution(self.get_dv(cut) * 1e3, **prep_kw(dkw, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]'))
 
-    def draw_vdu(self, cut=None, tu=None, show=True):
-        v, du = self.get_v(cut), (self.get_du(cut) if tu is None else self.get_u() - tu)
-        h = self.Draw.histo_2d(v, du, bins.get_global_y(self.Plane) + bins.make(-1, 1, .02), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
-        # h = self.Draw.profile(v, du, bins.get_global_y(self.Plane), 'X dY', x_tit='X [col]', y_tit='dY [row]', show=show)
-        fit = h.Fit('pol1', 'qs')
-        return arctan(fit.Parameter(1))
+    def draw_xy_residuals(self, cut=None, **dkw):
+        x, y = array([f(self.Cuts.exclude('res', cut)) for f in [self.get_du, self.get_dv]]) * 1e3
+        self.Draw.histo_2d(x, y, **prep_kw(dkw, q=.1, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]'))
 
-    def draw_xdy(self, cut=None, ty=None):
-        x, dy = self.get_x(cut), (self.get_dy(cut) if ty is None else self.get_y() - ty)
-        h = self.Draw.histo_2d(x, dy, bins.get_local_x(self.Plane) + bins.make(-3, 3, .1), 'X dY', x_tit='X [col]', y_tit='dY [row]')
-        fit = h.Fit('pol1', 'qs')
-        return arctan(fit.Parameter(1))
+    def draw_residuals(self, **dkw):
+        self.Draw.distribution(self.get_residuals() * 1e3, **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
 
-    def draw_ydx(self, cut=None, tx=None):
-        y, dx = self.get_y(cut), (self.get_dx(cut) if tx is None else self.get_x() - tx)
-        h = self.Draw.histo_2d(y, dx, bins.get_local_y(self.Plane) + bins.make(-3, 3, .1), 'Y dX', x_tit='Y [row]', y_tit='dX [col]')
-        fit = h.Fit('pol1', 'qs')
-        return rad2deg(arctan(fit.Parameter(1)))
+    def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
+        (x, y), z_ = [f(cut=self.Cuts.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_coods, local=local), self.get_residuals]]
+        self.Draw.prof2d(x, y, z_ * 1e3, bins.get_coods(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.get_ax_tits(local)))
 
-    def draw_y_residuals(self, cut=None):
-        self.Draw.distribution(self.get_dv(cut), bins.make(-3, 3, .01), 'Y Residuals', x_tit='Residual [mm]', lm=.12, y_off=1.8)
+    def draw_angle(self, x, y, prof=False, xb=True, local=False, **dkw):
+        b = (bins.x if xb else bins.y)(self.Plane, local=local) + find_bins(y)
+        return arctan(FitRes((self.Draw.profile if prof else self.Draw.histo_2d)(x, y, b[:2 if prof else 4], graph=True, **dkw).Fit('pol1', 'qs'))[1].n)
 
-    def draw_residuals(self, show=True):
-        self.Draw.distribution(self.get_residuals(), bins.make(0, 6, .01), 'Residuals', x_tit='Residual [mm]', show=show)
+    def draw_udv(self, cut=None, tv=None, prof=False, **dkw):
+        return self.draw_angle(self.get_u(cut), self.get_dv(cut, tv), prof, **prep_kw(dkw, title='X dY', x_tit='X [mm]', y_tit='dY [mm]'))
 
-    def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, show=True):
-        cut = self.Cuts(cut) if fid else self.Cuts.exclude('fid')
-        x, y = self.Tracks.get_coods(local, cut)
-        self.Draw.prof2d(x, y, self.get_residuals(cut), bins.get_coods(local, self.Plane, res), 'Residuals', z_tit='Residuals', show=show, **self.get_ax_tits(local))
+    def draw_vdu(self, cut=None, tu=None, prof=False, **dkw):
+        return self.draw_angle(self.get_v(cut), self.get_du(cut, tu), prof, xb=False, **prep_kw(dkw, title='Y dX', x_tit='Y [mm]', y_tit='dX [mm]'))
+
+    def draw_xdy(self, cut=None, ty=None, prof=False, **dkw):
+        return self.draw_angle(self.get_x(cut), self.get_dy(cut, ty), prof, local=True, **prep_kw(dkw, title='X dY', x_tit='X [Column]', y_tit='dY [Row]'))
+
+    def draw_ydx(self, cut=None, tx=None, prof=False, **dkw):
+        return self.draw_angle(self.get_y(cut), self.get_dx(cut, tx), prof, xb=False, local=True, **prep_kw(dkw, title='Y dX', x_tit='Y [row]', y_tit='dX [col]'))
     # endregion RESIDUALS
     # ----------------------------------------
 
