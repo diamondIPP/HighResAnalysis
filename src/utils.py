@@ -95,6 +95,14 @@ def isint(x):
         return False
 
 
+def is_iter(v):
+    try:
+        iter(v)
+        return True
+    except TypeError:
+        return False
+
+
 def is_num(string):
     try:
         float(string)
@@ -459,7 +467,7 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     return inner
 
 
-def save_hdf5(*pargs, arr=False, suf_args='[]', **pkwargs):
+def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', **pkwargs):
     def inner(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -471,7 +479,33 @@ def save_hdf5(*pargs, arr=False, suf_args='[]', **pkwargs):
             remove_file(file_path)
             data = f(*args, **kwargs)
             hf = h5py.File(file_path, 'w')
-            hf.create_dataset('data', data=data)
+            hf.create_dataset('data', data=data.astype(choose(dtype, data.dtype)))
             return array(hf['data']) if arr else hf['data']
         return wrapper
     return inner
+
+
+def parallel(fp, what=''):
+    def inner(f):
+        @wraps(f)
+        def my_f(ana, *args, **kwargs):
+            with Pool() as pool:
+                ana.info(f'generate {what}')
+                r = f(ana, *args, **kwargs)
+                d, fargs = (r[0], r[1:]) if len(r) > 1 else (r, [])
+                pbar = PBar(d.shape[0] // cpu_count())
+                f_ = getattr(ana.__class__, fp)
+                result = pool.starmap(_parallel, [(f_, d, i, pbar, *fargs) for i in array_split(arange(d.shape[0]), cpu_count())])
+                return concatenate(result)
+        return my_f
+    return inner
+
+
+def _parallel(f, d, i, pbar, *args):
+    ret = []
+    use_pbar = i[0] == 0
+    for v in d[i]:
+        if use_pbar:
+            pbar.update()
+        ret.append(f(v, *args))
+    return ret
