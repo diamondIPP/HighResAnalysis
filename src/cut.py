@@ -68,6 +68,9 @@ class Cuts:
             p0 += cut.P
         return cuts
 
+    def get_nofid(self, cut=None, fid=False):
+        return self(cut) if fid else self.exclude('fid', cut)
+
     def exclude(self, exclude, cut=None):
         if cut is not None:
             return self(cut)
