@@ -13,14 +13,16 @@ from json import load, loads
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10, array_split
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
 import h5py
 import pickle
 from copy import deepcopy
 from inspect import signature
 from functools import wraps
 from plotting.utils import info, warning, critical, add_to_info
+from datetime import timedelta, datetime
+from multiprocessing import Pool, cpu_count
 
 
 Dir = dirname(dirname(realpath(__file__)))
@@ -331,17 +333,42 @@ def merge_root_files(files, new_file_name):
     info('successfully merged the single files to "{}"'.format(basename(new_file_name)))
 
 
-class PBar:
-    def __init__(self, n=None):
-        self.PBar = None
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.Step = 0
-        if n is not None:
-            self.start(n)
+def update_pbar(func):
+    @wraps(func)
+    def my_func(*args, **kwargs):
+        value = func(*args, **kwargs)
+        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished():
+            args[0].PBar.update()
+        return value
+    return my_func
 
-    def start(self, n):
+
+class PBar(object):
+    def __init__(self, start=None, counter=False, t=None):
+        self.PBar = None
+        self.Widgets = self.init_widgets(counter, t)
         self.Step = 0
-        self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+        self.N = 0
+        self.start(start)
+
+    def __reduce__(self):
+        return self.__class__, (None, False, None), (self.Widgets, self.Step, self.N)
+
+    def __setstate__(self, state):
+        self.Widgets, self.Step, self.N = state
+        if self.N:
+            self.PBar = ProgressBar(widgets=self.Widgets, maxval=self.N).start()
+            self.update(self.Step) if self.Step > 0 else do_nothing()
+
+    @staticmethod
+    def init_widgets(counter, t):
+        return ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed() if t is None else EventSpeed(t)]
+
+    def start(self, n, counter=None, t=None):
+        if n is not None:
+            self.Step = 0
+            self.PBar = ProgressBar(widgets=self.Widgets if t is None and counter is None else self.init_widgets(counter, t), maxval=n).start()
+            self.N = n
 
     def update(self, i=None):
         i = self.Step if i is None else i
@@ -352,8 +379,34 @@ class PBar:
         if i == self.PBar.maxval - 1:
             self.finish()
 
+    def set_last(self):
+        if self.PBar:
+            self.PBar.currval = self.N
+            self.PBar.finished = True
+
     def finish(self):
         self.PBar.finish()
+
+    def is_finished(self):
+        return self.PBar.currval == self.N
+
+    def eta(self, i, h, m, s=0):
+        self.PBar.start_time = time_stamp(datetime.now() - timedelta(hours=h, minutes=m, seconds=s))
+        self.update(i - 1)
+
+
+class EventSpeed(Widget):
+    """Widget for showing the event speed (useful for slow updates)."""
+
+    def __init__(self, t='s'):
+        self.unit = t
+        self.factor = {'s': 1, 'min': 60, 'h': 60 * 60}[t]
+
+    def update(self, pbar):
+        value = 0
+        if pbar.seconds_elapsed > 2e-6 and pbar.currval > 2e-6:
+            value = pbar.currval / pbar.seconds_elapsed * self.factor
+        return f'{value:4.1f} E/{self.unit}'
 
 
 def prep_kw(dic, **default):
