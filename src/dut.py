@@ -34,10 +34,10 @@ class DUT:
         self.VcalToEl = self.Config.getfloat('DUT', 'vcal to electrons')
 
     def __str__(self):
-        return 'DUT {}, {}, Bias: {:1.0f}V'.format(self.Number, self.Name, self.Bias)
+        return self.Name
 
     def __repr__(self):
-        return self.__str__()
+        return f'DUT {self.Number}, {self}, Bias: {self.Bias:1.0f}V'
 
     def load_specs(self):
         file_name = join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json')
