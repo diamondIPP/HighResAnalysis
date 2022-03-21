@@ -78,7 +78,7 @@ class DESYConverter(Converter):
     def check_root_version():
         version = gROOT.GetVersion()
         if not version.startswith('6'):
-            warning('you require ROOT6 to run proteus! Current version: {}'.format(version))
+            warning(f'ROOT6 required proteus! Current version: {version}')
         return version.startswith('6')
     # endregion INIT
     # ----------------------------------------
@@ -134,7 +134,7 @@ class DESYConverter(Converter):
 
     @staticmethod
     def add_tracks(track_file, match_file, hdf5_file):
-        t0 = info('adding track information ...', endl=False)
+        t0 = info('add track information ...', endl=False)
         g = hdf5_file.create_group('Tracks')
 
         # from tracking tree
@@ -187,7 +187,7 @@ class DESYConverter(Converter):
         tree.SetEstimate(tree.GetEntries())
         g0.create_dataset(n_name, data=get_root_vec(tree, var=n_name, dtype='u2'))
         tree.SetEstimate(sum(array(g0[n_name])))
-        exclude = make_list(exclude, dtype=list) + ['Timing', 'Cov', 'CovColRow']  # Timing & CovColRow is empty, Cov too much data
+        exclude = make_list(exclude) + ['Timing', 'Cov', 'CovColRow']  # Timing & CovColRow is empty, Cov too much data
         names = [b.GetName() for b in tree.GetListOfBranches() if b.GetName() not in exclude][1:]
         n = tree.Draw(':'.join(names), '', 'goff')
         for j, (branch_name, typ) in enumerate(types.items()):
@@ -392,6 +392,6 @@ if __name__ == '__main__':
     parser.add_argument('dut', nargs='?', default=1, type=int)
     pargs = parser.parse_args()
     a = Analysis()
-    run = DESYRun(pargs.run, pargs.dut, a.TCDir, a.Config, single_mode=True)
+    run = DESYRun(pargs.run, pargs.dut, a.BeamTest.Path, a.Config, single_mode=True)
     z = DESYConverter(run.TCDir, run.Number, a.Config)
     # z.run()

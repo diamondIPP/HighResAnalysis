@@ -3,11 +3,10 @@
 #       handles the cuts for the high rate analysis
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from json import loads
 from typing import Any
 from numpy import array, all, in1d, invert, ones
 
-from src.utils import print_table, warning, join, critical, make_list, choose, Dir
+from src.utils import print_table, warning, join, make_list, choose, Dir, is_iter
 from plotting.utils import Config
 
 
@@ -16,7 +15,7 @@ class Cuts:
 
     def __init__(self):
 
-        self.Config = Config(join(Dir, 'config', 'cut.ini'))
+        self.Config = Config(join(Dir, 'cuts', 'cut.ini'))
         self.Cuts = {}
 
     def __call__(self, cut=None):
@@ -28,19 +27,14 @@ class Cuts:
         return self.generate() if other is None else all([self.generate(), other], axis=0)
 
     def set_config(self, beamtest, dut):
-        config = Config(join(Dir, 'config', f'cut{beamtest}.ini'))
-        if dut not in config.sections():
-            critical(f'detector "{dut}" not found in cut config, please add it!')
-        self.Config = config._sections[dut]
+        self.Config = Config(join(Dir, 'cuts', f'cut{beamtest}.ini'), section=dut)
 
-    def get_config(self, option, lst=False, dtype=None):
-        if option not in self.Config:
-            critical('option "{}" not found in cut config, please set it!'.format(option))
-        value = self.Config[option]
-        return array(loads(value)) if lst else value if dtype is None else dtype(value)
+    def get_config(self, option, dtype=None):
+        v = self.Config.get_value(option, dtype=dtype)
+        return array(v) if is_iter(v) else v
 
     def get_fid_config(self, surface=False):
-        return self.get_config('{}fiducial'.format('surface ' if surface else ''), lst=True)
+        return self.get_config(f'{"surface " if surface else ""}fiducial')
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
