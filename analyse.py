@@ -6,6 +6,7 @@
 
 from src.dut_analysis import DUTAnalysis, Analysis
 from src.utils import *  # noqa
+import src.bins as bins  # noqa
 from plotting.draw import *
 from argparse import ArgumentParser
 
@@ -31,4 +32,4 @@ c = z.Converter
 r = z.Run
 dut = z.DUT
 t = z.Tracks
-tel = z.Telescope
+tel = z.Tel
