@@ -4,7 +4,7 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F
-from numpy import cumsum, split, histogram, invert, histogram2d, max, arctan
+from numpy import invert, arctan
 
 from src.analysis import *
 from src.calibration import Calibration
@@ -52,7 +52,7 @@ class DUTAnalysis(Analysis):
 
         # SUBCLASSES
         self.Calibration = Calibration(self.Run)
-        self.Telescope = TelescopeAnalysis(self)
+        self.Tel = TelescopeAnalysis(self)
         self.Tracks = TrackAnalysis(self)
         self.REF = RefAnalysis(self)
         self.Currents = Currents(self)
@@ -164,7 +164,7 @@ class DUTAnalysis(Analysis):
     @save_hdf5('Fid', sub_dir='cuts', arr=True, dtype='?', suf_args='all')
     @parallel('p_in_poly', 'fiducial cut')
     def make_fiducial(self, tracks=False, surface=False, _redo=False):
-        x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_coods(local=True, cut=False)
+        x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_xy(local=True, cut=False)
         return array([x, y]).T, self.get_fid(off=0, surface=surface)
 
     def make_chi2(self, tracks=False, redo=False):
@@ -175,7 +175,7 @@ class DUTAnalysis(Analysis):
         return array(do_hdf5(self.make_hdf5_path('chi2', sub_dir='tracks' if tracks else None), f, redo))
 
     def make_mask(self):
-        x, y = self.get_coods(local=True, cut=False)
+        x, y = self.get_xy(local=True, cut=False)
         mx, my = array(self.Cuts.get_config('mask')).T
         return all([invert((x >= mx[i] - .5) & (x <= mx[i] + .5) & (y >= my[i] - .5) & (y <= my[i] + .5)) for i in range(mx.size)], axis=0)
 
@@ -191,10 +191,6 @@ class DUTAnalysis(Analysis):
             return (tp >= low) & (tp <= high)
         return array(do_hdf5(self.make_hdf5_path('tp', sub_dir='tracks' if tracks else None), f, redo))
 
-    def make_correlation(self, plane=2):
-        n = self.Telescope.get_n('Clusters', plane, cut=False)
-        return (n[self.Tracks.get_events()] == 1)[self.Cuts.get('cluster')()]
-
     def remove_metadata(self):
         for p in self.get_meta_files():
             remove_file(p)
@@ -202,17 +198,21 @@ class DUTAnalysis(Analysis):
         self.init_cuts()
         self.add_cuts()
         self.add_track_cuts()
+
+    def tel2dut(self, x):
+        return x[self.Tracks.get_events()][self.Cuts['cluster']]
+
+    def dut2tel(self, x):
+        c0 = self.Cuts['cluster'].copy()
+        c0[c0] = x
+        c = zeros(self.NEvents, '?')
+        c[self.Tracks.get_events()[c0]] = True
+        return c
     # endregion CUTS
     # ----------------------------------------
 
     # ----------------------------------------
-    # region GET
-    def get_start_time(self):
-        return datetime.fromtimestamp(self.Run.StartTime)
-
-    def get_end_time(self):
-        return datetime.fromtimestamp(self.Run.EndTime)
-
+    # region DATA
     def get_time(self, cut=None, trk_cut: Any = -1):
         t = array(self.Data['Event']['Time']).astype('f8') + self.Run.StartTime
         t = t[self.Tracks.get_events()]  # map the event times to the track times
@@ -261,16 +261,26 @@ class DUTAnalysis(Analysis):
     def get_dy(self, cut=None, x=None):
         return self.get_y(cut) - choose(x, self.Tracks.get_y, cut=cut)
 
+    def get_xy(self, local=True, cut=None):
+        return array([self.get_x(cut=cut) if local else self.get_u(cut), self.get_y(cut=cut) if local else self.get_v(cut)])
+
     def get_residuals(self, cut=None):
         return sqrt(self.get_du(cut) ** 2 + self.get_dv(cut) ** 2)
+    # endregion DATA
+    # ----------------------------------------
 
-    def get_coods(self, local=True, cut=None):
-        return array([self.get_x(cut=cut) if local else self.get_u(cut), self.get_y(cut=cut) if local else self.get_v(cut)])
+    # ----------------------------------------
+    # region GET
+    def get_start_time(self):
+        return datetime.fromtimestamp(self.Run.StartTime)
+
+    def get_end_time(self):
+        return datetime.fromtimestamp(self.Run.EndTime)
 
     def get_mask(self):
         return self.get_data('Mask', cut=False)
 
-    def get_time_args(self, rel_t=False):
+    def t_args(self, rel_t=False):
         return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
 
     @staticmethod
@@ -338,7 +348,7 @@ class DUTAnalysis(Analysis):
         self.Draw.histo_2d(*self.get_mask().T, self.loc_bins, 'Masked Pixels', **prep_kw(dkw, **self.get_ax_tits(), fill_color=1, rm=.03, draw_opt='box'))
 
     def draw_occupancy(self, local=True, bw=1, cut=None, fid=False, **dkw):
-        x, y = self.get_coods(local, self.Cuts.get_nofid(cut, fid))
+        x, y = self.get_xy(local, self.Cuts.get_nofid(cut, fid))
         title = f'{"Local" if local else "Global"} Cluster Occupancy'
         self.Draw.histo_2d(x, y, bins.get_coods(local, self.Plane, bw), title, **prep_kw(dkw, x_tit='Column', y_tit='Row', stats=set_statbox(entries=True, m=True)))
 
@@ -402,7 +412,7 @@ class DUTAnalysis(Analysis):
         self.Draw.prof2d(x, y, z_ * 1e3, bins.get_coods(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.get_ax_tits(local)))
 
     def draw_angle(self, x, y, prof=False, xb=True, local=False, **dkw):
-        b = (bins.x if xb else bins.y)(self.Plane, local=local) + find_bins(y)
+        b = (bins.get_x if xb else bins.get_y)(self.Plane, local=local) + find_bins(y)
         return arctan(FitRes((self.Draw.profile if prof else self.Draw.histo_2d)(x, y, b[:2 if prof else 4], graph=True, **dkw).Fit('pol1', 'qs'))[1].n)
 
     def draw_udv(self, cut=None, tv=None, prof=False, **dkw):
@@ -421,30 +431,36 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CORRELATION
-    def draw_correlation(self, mode='y', res=1, plane=2, thresh=.1, show=True):
-        return self.Telescope.draw_dut_correlation(mode, res, plane, thresh, show)
+    def corr_cuts(self, pl=2):
+        n = self.Tel.get_n_clusters(pl, cut=False)
+        cdut = self.tel2dut(n == 1)
+        return cdut, self.dut2tel(cdut).repeat(n)
 
-    def draw_x_correlation(self, res=1, plane=2, show=True):
-        self.draw_correlation('x', res, plane, show)
+    def draw_x_correlation(self, res=1, pl=2, **dkw):
+        cdut, ctel = self.corr_cuts(pl)
+        x, y = self.get_x(cdut), self.Tel.get_x(pl, cut=ctel)
+        self.Draw.histo_2d(x, y, find_bins(x, w=res) + find_bins(y, q=.2), **prep_kw(dkw, title='X Corr', x_tit='X DUT [Column]', y_tit=f'X Plane {pl} [Column]'))
 
-    def draw_y_correlation(self, res=1, plane=2, show=True):
-        self.draw_correlation('y', res, plane, show)
+    def draw_y_correlation(self, res=1, pl=2, **dkw):
+        cdut, ctel = self.corr_cuts(pl)
+        x, y = self.get_y(cdut), self.Tel.get_y(pl, cut=ctel)
+        self.Draw.histo_2d(x, y, find_bins(x, w=res) + find_bins(y, q=.2), **prep_kw(dkw, title='Y Corr', x_tit='Y DUT [Column]', y_tit=f'Y Plane {pl} [Column]'))
 
-    def draw_correlation_trend(self, plane=2, bw=120, thresh=.5, **dkw):
-        v0, v1 = self.get_y(cut=self.make_correlation(plane)), self.Telescope.get_y(plane, cut=self.Telescope.make_correlation(plane))
-        splits, t = histogram(self.get_time(self.make_correlation(plane)), bins.get_time(self.get_time(), min(int(self.Duration / 3), bw))[1])
-        hs = [histogram2d(v[0], v[1], [bins.get_local_y(self.Plane, 2)[1], bins.get_local_y(self.Telescope.Plane, 4)[1]])[0] for v in split(array([v0, v1]), cumsum(splits)[:-1], axis=1)]
-        # take only bins with >25% of max entries (noise filter)
-        values = [corrcoef(array(where(h > max(h) * thresh)).repeat(h[h > max(h) * thresh].astype('i'), axis=1).T, rowvar=False)[0][1] for h in hs]
-        return self.Draw.graph(t[:-1] + diff(t) / 2, y=values, **prep_kw(dkw, y_tit='Correlation Factor', **self.get_time_args(), y_range=[0, 1.05], draw_opt='ap'))
+    def draw_correlation_trend(self, pl=2, q=.91, **dkw):
+        cdut, ctel = self.corr_cuts(pl)
+        d0, d1, t = self.get_xy(cut=cdut), self.Tel.get_xy(pl, cut=ctel), self.get_time(cdut)
+        g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), q=q), **self.t_args(), y_tit='Correlation Factor', show=False) for i in range(2)]
+        return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args()))
 
-    def draw_alignment(self, plane=2, bw=120, thresh=.5, show=True):
-        x, c = get_graph_vecs(self.draw_correlation_trend(plane, bw, show=False), err=False)
-        r = [1 if ic < thresh else 2 for ic in c]
-        x, y = x.repeat(r), ones(sum(r))
-        binning = bins.get_time(self.get_time(), min(int(self.Duration / 3), bw)) + [3, 0, 3]
-        gStyle.SetPalette(3, array([1, 2, 3], 'i'))
-        self.Draw.histo_2d(x, y, binning, 'Event Alignment', show=show, t_ax_off=0, x_tit='Time [hh:mm]', y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', rm=.03)
+    def draw_alignment(self, pl=2, thresh=.3, **dkw):
+        gx, gy = self.draw_correlation_trend(pl, show=False).GetListOfGraphs()
+        (t, x), y = get_graph_vecs(gx, err=False), get_graph_y(gy, err=False)
+        r = [1 if abs(ix) > thresh and abs(iy) > thresh else 2 for ix, iy in zip(x, y)]
+        x, y = t.repeat(r), ones(sum(r))
+        binning = bins.from_vec(get_graph_x(gx)) + [3, 0, 3]
+        gStyle.SetPalette(3, array([1, 633, 418], 'i'))
+        self.Draw.histo_2d(x, y, binning, 'Event Alignment', **prep_kw(dkw, **self.t_args(), y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', z_range=[0, 2]))
+        Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
     # endregion CORRELATION
     # ----------------------------------------
 
@@ -460,7 +476,7 @@ class DUTAnalysis(Analysis):
         self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, leg=self.get_fid(), z_tit=self.ph_tit, **self.get_ax_tits()))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
-        (x, y), z_ = [f(cut=self.Cuts.get_nofid(cut, fid)) for f in [self.get_coods, self.get_charges]]
+        (x, y), z_ = [f(cut=self.Cuts.get_nofid(cut, fid)) for f in [self.get_xy, self.get_charges]]
         self.Draw.prof2d(x, y, z_, self.loc_bins, 'Charge Occupancy', **prep_kw(dkw, leg=self.get_fid(), z_tit=self.ph_tit, **self.get_ax_tits()))
 
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, **dkw):
@@ -477,7 +493,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_trend(self, bw=None, e=False, cut=None, **dkw):
         x, y = self.get_time(cut), self.get_charges(e=e, cut=cut)
-        g = self.Draw.profile(x, y, find_bins(x, w=bw), **self.get_time_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
+        g = self.Draw.profile(x, y, find_bins(x, w=bw), **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
         return self.Draw(g, **prep_kw(dkw, y_range=ax_range(get_graph_y(g, err=False), fl=1, fh=2)))
 
     def fit_signal(self, bw=None, e=False, **dkw):
