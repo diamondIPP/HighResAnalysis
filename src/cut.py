@@ -26,6 +26,9 @@ class Cuts:
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
 
+    def __getitem__(self, v):
+        return self.get(v)()
+
     def set_config(self, beamtest, dut):
         self.Config = Config(join(Dir, 'cuts', f'cut{beamtest}.ini'), section=dut)
 
