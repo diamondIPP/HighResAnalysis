@@ -44,7 +44,7 @@ def get_global(plane, res=1):
     return get_global_x(plane, res) + get_global_y(plane, res)
 
 
-def get_coods(local, plane, bin_width):
+def get_xy(local, plane, bin_width=1):
     return get_local(plane, bin_width) if local else get_global(plane, bin_width)
 
 
@@ -107,3 +107,7 @@ def make2d(x, y):
 
 def from_vec(x):
     return [x.size, append([i.n - i.s for i in x], x[-1].n + x[-1].s).astype('d')]
+
+
+# Binning
+TP = get_triggerphase()

@@ -33,3 +33,4 @@ r = z.Run
 dut = z.DUT
 t = z.Tracks
 tel = z.Tel
+e = z.Efficiency
