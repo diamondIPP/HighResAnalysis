@@ -446,10 +446,10 @@ class DUTAnalysis(Analysis):
         x, y = self.get_y(cdut), self.Tel.get_y(pl, cut=ctel)
         self.Draw.histo_2d(x, y, find_bins(x, w=res) + find_bins(y, q=.2), **prep_kw(dkw, title='Y Corr', x_tit='Y DUT [Column]', y_tit=f'Y Plane {pl} [Column]'))
 
-    def draw_correlation_trend(self, pl=2, q=.91, **dkw):
+    def draw_correlation_trend(self, pl=2, thresh=.2, **dkw):
         cdut, ctel = self.corr_cuts(pl)
         d0, d1, t = self.get_xy(cut=cdut), self.Tel.get_xy(pl, cut=ctel), self.get_time(cdut)
-        g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), q=q), **self.t_args(), y_tit='Correlation Factor', show=False) for i in range(2)]
+        g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), thresh=thresh), **self.t_args(), y_tit='Correlation Factor', show=False) for i in range(2)]
         return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args()))
 
     def draw_alignment(self, pl=2, thresh=.3, **dkw):
