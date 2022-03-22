@@ -4,7 +4,7 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import arange, concatenate
+from numpy import arange, concatenate, append
 
 
 # Pixel
@@ -55,6 +55,14 @@ def get_global_x(plane, res=1):
     return make(-xmax, xmax, res * plane.PX)
 
 
+def get_x(plane, bw=1, res=1, local=True, aspect_ratio=False):
+    return get_local_x(plane, bw, aspect_ratio) if local else get_global_x(plane, res)
+
+
+def get_y(plane, bw=1, res=1, local=True, aspect_ratio=False):
+    return get_local_y(plane, bw, aspect_ratio) if local else get_global_y(plane, res)
+
+
 def get_global_y(plane, res=1):
     ymax = plane.get_max_width() * .6
     return make(-ymax, ymax, res * plane.PY)
@@ -95,3 +103,7 @@ def make(min_val, max_val, bin_width=1, last=False):
 
 def make2d(x, y):
     return make(x[0], x[-1], x[1] - x[0], last=True) + make(y[0], y[-1], y[1] - y[0], last=True)
+
+
+def from_vec(x):
+    return [x.size, append([i.n - i.s for i in x], x[-1].n + x[-1].s).astype('d')]
