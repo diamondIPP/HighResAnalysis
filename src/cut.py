@@ -8,6 +8,7 @@ from numpy import array, all, in1d, invert, ones
 
 from src.utils import print_table, warning, join, make_list, choose, Dir, is_iter
 from plotting.utils import Config
+from plotting.draw import make_box_args
 
 
 class Cuts:
@@ -37,7 +38,8 @@ class Cuts:
         return array(v) if is_iter(v) else v
 
     def get_fid_config(self, surface=False):
-        return self.get_config(f'{"surface " if surface else ""}fiducial')
+        p = self.get_config(f'{"surface " if surface else ""}fiducial')
+        return make_box_args(*p[[0, 2, 1, 3]] + array([0, 0, 1, 1])) if p.size == 4 else p
 
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
