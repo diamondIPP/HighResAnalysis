@@ -198,18 +198,18 @@ class DESYConverter(Converter):
             g0.create_dataset(branch_name, data=data)
 
     def add_dut_planes(self, match_file, f):
-        info('reading branches for {} DUT planes ... '.format(self.NDUTPlanes))
+        info(f'reading branches for {self.NDUTPlanes} DUT planes ... ')
         for i in range(self.NDUTPlanes):
-            group = f.create_group('Plane{}'.format(i + self.NTelPlanes))
+            group = f.create_group(f'Plane{i + self.NTelPlanes}')
 
             # mask
-            m_tree = match_file.Get('C{}'.format(i)).Get('masked_pixels')
+            m_tree = match_file.Get(f'C{i}').Get('masked_pixels')
             m_tree.SetEstimate(m_tree.GetEntries())
             data = array([get_root_vec(m_tree, var='col', dtype='u2'), get_root_vec(m_tree, var='row', dtype='u2')]).T
             group.create_dataset('Mask', data=data)
 
             # cluster
-            tree = match_file.Get('C{}'.format(i)).Get('tracks_clusters_matched')
+            tree = match_file.Get(f'C{i}').Get('tracks_clusters_matched')
             tree.SetEstimate(tree.GetEntries())
             self.add_dut_tracks(group, tree)
             self.add_clusters(group, tree)
