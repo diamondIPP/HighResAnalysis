@@ -59,6 +59,8 @@ class DUTAnalysis(Analysis):
         self.add_cuts()
         self.add_track_cuts()
 
+        self.Efficiency = self.init_eff()
+
     def __repr__(self):
         return f'{super().__repr__()} ({ev2str(self.NEvents)} ev)'
 
@@ -71,6 +73,10 @@ class DUTAnalysis(Analysis):
     @property
     def converter(self):
         return DESYConverter if self.BeamTest.Location == 'DESY' else Converter
+
+    def init_eff(self):
+        from mod.efficiency import Efficiency
+        return Efficiency(self)
 
     def get_entries(self):
         return self.Data['Tracks']['NTracks'].size
@@ -112,7 +118,7 @@ class DUTAnalysis(Analysis):
     # todo: add extra class
     def init_cuts(self, redo=False):
         self.Cuts.set_config(self.BeamTest.Tag, self.DUT.Name)
-        self.Cuts.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
+        self.Cuts.register('fid', self.make_fiducial(_redo=redo), 10, 'fid cut')
         self.Cuts.register('mask', self.make_mask(), 20, 'mask pixels')
         self.Cuts.register('charge', self.get_charges(cut=False) != 0, 30, 'events with non-zero charge')
         self.Cuts.register('cluster', self.get_data('Clusters', 'Size', cut=False) > 0, 90, 'tracks with a cluster')
@@ -126,7 +132,7 @@ class DUTAnalysis(Analysis):
     def add_track_cuts(self, redo=False):
         self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True, redo=redo), 10, 'track trigger phase')
         self.Tracks.Cuts.register('res', self.REF.make_residuals(redo=redo), 20, 'tracks with a small residual in the REF')
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, redo=redo), 30, 'tracks in fiducial area')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, _redo=redo), 30, 'tracks in fiducial area')
         self.Tracks.Cuts.register('tstart', self.make_start_time(tracks=True, redo=redo), 40, 'exclude first events')
         self.Tracks.Cuts.register('chi2', self.make_chi2(tracks=True, redo=redo), 50, 'small chi2')
 
@@ -136,9 +142,8 @@ class DUTAnalysis(Analysis):
         self.add_track_cuts(redo)
 
     def activate_surface(self, on=True):
-        option = '{}fiducial'.format('surface ' if on else '')
-        self.Cuts.register('fid', self.make_fiducial(option=option), 10, 'fid cut')
-        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, option=option), 30)
+        self.Cuts.register('fid', self.make_fiducial(surface=on), 10, 'fid cut')
+        self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, surface=on), 30)
         self.Surface = on
 
     def deactivate_surface(self):
@@ -180,9 +185,12 @@ class DUTAnalysis(Analysis):
         return all([invert((x >= mx[i] - .5) & (x <= mx[i] + .5) & (y >= my[i] - .5) & (y <= my[i] + .5)) for i in range(mx.size)], axis=0)
 
     def get_fid(self, off=-.5, surface=None, **dkw):
-        p = self.Cuts.get_fid_config(choose(surface, self.Surface)) + off
-        x, y = make_box_args(*p[[0, 2, 1, 3]] + array([0, 0, 1, 1])) if p.size == 4 else p
+        x, y = self.Cuts.get_fid_config(choose(surface, self.Surface)) + off
         return self.Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=f'fid{self.Surface:d}'))
+
+    def get_full_size(self, off=0, **dkw):
+        x, y = make_box_args(*self.Cuts.get_config('full size')[[0, 2, 1, 3]]) + off
+        return self.Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=f'full size'))
 
     def make_trigger_phase(self, tracks=False, redo=False):
         def f():
@@ -294,17 +302,6 @@ class DUTAnalysis(Analysis):
     def get_cluster_size(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('Clusters', 'Size', cut=cut, trk_cut=trk_cut)
 
-    def get_efficiencies(self, trk_cut=None):
-        return (self.get_cluster_size(trk_cut=trk_cut) > 0).astype('u2') * 100
-
-    def get_segment_efficiecies(self, nx=2, ny=3, cut=None):
-        return get_2d_hist_vec(self.draw_efficiency_map(local=True, cut=cut, binning=bins.make2d(*self.get_segments(nx, ny)), show=False), err=False, flat=False)
-
-    def get_efficiency(self, trk_cut=None, prnt=True):
-        eff = calc_eff(values=self.get_efficiencies(trk_cut))
-        self.info('{:.1f}(-{:.1f}+{:.1f})%'.format(*eff), prnt=prnt)
-        return eff
-
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
 
@@ -312,9 +309,15 @@ class DUTAnalysis(Analysis):
         """ returns: event numbers with clusters. """
         return self.Tracks.get_events(self.Cuts.get('cluster'))
 
-    def get_segments(self, nx, ny):
-        x0, x1, y0, y1 = self.Cuts.get_config('full size', lst=True)
-        return arange(x0, x1 + bool((x1 - x0 + 1) % nx) * nx + 1.1, nx, dtype='u2'), arange(y0, y1 + bool((y1 - y0 + 1) % ny) * ny + 1.1, ny, dtype='u2')
+    def get_segments(self, nx, ny, width=False):
+        x0, x1, y0, y1 = self.Cuts.get_config('full size')
+        if width:
+            return arange(x0, x1 + (x1 - x0) // nx, nx, dtype='u2'), arange(y0, y1 + (y1 - y0) // ny, ny, dtype='u2')
+        return linspace(x0, x1, nx + 1), linspace(y0, y1, ny + 1)
+
+    def get_segment_centres(self, nx, ny, width=False):
+        x, y = self.get_segments(nx, ny, width)
+        return x[:-1] + diff(x) / 2, y[:-1] + diff(y) / 2
 
     def expand_inpixel(self, x, y, e=None, cell=False):
         cx, cy = [self.DUT.CellSize / 1000. / self.Plane.PX, self.DUT.CellSize / 1000. / self.Plane.PY]
@@ -350,11 +353,11 @@ class DUTAnalysis(Analysis):
     def draw_occupancy(self, local=True, bw=1, cut=None, fid=False, **dkw):
         x, y = self.get_xy(local, self.Cuts.get_nofid(cut, fid))
         title = f'{"Local" if local else "Global"} Cluster Occupancy'
-        self.Draw.histo_2d(x, y, bins.get_coods(local, self.Plane, bw), title, **prep_kw(dkw, x_tit='Column', y_tit='Row', stats=set_statbox(entries=True, m=True)))
+        self.Draw.histo_2d(x, y, bins.get_xy(local, self.Plane, bw), title, **prep_kw(dkw, x_tit='Column', y_tit='Row', stats=set_statbox(entries=True, m=True)))
 
-    def draw_hit_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
-        x, y = self.Tracks.get_coods(local, self.Cuts.get_nofid(cut, fid))
-        self.Draw.histo_2d(x, y, bins.get_coods(local, self.Plane, res), 'Hit Map', **prep_kw(dkw, **self.get_ax_tits(local)))
+    def draw_hit_map(self, res=.3, local=True, cut=None, trk_cut=-1, fid=False, **dkw):
+        x, y = self.Tracks.get_coods(local, self.Cuts.get_nofid(cut, fid), trk_cut)
+        self.Draw.histo_2d(x, y, bins.get_xy(local, self.Plane, res), 'Hit Map', **prep_kw(dkw, **self.get_ax_tits(local)))
 
     def draw_cluster_size(self, cut=None, trk_cut=-1, **dkw):
         v = self.get_cluster_size(cut, trk_cut)
@@ -363,7 +366,7 @@ class DUTAnalysis(Analysis):
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         cut = self.Cuts.get_nofid(cut, fid)
         x, y = self.Tracks.get_coods(local, cut)
-        self.Draw.prof2d(x, y, self.get_cluster_size(cut), bins.get_coods(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, z_tit='Cluster Size', **self.get_ax_tits(local)))
+        self.Draw.prof2d(x, y, self.get_cluster_size(cut), bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, z_tit='Cluster Size', **self.get_ax_tits(local)))
 
     def draw_trigger_phase(self, cut=None, trk_cut=-1):
         cut, trk_cut = self.Cuts.exclude('triggerphase', cut), self.Tracks.Cuts.exclude('triggerphase', trk_cut) if trk_cut != -1 else trk_cut
@@ -376,9 +379,8 @@ class DUTAnalysis(Analysis):
         g = self.Draw.profile(arange(t.size), t, bins.make(0, t.size, sqrt(t.size)), x_tit='Event Number', y_tit='Time [hh:mm]', show=show, draw_opt='al', graph=True)
         set_time_axis(g, axis='Y')
 
-    def draw_segments(self, nx=2, ny=3, w=1):
-        x, y = array(self.get_segments(nx, ny)) - .5
-        self.Draw.grid(x, y, w)
+    def draw_grid(self, nx=2, ny=3, w=1, width=False):
+        self.Draw.grid(*self.get_segments(nx, ny, width), w)
 
     def draw_x(self, res=.1, cluster=False, cut=None):
         x = self.get_x(cut) if cluster else self.Tracks.get_x(cut)
@@ -409,7 +411,7 @@ class DUTAnalysis(Analysis):
 
     def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         (x, y), z_ = [f(cut=self.Cuts.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_coods, local=local), self.get_residuals]]
-        self.Draw.prof2d(x, y, z_ * 1e3, bins.get_coods(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.get_ax_tits(local)))
+        self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.get_ax_tits(local)))
 
     def draw_angle(self, x, y, prof=False, xb=True, local=False, **dkw):
         b = (bins.get_x if xb else bins.get_y)(self.Plane, local=local) + find_bins(y)
@@ -509,58 +511,6 @@ class DUTAnalysis(Analysis):
         self.Draw.box(0, 0, 1, 1)
         update_canvas()
     # endregion SIGNAL
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # region EFFICIENCY
-    def draw_efficiency(self, bin_width=30, show=True):
-        t, e = self.get_time(trk_cut=None), self.get_efficiencies()
-        p = self.Draw.efficiency(t, e, bins.get_time(t, bin_width), 'Efficiency', x_tit='Time [hh:mm]', y_tit='Efficiency [%]', t_ax_off=0, y_range=[0, 105], show=show, stats=0)
-        return p
-
-    def draw_efficiency_vs_trigger_phase(self, show=True):
-        cut = self.Tracks.Cuts.exclude('triggerphase')
-        x, y = self.get_trigger_phase(trk_cut=cut), self.get_efficiencies(cut)
-        return self.Draw.profile(x, y, bins.get_triggerphase(), 'Efficiency vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Efficiency [%]', y_range=[0, 105], show=show)
-
-    def draw_efficiency_map(self, res=.25, local=True, eff=True, both=False, fid=False, cut=None, binning=None, show=True):
-        mcut = self.Tracks.Cuts(cut) if fid else self.Tracks.Cuts.exclude('fid')
-        x, y = self.Tracks.get_x(trk_cut=mcut, local=local), self.Tracks.get_y(trk_cut=mcut, local=local)
-        binning = choose(binning, bins.get_coods, 'None', local, self.Plane, res)
-        p = self.Draw.prof2d(x, y, self.get_efficiencies(mcut), binning, 'Efficiency Map', show=show, draw_opt='colz', **self.get_ax_tits(local))
-        self.draw_fid(show=not fid and show)
-        self.draw_eff_text(self.Surface, cut, eff)
-        self.draw_eff_text(not self.Surface, cut, eff and both)
-        return p
-
-    def draw_eff_text(self, surface, cut, show=True):
-        if show:
-            self.activate_surface(surface)
-            self.draw_fid()
-            x0, x1, y0, y1 = self.Cuts.get_fid_config(surface)
-            self.Draw.tlatex(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, '{:2.1f}%'.format(self.get_efficiency(cut, False)[0]), 'eff', 22, size=.04)
-
-    def draw_segment_efficiencies(self, res=.25, local=True, nx=2, ny=3, cut=None, show=True):
-        e = self.get_segment_efficiecies(nx, ny, cut)
-        self.draw_efficiency_map(res, local, cut=cut, show=show, eff=False)
-        x, y = self.get_segments(nx, ny)
-        for i, ix in enumerate(x[:-1]):
-            for j, iy in enumerate(y[:-1]):
-                self.Draw.tlatex(ix + nx / 2 - .5, iy + ny / 2 - .5, '{:2.1f}'.format(e[i][j]), str(i * y.size + j), 22, size=.02)
-        self.draw_segments(nx, ny)
-
-    def draw_segment_distribution(self, nx=2, ny=3, zsup=False, cut=None, bin_width=None, segments=True, show=True):
-        e = self.get_segment_efficiecies(nx, ny, cut).flatten() if segments else get_2d_hist_vec(self.draw_efficiency_map(.5, show=False), err=False)
-        binning = bins.make(0, 101.5, choose(bin_width, 1)) if zsup else bins.make(95, 100.5, choose(bin_width, 5.5 / sqrt(e.size) / 2), last=True)
-        self.Draw.distribution(e, binning, 'Segment Efficiencies', x_tit='Efficiency [%]', show=show)
-
-    def draw_inpixel_eff(self, res=.1, cut=None, show=True, cell=False):
-        (x, y), e = self.Tracks.get_coods(trk_cut=cut), self.get_efficiencies(cut)
-        x, y, e = self.expand_inpixel(x, y, e, cell)
-        self.Draw.prof2d(x, y, e, bins.get_pixel(self.Plane, res, cell=cell), 'Efficiency Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
-        self.Draw.box(0, 0, 1, 1)
-        update_canvas()
-    # endregion EFFICIENCY
     # ----------------------------------------
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
