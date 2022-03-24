@@ -13,7 +13,7 @@ from json import load, loads
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10, array_split
+from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10, array_split, ndarray, full, frombuffer
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
 import h5py
 import pickle
@@ -150,6 +150,10 @@ def get_rot_matrix(alpha):
     return array([[cos(alpha), -sin(alpha)], [sin(alpha), cos(alpha)]])
 
 
+def get_trans_matrix(off):
+    return array([[1, 0, off[0]], [0, 1, off[1]], [0, 0, 1]])
+
+
 def rotate(alpha, v):
     return dot(get_rot_matrix(alpha), v)
 
@@ -267,17 +271,16 @@ def ev2str(v):
     return f'{v / 10 ** (3 * n):.{2 if n > 1 else 0}f}{["", "k", "M"][n]}'
 
 
-def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
-    if var is not None:
-        n = tree.Draw(var, cut, 'goff')
-    vec = tree.GetVal(ind)
-    vec.SetSize(n)
-    return array(list(vec), dtype=dtype)
+def get_buf(buf, n, dtype=None):
+    return frombuffer(buf, dtype=buf.typecode, count=n).astype(dtype)
 
 
-def get_root_vecs(tree, n, n_ind, dtype=None):
-    dtypes = [None] * n_ind if dtype is None else dtype
-    return [get_root_vec(tree, n, i, dtypes[i]) for i in range(n_ind)]
+def get_tree_vec(tree, var, cut='', dtype=None, nentries=None, firstentry=0):
+    strings = make_list(var)
+    n = tree.Draw(':'.join(strings), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
+    dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
+    vals = [get_buf(tree.GetVal(i), n, dtypes[i]) for i in range(strings.size)]
+    return vals[0] if len(vals) == 1 else vals
 
 
 def make_list(value, dtype=None):
