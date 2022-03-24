@@ -74,6 +74,7 @@ class Plane:
         self.PX, self.PY = loads(config.get(section, 'pitch'))
         self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
+        self.W, self.H = self.PX * self.NCols, self.PY * self.NRows
 
     def __str__(self):
         return 'DUT Plane' if self.IsDUT else 'Plane {}'.format(self.Number)
