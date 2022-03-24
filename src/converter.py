@@ -3,8 +3,7 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from argparse import ArgumentParser
-from os.path import expanduser
+from pathlib import Path
 from numpy import sum, append, delete
 
 from src.utils import *
@@ -12,15 +11,15 @@ from src.utils import *
 
 class Converter:
 
-    def __init__(self, data_dir, run_number, config):
+    def __init__(self, data_dir: Path, run_number, config):
 
         self.RunNumber = run_number
         self.Config = config
 
         # DIRECTORIES
         self.DataDir = data_dir
-        self.SaveDir = join(self.DataDir, 'data')
-        self.SoftDir = expanduser(self.Config.get('SOFTWARE', 'dir'))
+        self.SaveDir = data_dir.joinpath('data')
+        self.SoftDir = Path(self.Config.get('SOFTWARE', 'dir')).expanduser()
 
         self.RawFilePath = self.load_raw_file_name()
 
@@ -87,10 +86,12 @@ class Cluster:
 
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
+
     p = ArgumentParser()
     p.add_argument('filename', nargs='?', default='')
     # noinspection PyTypeChecker
     p.add_argument('plane', nargs='?', default=0, type=int)
     args = p.parse_args()
-    z = Converter('/scratch2/cern/2018-10/cms-raw/ljutel_110.root', 0, '/scratch2/cern/2018-10/II6-B6')
+    z = Converter(Path('/scratch2/cern/2018-10/cms-raw/ljutel_110.root'), 0, '/scratch2/cern/2018-10/II6-B6')
     # z.run()
