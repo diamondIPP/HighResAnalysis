@@ -25,12 +25,15 @@ z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode
 z.add_info(t_start, prnt=True)
 
 # aliases
-cal = z.Calibration
-cut = z.Cuts
-cur = z.Currents
-c = z.Converter
-r = z.Run
-dut = z.DUT
-t = z.Tracks
-tel = z.Tel
-e = z.Efficiency
+try:
+    c = z.Converter
+    cal = z.Calibration
+    cut = z.Cuts
+    cur = z.Currents
+    r = z.Run
+    dut = z.DUT
+    t = z.Tracks
+    tel = z.Tel
+    e = z.Efficiency
+except AttributeError:
+    pass
