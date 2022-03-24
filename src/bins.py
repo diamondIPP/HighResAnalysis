@@ -44,8 +44,8 @@ def get_global(plane, res=1):
     return get_global_x(plane, res) + get_global_y(plane, res)
 
 
-def get_xy(local, plane, bin_width=1):
-    return get_local(plane, bin_width) if local else get_global(plane, bin_width)
+def get_xy(local, plane, bin_width=1, aspect_ratio=False):
+    return get_local(plane, bin_width, aspect_ratio) if local else get_global(plane, bin_width)
 
 
 def get_global_x(plane, res=1):
