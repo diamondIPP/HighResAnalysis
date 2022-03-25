@@ -13,7 +13,7 @@ from json import load, loads
 from collections import OrderedDict
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from numpy import average, sqrt, array, arange, mean, exp, concatenate, count_nonzero, zeros, sin, cos, dot, log2, log10, array_split, ndarray, full, frombuffer
+from numpy import sqrt, array, arange, mean, exp, concatenate, zeros, sin, cos, dot, log2, log10, array_split, ndarray, full, frombuffer
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
 import h5py
 import pickle
@@ -172,13 +172,6 @@ def load_json(filename, ordered=None):
         return load(f, object_hook=None if ordered is None else OrderedDict)
 
 
-def do(fs, pars, exe=-1):
-    fs, pars = ([fs], [pars]) if type(fs) is not list else (fs, pars)
-    exe = pars if exe == -1 else [exe]
-    for f, p, e in zip(fs, pars, exe):
-        f(p) if e is not None else do_nothing()
-
-
 def choose(v, default, decider='None', *args, **kwargs):
     use_default = decider is None if decider != 'None' else v is None
     if callable(default) and use_default:
@@ -192,23 +185,6 @@ def remove_letters(string):
 
 def remove_digits(string):
     return ''.join(filter(lambda x: not x.isdigit(), string))
-
-
-def mean_sigma(values, weights=None):
-    """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
-    if len(values) == 1:
-        value = make_ufloat(values[0])
-        return value.n, value.s
-    weights = [1] * len(values) if weights is None else weights
-    if type(values[0]) in [Variable, AffineScalarFunc]:
-        weights = [1 / v.s for v in values]
-        values = array([v.n for v in values], 'd')
-    if all(weight == 0 for weight in weights):
-        return [0, 0]
-    values = values.astype('d')
-    avrg = average(values, weights=weights)
-    variance = average((values - avrg) ** 2, weights=weights)  # Fast and numerically precise
-    return avrg, sqrt(variance)
 
 
 def interpolate_two_points(x1, y1, x2, y2, name=''):
@@ -241,18 +217,6 @@ def get_p1(x1, x2, y1, y2):
 
 def get_p0(x1, y1, p1):
     return y1 - x1 * p1
-
-
-def calc_eff(k=0, n=0, values=None):
-    values = array(values) if values is not None else None
-    if n == 0 and not values.size:
-        return zeros(3)
-    k = float(k if values is None else count_nonzero(values))
-    n = float(n if values is None else values.size)
-    m = (k + 1) / (n + 2)
-    mode = k / n
-    s = sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))
-    return array([mode, max(s + (mode - m), 0), max(s - (mode - m), 0)]) * 100
 
 
 def make_ufloat(tup):
