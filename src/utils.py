@@ -23,6 +23,7 @@ from functools import wraps
 from plotting.utils import info, warning, critical, add_to_info
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
+from hashlib import md5
 
 
 Dir = dirname(dirname(realpath(__file__)))
@@ -392,18 +393,18 @@ def prep_kw(dic, **default):
     return d
 
 
-def make_suffix(ana, *values):
-    suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in values]
-    return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
+def make_suffix(*values):
+    vals = [md5(val).hexdigest() if type(val) is ndarray else f'{val:d}' if isint(val) else val for val in values if val is not None]
+    return '_'.join(str(val) for val in vals)
 
 
-def prep_suffix(f, args, kwargs, suf_args, field=None):
+def prep_suffix(f, ana, args, kwargs, suf_args, field=None):
     def_pars = signature(f).parameters
-    names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
-    i_arg = (arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))) + 1
+    names, values = list(def_pars.keys())[1:], [par.default for par in def_pars.values()][1:]  # first par is class instance
+    i_arg = arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
-    suf_vals += [getattr(args[0], str(field))] if field is not None and hasattr(args[0], field) else []
-    return make_suffix(args[0], *suf_vals)
+    suf_vals += [getattr(ana, str(field))] if field is not None and hasattr(ana, field) else []
+    return make_suffix(*suf_vals)
 
 
 def load_pickle(file_name):
@@ -414,37 +415,38 @@ def load_pickle(file_name):
 def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', field=None, verbose=False, **pkwargs):
     def inner(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(ana, *args, **kwargs):
             if '_no_save' in kwargs:
-                return func(*args, **kwargs)
-            run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
-            pickle_path = args[0].make_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args, field)))
+                return func(ana, *args, **kwargs)
+            run = ana.Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
+            pickle_path = ana.make_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, ana, args, kwargs, suf_args, field)))
             info(f'Pickle path: {pickle_path}', prnt=verbose)
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 return load_pickle(pickle_path)
             prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
-            t = (args[0].info if hasattr(args[0], 'info') else info)(f'{args[0].__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
-            value = func(*args, **kwargs)
+            t = (ana.info if hasattr(ana, 'info') else info)(f'{ana.__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
+            value = func(ana, *args, **kwargs)
             with open(pickle_path, 'wb') as f:
                 pickle.dump(value, f)
-            (args[0].add_to_info if hasattr(args[0], 'add_to_info') else add_to_info)(t, prnt=prnt)
+            (ana.add_to_info if hasattr(ana, 'add_to_info') else add_to_info)(t, prnt=prnt)
             return value
         return wrapper
     return inner
 
 
-def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', **pkwargs):
+def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', verbose=False, **pkwargs):
     def inner(f):
         @wraps(f)
-        def wrapper(*args, **kwargs):
-            file_path = args[0].make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, args, kwargs, suf_args)))
+        def wrapper(ana, *args, **kwargs):
+            file_path = ana.make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, ana, args, kwargs, suf_args)))
+            info(f'HDF5 path: {file_path}', prnt=verbose)
             redo = kwargs['_redo'] if '_redo' in kwargs else False
             if file_exists(file_path) and not redo:
                 d = h5py.File(file_path, 'r')['data']
                 return array(d) if arr else d
             remove_file(file_path)
-            data = f(*args, **kwargs)
+            data = f(ana, *args, **kwargs)
             hf = h5py.File(file_path, 'w')
             hf.create_dataset('data', data=data.astype(choose(dtype, data.dtype)))
             return array(hf['data']) if arr else hf['data']
