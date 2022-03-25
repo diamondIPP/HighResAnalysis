@@ -4,7 +4,7 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import rad2deg, ndarray, dot, array, zeros, polyfit, polyval, delete, quantile, linspace, mean
+from numpy import rad2deg, ndarray, dot, array, zeros, polyfit, polyval, delete, quantile, linspace, mean, arctan
 from numpy.linalg import inv
 from numpy.random import normal
 
@@ -16,6 +16,8 @@ from plotting.fit import Gauss
 
 
 class TrackAnalysis(Analysis):
+
+    M = ['x', 'y']
 
     def __init__(self, dut_analysis):
         self.Ana = dut_analysis
@@ -57,14 +59,14 @@ class TrackAnalysis(Analysis):
     def get_size(self, cut=None, trk_cut=-1):
         return self.get('Size', cut, trk_cut)
 
-    def get_slope_x(self, cut=None, trk_cut=-1):
-        return self.get('SlopeX', cut, trk_cut)
+    def get_slope_x(self, cut=None, trk_cut=-1, fit=False):
+        return arctan(self.get_x_fits(cut, trk_cut)[0]) if fit else self.get('SlopeX', cut, trk_cut)
 
     def get_off_x(self, cut=None, trk_cut=-1):
         return self.get('X', cut, trk_cut)
 
-    def get_slope_y(self, cut=None, trk_cut=-1):
-        return self.get('SlopeY', cut, trk_cut)
+    def get_slope_y(self, cut=None, trk_cut=-1, fit=False):
+        return arctan(self.get_y_fits(cut, trk_cut)[0]) if fit else self.get('SlopeY', cut, trk_cut)
 
     def get_off_y(self, cut=None, trk_cut=-1):
         return self.get('Y', cut, trk_cut)
@@ -131,18 +133,25 @@ class TrackAnalysis(Analysis):
             xfit, yfit = [self.Draw.distribution(v, show=False).Fit('gaus', 'qs0') for v in [dx, dy]]
             return array([[xfit.Parameter(1)], [yfit.Parameter(1)]])
         return do_pickle(self.make_pickle_path('off'), f, redo=redo)
+
+    def get_z(self, raw=False):
+        return self.Ana.Converter.get_z_positions(raw)[:self.Tel.NPlanes]
+
+    def get_x_fits(self, cut=None, trk_cut: Any = False, full=False):
+        return polyfit(self.get_z(), self.get_xs(cut, trk_cut), deg=1, full=full)
+
+    def get_y_fits(self, cut=None, trk_cut: Any = False, full=False):
+        return polyfit(self.get_z(), self.get_ys(cut, trk_cut), deg=1, full=full)
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region RESIDUALS
     def chi2_x(self):
-        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_xs(trk_cut=False)
-        return polyfit(x, y, deg=1, full=True)[1]
+        return self.get_x_fits(full=True)[1]
 
     def chi2_y(self):
-        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_ys(trk_cut=False)
-        return polyfit(x, y, deg=1, full=True)[1]
+        return self.get_y_fits(full=True)[1]
 
     def chi2(self, q=.8):
         x, y = self.chi2_x(), self.chi2_y()
@@ -250,14 +259,14 @@ class TrackAnalysis(Analysis):
         values = self.get_chi2(cut, trk_cut)
         return self.Draw.distribution(values, bins.make(0, 100, 1.), 'Track #chi^{2}', x_tit='#chi^{2}')
 
-    def draw_slope(self, mode='x', bin_width=.01):
-        values = rad2deg(array(self.Data['Slope{}'.format(mode.title())]))
-        self.Draw.distribution(values, bins.make(-1, 1, bin_width), 'Track Slope {}'.format(mode.title()), x_tit='Track Slope [deg]', y_off=1.8, lm=.13)
+    def draw_slopes(self, cut=None, trk_cut=False, fit=False, **dkw):
+        g = [getattr(self, f'draw_slope_{m}')(cut, trk_cut, fit, lf=1, rf=1, show=False) for m in self.M]
+        return self.Draw.stack(g, 'TrackSlopes', self.M, **prep_kw(dkw))
 
-    def draw_slope_x(self, bin_width=.01):
-        self.draw_slope('x', bin_width)
+    def draw_slope_x(self, cut=None, trk_cut=False, fit=False, **dkw):
+        return self.Draw.distribution(rad2deg(self.get_slope_x(cut, trk_cut, fit)), **prep_kw(dkw, title='Track Slope X', x_tit='Track Slope [deg]'))
 
-    def draw_slope_y(self, bin_width=.01):
-        self.draw_slope('y', bin_width)
+    def draw_slope_y(self, cut=None, trk_cut=False, fit=False, **dkw):
+        return self.Draw.distribution(rad2deg(self.get_slope_y(cut, trk_cut, fit)), **prep_kw(dkw, title='Track Slope Y', x_tit='Track Slope [deg]'))
     # endregion DRAW
     # ----------------------------------------
