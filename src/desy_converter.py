@@ -16,7 +16,9 @@ from src.calibration import Calibration
 from src.converter import Converter
 from src.desy_run import DESYRun
 from src.dut import Plane
-from src.utils import print_banner, file_exists, OrderedDict, get_root_vec, basename, h5py, get_root_vecs
+from src.utils import print_banner, file_exists, basename, h5py, get_tree_vec
+from ROOT import TFile
+import toml
 
 
 class DESYConverter(Converter):
@@ -32,9 +34,9 @@ class DESYConverter(Converter):
         Converter.__init__(self, data_dir, run_number, config)
 
         # DIRECTORIES
-        self.EUDAQDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'eudaq2'))
-        self.ProteusSoftDir = join(self.SoftDir, self.Config.get('SOFTWARE', 'proteus'))
-        self.ProteusDataDir = join(self.DataDir, 'proteus')
+        self.EUDAQDir = self.SoftDir.joinpath(self.Config.get('SOFTWARE', 'eudaq2'))
+        self.ProteusSoftDir = self.SoftDir.joinpath(self.Config.get('SOFTWARE', 'proteus'))
+        self.ProteusDataDir = self.DataDir.joinpath('proteus')
 
         # FILENAMES
         self.ROOTFileName = join(self.SaveDir, 'run{:06d}.root'.format(self.RunNumber))
@@ -85,9 +87,9 @@ class DESYConverter(Converter):
 
     # ----------------------------------------
     # region GET
-    def get_z_positions(self):
-        with open(join(self.ProteusDataDir, 'geometry.toml')) as f:
-            return array([float(line.split(',')[-1].strip(']\n\r')) for line in f.readlines() if line.startswith('offset')])
+    def get_z_positions(self, raw=False):
+        d = toml.load(self.ProteusDataDir.joinpath('geometry.toml' if raw else self.make_toml_name()))
+        return array([s['offset'][-1] for s in d['sensors']])
 
     def get_align_steps(self):
         with open(join(self.ProteusDataDir, 'analysis.toml')) as f:
@@ -95,6 +97,9 @@ class DESYConverter(Converter):
 
     def get_align_files(self):
         return [join(self.ProteusDataDir, name) for name in [self.make_toml_name('all', 'mask', 'mask'), self.make_toml_name()]]
+
+    def get_alignment(self, step=-1):
+        return toml.load(self.ProteusDataDir.joinpath(self.make_toml_name(self.AlignSteps[step])))
 
     def get_calibration(self, dut_number):
         return Calibration(DESYRun(self.RunNumber, dut_number, self.DataDir, self.Config))
@@ -132,41 +137,41 @@ class DESYConverter(Converter):
 
         add_to_info(start_time, '\nFinished conversion in')
 
-    @staticmethod
-    def add_tracks(track_file, match_file, hdf5_file):
-        t0 = info('add track information ...', endl=False)
+    def add_tracks(self, track_file, match_file, hdf5_file):
+        info('add track information ...')
         g = hdf5_file.create_group('Tracks')
+
+        track_types = {'Chi2': 'f2', 'Dof': 'u1', 'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2'}
+        match_types = {'evt_frame': 'u4', 'evt_ntracks': 'u1', 'trk_size': 'f2'}
+        self.PBar.start(len(track_types) + len(match_types), counter=True, t='s')
 
         # from tracking tree
         t_tree = track_file.Get('Tracks')
         t_tree.SetEstimate(t_tree.GetEntries())
-        g.create_dataset('NTracks', data=get_root_vec(t_tree, var='NTracks', dtype='u1'))
+        g.create_dataset('NTracks', data=get_tree_vec(t_tree, var='NTracks', dtype='u1'))
         t_tree.SetEstimate(sum(g['NTracks']))
-        name_types = OrderedDict([('Chi2', 'f2'), ('Dof', 'u1'), ('X', 'f2'), ('Y', 'f2'), ('SlopeX', 'f2'), ('SlopeY', 'f2')])
-        n = t_tree.Draw(':'.join(name_types.keys()), '', 'goff')
-        for i, (name, typ) in enumerate(name_types.items()):
-            g.create_dataset(name, data=get_root_vec(t_tree, n, i, dtype=typ))
+        for n, t in track_types.items():
+            g.create_dataset(n, data=get_tree_vec(t_tree, n, dtype=t))
+            self.PBar.update()
 
         # from match tree
         m_tree = match_file.Get('C0').Get('tracks_clusters_matched')
         m_tree.SetEstimate(m_tree.GetEntries())
-        name_types = OrderedDict([('evt_frame', 'u4'), ('evt_ntracks', 'u1'), ('trk_size', 'f2')])
-        n = m_tree.Draw(':'.join(name_types.keys()), '', 'goff')
-        for i, (name, typ) in enumerate(name_types.items()):
-            g.create_dataset(name.replace('trk_', '').title().replace('_', ''), data=get_root_vec(m_tree, n, i, dtype=typ))
-        add_to_info(t0)
+        for n, t in match_types.items():
+            g.create_dataset(n.replace('trk_', '').title().replace('_', ''), data=get_tree_vec(m_tree, n, dtype=t))
+            self.PBar.update()
 
     @staticmethod
     def add_time_stamp(root_file, hdf5_file):
         tree = root_file.Get('Event')
         tree.SetEstimate(tree.GetEntries())
-        t_vec = get_root_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
+        t_vec = get_tree_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
         g = hdf5_file.create_group('Event')
         g.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f4'))  # convert time vec to seconds
 
     def add_tel_planes(self, root_file, hdf5_file):
-        names = ['Plane{}'.format(i) for i in range(self.NTelPlanes)]
-        info('reading branches for {} telescope planes ... '.format(len(names)))
+        names = [f'Plane{i}' for i in range(self.NTelPlanes)]
+        info(f'reading branches for {len(names)} telescope planes ... ')
         hit_types = {'X': 'u2', 'Y': 'u2', 'ADC': 'u1', 'HitInCluster': 'u1'}
         plane_types = {'X': 'f2', 'Y': 'f2', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
         intercept_types = {'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
@@ -183,19 +188,18 @@ class DESYConverter(Converter):
     def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
         g0 = group.create_group(branch_name)
         tree = root_file.Get(plane_name).Get(branch_name)  # NHits, PixX, PixY, Timing, Value, HitInCluster
-        n_name = 'N{}'.format(branch_name)
+        n_name = f'N{branch_name}'
         tree.SetEstimate(tree.GetEntries())
-        g0.create_dataset(n_name, data=get_root_vec(tree, var=n_name, dtype='u2'))
+        g0.create_dataset(n_name, data=get_tree_vec(tree, var=n_name, dtype='u2'))
         tree.SetEstimate(sum(array(g0[n_name])))
-        exclude = make_list(exclude) + ['Timing', 'Cov', 'CovColRow']  # Timing & CovColRow is empty, Cov too much data
+        exclude = ['Timing', 'Cov', 'CovColRow'] + make_list(exclude).tolist()  # Timing & CovColRow is empty, Cov too much data
         names = [b.GetName() for b in tree.GetListOfBranches() if b.GetName() not in exclude][1:]
-        n = tree.Draw(':'.join(names), '', 'goff')
-        for j, (branch_name, typ) in enumerate(types.items()):
-            data = get_root_vec(tree, n, j, typ)
-            self.PBar.update()
-            if branch_name == 'ADC' and mean(data) == 1:  # don't save empty data... not all planes have pulse height information
+        data = get_tree_vec(tree, names, dtype=list(types.values()))
+        for i, key in enumerate(types.keys()):
+            if key == 'ADC' and mean(data) == 1:  # don't save empty data... not all planes have pulse height information
                 continue
-            g0.create_dataset(branch_name, data=data)
+            g0.create_dataset(key, data=data[i])
+            self.PBar.update()
 
     def add_dut_planes(self, match_file, f):
         info(f'reading branches for {self.NDUTPlanes} DUT planes ... ')
@@ -205,7 +209,7 @@ class DESYConverter(Converter):
             # mask
             m_tree = match_file.Get(f'C{i}').Get('masked_pixels')
             m_tree.SetEstimate(m_tree.GetEntries())
-            data = array([get_root_vec(m_tree, var='col', dtype='u2'), get_root_vec(m_tree, var='row', dtype='u2')]).T
+            data = array([get_tree_vec(m_tree, var='col', dtype='u2'), get_tree_vec(m_tree, var='row', dtype='u2')]).T
             group.create_dataset('Mask', data=data)
 
             # cluster
@@ -224,8 +228,8 @@ class DESYConverter(Converter):
         """ find the tracks which are closer to the cluster in case there are more than 1 track per cluster. """
         s = array(group['Clusters']['Size'])
         cut = s > 0
-        nt = get_root_vec(tree, var='evt_ntracks', dtype='u1')[cut]      # number of tracks
-        nc = get_root_vec(tree, var='evt_nclusters', dtype='u1')[cut]    # number of clusters
+        nt = get_tree_vec(tree, var='evt_ntracks', dtype='u1')[cut]      # number of tracks
+        nc = get_tree_vec(tree, var='evt_nclusters', dtype='u1')[cut]    # number of clusters
         tu, tv = array(group['Tracks']['U'])[cut], array(group['Tracks']['V'])[cut]
         u, v = array(group['Clusters']['U']), array(group['Clusters']['V'])
         r = sqrt((tu - u) ** 2 + (tv - v) ** 2)
@@ -254,27 +258,26 @@ class DESYConverter(Converter):
     @staticmethod
     def add_dut_tracks(group, tree):
         group.create_group('Tracks')
-        n = tree.Draw('trk_u:trk_v:trk_col:trk_row', '', 'goff')
-        for i, name in enumerate(['U', 'V', 'X', 'Y']):
-            group['Tracks'].create_dataset(name, data=get_root_vec(tree, n, i, dtype='f2'))
+        names = {'trk_u': 'U', 'trk_v': 'V', 'trk_col': 'X', 'trk_row': 'Y'}
+        for nb, ng in names.items():
+            group['Tracks'].create_dataset(ng, data=get_tree_vec(tree, nb, dtype='f2'))
 
     @staticmethod
     def add_clusters(group, tree):
         group.create_group('Clusters')
-        branches = ['clu_{}'.format(n) for n in ['size', 'col', 'row', 'u', 'v']]
-        n = tree.Draw(':'.join(branches), '', 'goff')
-        cluster_size = get_root_vec(tree, n, 0, dtype='u2')
+        branches = [f'clu_{n}' for n in ['size', 'col', 'row', 'u', 'v']]
+        data = get_tree_vec(tree, branches, dtype=['u2'] + ['f2'] * len(branches))
+        cluster_size = data[0]
         group['Clusters'].create_dataset('Size', data=cluster_size)
         for i, name in enumerate(['X', 'Y', 'U', 'V'], 1):
-            data = get_root_vec(tree, n, i, dtype='f2')[cluster_size > 0]  # filter out the nan events
-            group['Clusters'].create_dataset(name, data=data)
+            group['Clusters'].create_dataset(name, data=data[i][cluster_size > 0])  # filter out the nan events
 
     def add_trigger_info(self, group, evt_frame):
         f = TFile(self.ROOTFileName)
         tree = f.Get(group.name.strip('/')).Get('Hits')
         tree.SetEstimate(tree.GetEntries())
-        group.create_dataset('TriggerPhase', data=get_root_vec(tree, var='TriggerPhase')[evt_frame], dtype='u1')
-        group.create_dataset('TriggerCount', data=get_root_vec(tree, var='TriggerCount')[evt_frame], dtype='u1')
+        group.create_dataset('TriggerPhase', data=get_tree_vec(tree, var='TriggerPhase')[evt_frame], dtype='u1')
+        group.create_dataset('TriggerCount', data=get_tree_vec(tree, var='TriggerCount')[evt_frame], dtype='u1')
 
     def add_cluster_charge(self, match_tree, group, dut_nr):
         plane = Plane(dut_nr + self.NTelPlanes, self.Config, 'DUT')
@@ -298,8 +301,7 @@ class DESYConverter(Converter):
     def get_hits(self, match_tree, group, dut_nr):
         t = info('getting hit charges for DUT Plane {} ...'.format(dut_nr), endl=True)
         calibration = self.get_calibration(dut_nr)
-        n = match_tree.Draw('hit_col:hit_row:hit_value', '', 'goff')
-        x, y, adc = get_root_vecs(match_tree, n, 3, ['u2', 'u2', 'u1'])
+        x, y, adc = get_tree_vec(match_tree, ['hit_col', 'hit_row', 'hit_value'], dtype=['u2', 'u2', 'u1'])
         hits = array([x, y, calibration(x, y, adc)]).T
         group.create_dataset('CalChiSquare', data=calibration.get_chi2s())
         add_to_info(t)
