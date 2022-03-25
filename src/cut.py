@@ -33,7 +33,7 @@ class Cuts:
     def set_config(self, beamtest, dut):
         self.Config = Config(join(Dir, 'cuts', f'cut{beamtest}.ini'), section=dut)
 
-    def get_config(self, option, dtype=None):
+    def get_config(self, option, dtype=str):
         v = self.Config.get_value(option, dtype=dtype)
         return array(v) if is_iter(v) else v
 
