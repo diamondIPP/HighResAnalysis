@@ -4,39 +4,92 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import rad2deg, ndarray, dot, array
+from numpy import rad2deg, ndarray, dot, array, zeros, polyfit, polyval, delete, quantile, linspace, mean
 from numpy.linalg import inv
+from numpy.random import normal
 
 import src.bins as bins
 from src.analysis import Analysis
-from src.utils import rotate, do_pickle, get_rot_matrix
+from src.utils import rotate, do_pickle, get_rot_matrix, save_pickle, update_pbar, do_nothing, make_suffix, isfile, uarr2n, uarr2s, ufloat, choose
+from plotting.draw import Draw, prep_kw, make_list, FitRes, Any, mean_sigma, ax_range, get_graph_x, get_ax_range, get_graph_y, get_dax
+from plotting.fit import Gauss
 
 
 class TrackAnalysis(Analysis):
 
     def __init__(self, dut_analysis):
         self.Ana = dut_analysis
-        Analysis.__init__(self, verbose=self.Ana.Verbose)
+        Analysis.__init__(self, meta_sub_dir='tracks', verbose=self.Ana.Verbose)
 
         self.Data = self.Ana.Data['Tracks']
         self.PlaneData = self.Ana.get_group('Tracks')
         self.N = self.Data['X'].size
+        self.Tel = self.Ana.Tel
+        self.Run = self.Ana.Run
+
+    # ----------------------------------------
+    # region CUT
+    def ev_cut(self, ev):
+        c = zeros(self.N, '?')
+        c[make_list(ev).astype('i')] = True
+        return c
+    # endregion CUT
+    # ----------------------------------------
 
     # ----------------------------------------
     # region GET
     def get(self, key, cut=None, trk_cut=None):
         data = array(self.Data[key])
-        return data[self.Cuts(trk_cut)] if type(trk_cut) == ndarray or trk_cut != -1 else data[self.Ana.Cuts.get('cluster').Values][self.Cuts(cut)]
+        return data[self.Cuts(trk_cut)] if type(trk_cut) == ndarray or trk_cut != -1 else data[self.Ana.Cuts['cluster']][self.Ana.Cuts(cut)]
 
-    def get_n(self, cut=None):
-        """ returns: number of tracks per event. """
-        return self.get('NTracks', cut)
+    def get_plane_data(self, key, pl=0, cut=None, trk_cut=None):
+        data = self.Tel.get_data('Intercepts', key, pl, cut=False)
+        return data[self.Cuts(trk_cut)] if type(trk_cut) == ndarray or trk_cut != -1 else data[self.Ana.Cuts['cluster']][self.Ana.Cuts(cut)]
 
-    def get_x(self, cut=None, trk_cut=-1, local=True):
-        return self.Ana.get_track_data('Tracks', 'X' if local else 'U', cut, trk_cut)
+    def get_n(self, cut=None, trk_cut=-1):
+        """ returns: number of tracks in trk-space"""
+        return self.get('EvtNtracks', cut, trk_cut)
 
-    def get_y(self, cut=None, trk_cut=-1, local=True):
-        return self.Ana.get_track_data('Tracks', 'Y' if local else 'V', cut, trk_cut)
+    def get_n_ev(self):
+        """returns: number of tracks per event. """
+        return array(self.Data['NTracks'])
+
+    def get_size(self, cut=None, trk_cut=-1):
+        return self.get('Size', cut, trk_cut)
+
+    def get_slope_x(self, cut=None, trk_cut=-1):
+        return self.get('SlopeX', cut, trk_cut)
+
+    def get_off_x(self, cut=None, trk_cut=-1):
+        return self.get('X', cut, trk_cut)
+
+    def get_slope_y(self, cut=None, trk_cut=-1):
+        return self.get('SlopeY', cut, trk_cut)
+
+    def get_off_y(self, cut=None, trk_cut=-1):
+        return self.get('Y', cut, trk_cut)
+
+    def get_all(self, f, cut=None, trk_cut=-1, pbar=False, **kwargs):
+        self.PBar.start(self.Tel.NPlanes) if pbar else do_nothing()
+        return array([f(pl=pl, cut=cut, trk_cut=trk_cut, **kwargs) for pl in range(self.Tel.NPlanes)])
+
+    def use_pbar(self, name, *args):
+        return not all([isfile(self.make_pickle_path(name, suf=make_suffix(pl, *args))) for pl in range(self.Tel.NPlanes)])
+
+    def get_x(self, cut=None, trk_cut=-1, local=True, pl=None):
+        return self.Ana.get_track_data('Tracks', 'X' if local else 'U', cut, trk_cut) if pl is None else self.Tel.l2g(self.get_plane_data('X', pl, cut, trk_cut), pl=pl, scale=False)[0]
+
+    def get_xs(self, cut=None, trk_cut: Any = -1):
+        return self.get_all(self.get_x, cut, trk_cut)
+
+    def get_y(self, cut=None, trk_cut=-1, local=True, pl=None):
+        return self.Ana.get_track_data('Tracks', 'Y' if local else 'V', cut, trk_cut) if pl is None else self.Tel.l2g(y=self.get_plane_data('Y', pl, cut, trk_cut), pl=pl, scale=False)[1]
+
+    def get_ys(self, cut=None, trk_cut: Any = -1):
+        return self.get_all(self.get_y, cut, trk_cut)
+
+    def get_xy(self, cut=None, trk_cut=-1, local=True):
+        return self.get_x(cut, trk_cut, local), self.get_y(cut, trk_cut, local)
 
     def get_trans_matrix(self, local=True):
         rot = get_rot_matrix(self.get_rot_angle())
@@ -82,22 +135,115 @@ class TrackAnalysis(Analysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region RESIDUALS
+    def chi2_x(self):
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_xs(trk_cut=False)
+        return polyfit(x, y, deg=1, full=True)[1]
+
+    def chi2_y(self):
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_ys(trk_cut=False)
+        return polyfit(x, y, deg=1, full=True)[1]
+
+    def chi2(self, q=.8):
+        x, y = self.chi2_x(), self.chi2_y()
+        return (x < quantile(x, q)) & (y < quantile(y, q))
+
+    def calc_x_residuals(self, pl=0, cut=None, trk_cut=False, unbias=False):
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_xs(cut, trk_cut)
+        fits = polyfit(delete(x, pl), delete(y, pl, axis=0), deg=1) if unbias else polyfit(x, y, deg=1)
+        return (polyval(fits, x[pl]) - y[pl]) * 1e3  # to mm -> um
+
+    def calc_y_residuals(self, pl=0, cut=None, trk_cut=False, unbias=False):
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes], self.get_ys(cut, trk_cut)
+        fits = polyfit(delete(x, pl), delete(y, pl, axis=0), deg=1) if unbias else polyfit(x, y, deg=1)
+        return (polyval(fits, x[pl]) - y[pl]) * 1e3  # to mm -> um
+
+    @update_pbar
+    @save_pickle('dX', suf_args='all')
+    def calc_x_res(self, pl=0, cut=None, trk_cut=False, unbias=False, fit=False, _no_update=False):
+        return self.fit_residual(self.draw_x_residuals(pl, cut, trk_cut, unbias, show=False), show=False)[-1] if fit else mean_sigma(self.calc_x_residuals(pl, cut, trk_cut, unbias))[1]
+
+    def calc_x_ress(self, cut=None, trk_cut=False, unbias=False, fit=False, pbar=None):
+        pbar = choose(pbar, self.use_pbar('dX', *[*locals().values()][1:]))
+        return self.get_all(self.calc_x_res, cut, trk_cut, pbar=pbar, unbias=unbias, fit=fit, _no_update=not pbar)
+
+    @update_pbar
+    @save_pickle('dY', suf_args='all')
+    def calc_y_res(self, pl=0, cut=None, trk_cut=False, unbias=False, fit=False, _no_update=False):
+        return self.fit_residual(self.draw_y_residuals(pl, cut, trk_cut, unbias, show=False), show=False)[-1] if fit else mean_sigma(self.calc_y_residuals(pl, cut, trk_cut, unbias))[1]
+
+    def calc_y_ress(self, cut=None, trk_cut=False, unbias=False, fit=False, pbar=None):
+        pbar = choose(pbar, self.use_pbar('dY', *[*locals().values()][1:]))
+        return self.get_all(self.calc_y_res, cut, trk_cut, pbar=pbar, unbias=unbias, fit=fit, _no_update=not pbar)
+
+    def calc_resolutions(self, mode='x', cut=None, trk_cut=False, unbias=False, fit=False, pbar=None):
+        return getattr(self, f'calc_{mode}_ress')(cut, trk_cut, unbias, fit, pbar)
+
+    @staticmethod
+    def fit_residual(h, r=.3, show=True):
+        ymax = FitRes(h.Fit('gaus', 'qs0', '', -1000, 1000))[0].n
+        fit_range = [h.GetBinCenter(f(ymax * r)) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
+        return Gauss(h, fit_range, npx=500, fl=0, fh=0).fit(draw=show)
+
+    def draw_x_residuals(self, pl=0, cut=None, trk_cut=False, unbias=False, **dkw):
+        return self.Draw.distribution(self.calc_x_residuals(pl, cut, trk_cut, unbias), **prep_kw(dkw, title=f'Res Pl{pl}', x_tit='X Residual [#mum]'))
+
+    def draw_y_residuals(self, pl=0, cut=None, trk_cut=False, unbias=False, **dkw):
+        return self.Draw.distribution(self.calc_y_residuals(pl, cut, trk_cut, unbias), **prep_kw(dkw, title=f'Res Pl{pl}', x_tit='Y Residual [#mum]'))
+
+    @update_pbar
+    @save_pickle('Res', suf_args='[0, 1, 2]')
+    def draw_res(self, mode='x', q=1, fit=True, pbar=None, **dkw):
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes] / 10, uarr2n(self.calc_resolutions(mode, trk_cut=self.chi2(q), unbias=True, pbar=pbar))
+        g = self.Draw.graph(x, [ufloat(0, ex) for ex in y], **prep_kw(dkw, x_tit='Z [mm]', y_tit=f'{mode.title()} [#mum]', x_range=ax_range(x, fl=.2, fh=.2)))
+        return self.fit_res(g) if fit else g
+
+    def fit_res(self, g, n=1e5, **dkw):
+        x, y = get_graph_x(g, err=False), array([normal(0, ir, size=int(n)) for ir in uarr2s(get_graph_y(g))])
+        fits = array(polyfit(x, y, deg=1))
+        p = linspace(*get_ax_range(g), 100)
+        ey = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in polyval(fits, p.reshape(-1, 1))]])
+        self.Draw.graph(p, ey, fill_color=634, opacity=.5, draw_opt='e3same', **dkw)
+        xm, ym = mean(x), mean_sigma(polyval(fits, mean(x)))[1]
+        Draw.arrow(xm, xm, -ym.n, ym.n, width=2, opt='<|>', size=.02)
+        Draw.tlatex(xm, ym.n + .02 * get_dax(g, 'y'), f'{ym.n:2.0f}#kern[.1]{{#mum}}', align=21)
+        return ym
+
+    def draw_res_vs_chi2(self, n=10, **dkw):
+        q = linspace(1 / n, 1, n)
+        self.PBar.start(2 * n) if not all([isfile(self.make_pickle_path('Res', make_suffix(m, iq, 1))) for m in ['x', 'y'] for iq in q]) else do_nothing()
+        g = [self.Draw.graph(q, [self.draw_res(m, iq, show=False, pbar=False) for iq in q], x_tit='#chi^{2} Quantile', y_tit='Resolution [#mum]', show=False) for m in ['x', 'y']]
+        self.Draw.multigraph(g, 'ResChi', ['x', 'y'], **prep_kw(dkw, draw_opt='pl'))
+    # endregion RESIDUALS
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region DRAW
-    def draw_n(self, show=True):
-        return self.Draw.distribution(self.get_n(), 'Number of Tracks', bins.make(0, 10, 1), show=show, x_tit='Number of Tracks', y_off=2.1, lm=.14)
+    def draw_x(self, trk=0, **dkw):
+        """draw track in x-z plane."""
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Tel.NPlanes] / 10, self.get_xs(trk_cut=self.ev_cut(trk)).reshape(-1)
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Z Position [cm]', y_tit='X Position [mm]'))
+
+    def draw_y(self, trk=0, **dkw):
+        """draw track in y-z plane."""
+        x, y = self.Ana.Converter.get_z_positions(0)[:self.Ana.Tel.NPlanes] / 10, self.get_ys(trk_cut=self.ev_cut(trk)).reshape(-1)
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Z Position [cm]', y_tit='Y Position [mm]'))
+
+    def draw_n(self, cut=None, trk_cut=None, **dkw):
+        return self.Draw.distribution(self.get_n(cut, trk_cut), **prep_kw(dkw, title='NTracks', lf=0, w=1, x_tit='Number of Tracks'))
 
     def draw_dof(self, show=True, cut=None):
         return self.Draw.distribution(self.get_dof(cut), bins.make(0, 20, 1), 'Track Degrees of Freedom', show=show, x_tit='Degrees of Freedom', y_off=2.1, lm=.14)
 
     def draw_occupancy0(self, scale=4, cut=None):
-        self.Draw.histo_2d(*self.get_coods(cut), bins.get_global(self.Ana.Telescope.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]')
+        self.Draw.histo_2d(*self.get_coods(cut), bins.get_global(self.Ana.Tel.Plane, scale), x_tit='Track X [mm]', y_tit='Track Y [mm]')
 
     def draw_occupancy(self, scale=4, cut=None, raw=False, show=True):
         x, y = self.get_coods(cut) if raw else (self.get_u(trk_cut=True), self.get_v(cut, trk_cut=True))
-        self.Draw.histo_2d(x, y, bins.get_global(self.Ana.Telescope.Plane, scale), 'Track Occupancy', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
+        self.Draw.histo_2d(x, y, bins.get_global(self.Ana.Tel.Plane, scale), 'Track Occupancy', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_map(self, bin_width=.1, cut=None, dut_plane=True, show=True):
-        binning = bins.get_global(self.Ana.Plane if dut_plane else self.Ana.Telescope.Plane, bin_width)
+        binning = bins.get_global(self.Ana.Plane if dut_plane else self.Ana.Tel.Plane, bin_width)
         self.Draw.histo_2d(self.get_u(cut), self.get_v(cut), binning, 'Track Map', x_tit='Track X [mm]', y_tit='Track Y [mm]', show=show)
 
     def draw_chi2(self, cut=None, trk_cut=None):
