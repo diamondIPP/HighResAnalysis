@@ -20,7 +20,7 @@ import pickle
 from copy import deepcopy
 from inspect import signature
 from functools import wraps
-from plotting.utils import info, warning, critical, add_to_info
+from plotting.utils import info, warning, critical, add_to_info, get_kw
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
 from hashlib import md5
@@ -220,10 +220,12 @@ def get_p0(x1, y1, p1):
     return y1 - x1 * p1
 
 
-def make_ufloat(tup):
-    if type(tup) in [Variable, AffineScalarFunc]:
-        return tup
-    return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
+def make_ufloat(n, s=0):
+    return array([ufloat(*v) for v in array([n, s]).T]) if is_iter(n) else n if is_ufloat(n) else ufloat(n, s)
+
+
+def is_ufloat(value):
+    return type(value) in [Variable, AffineScalarFunc]
 
 
 def byte2str(v):
@@ -251,6 +253,14 @@ def get_tree_vec(tree, var, cut='', dtype=None, nentries=None, firstentry=0):
 def make_list(value, dtype=None):
     v = array([choose(value, [])]).flatten()
     return v.tolist() if dtype == list else v.astype(dtype) if dtype is not None else v
+
+
+def uarr2n(arr):
+    return array([i.n for i in arr]) if len(arr) and is_ufloat(arr[0]) else arr
+
+
+def uarr2s(arr):
+    return array([i.s for i in arr]) if len(arr) and is_ufloat(arr[0]) else arr
 
 
 def gauss(x, scale, mean_, sigma, off=0):
@@ -313,7 +323,7 @@ def update_pbar(func):
     @wraps(func)
     def my_func(*args, **kwargs):
         value = func(*args, **kwargs)
-        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished():
+        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished() and not get_kw('_no_update', kwargs):
             args[0].PBar.update()
         return value
     return my_func
@@ -394,7 +404,7 @@ def prep_kw(dic, **default):
 
 
 def make_suffix(*values):
-    vals = [md5(val).hexdigest() if type(val) is ndarray else f'{val:d}' if isint(val) else val for val in values if val is not None]
+    vals = [md5(val).hexdigest() if type(val) is ndarray else f'{val:.0f}' if isint(val) else val for val in values if val is not None]
     return '_'.join(str(val) for val in vals)
 
 
