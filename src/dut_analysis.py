@@ -23,7 +23,6 @@ from src.tracks import TrackAnalysis
 import src.bins as bins
 
 
-# todo add ADC to data!
 # TODO: add residuals to data!
 class DUTAnalysis(Analysis):
 
@@ -39,6 +38,9 @@ class DUTAnalysis(Analysis):
 
         # DATA
         self.Converter = self.converter(self.BeamTest.Path, self.Run.Number, self.Config)
+        if test:
+            return
+
         self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
         self.Data = self.load_data(test)
         self.init_cuts()
@@ -127,14 +129,14 @@ class DUTAnalysis(Analysis):
         self.Cuts.register('res', self.REF.make_dut_residuals(redo), 69, 'small residuals to REF plane')
         self.Cuts.register('triggerphase', self.make_trigger_phase(redo=redo), 61, 'trigger phase')
         self.Cuts.register('tstart', self.make_start_time(redo=redo), 40, 'exclude first events')
-        self.Cuts.register('chi2', self.make_chi2(redo=redo), 50, 'small chi2')
+        self.Cuts.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')
 
     def add_track_cuts(self, redo=False):
         self.Tracks.Cuts.register('triggerphase', self.make_trigger_phase(tracks=True, redo=redo), 10, 'track trigger phase')
         self.Tracks.Cuts.register('res', self.REF.make_residuals(redo=redo), 20, 'tracks with a small residual in the REF')
         self.Tracks.Cuts.register('fid', self.make_fiducial(tracks=True, _redo=redo), 30, 'tracks in fiducial area')
         self.Tracks.Cuts.register('tstart', self.make_start_time(tracks=True, redo=redo), 40, 'exclude first events')
-        self.Tracks.Cuts.register('chi2', self.make_chi2(tracks=True, redo=redo), 50, 'small chi2')
+        self.Tracks.Cuts.register('chi2', self.make_chi2(tracks=True, _redo=redo), 50, 'small chi2')
 
     def reload_cuts(self, redo=False):
         self.init_cuts(redo)
@@ -172,12 +174,10 @@ class DUTAnalysis(Analysis):
         x, y = self.Tracks.get_coods(local=True, trk_cut=False) if tracks else self.get_xy(local=True, cut=False)
         return array([x, y]).T, self.get_fid(off=0, surface=surface)
 
-    def make_chi2(self, tracks=False, redo=False):
-        def f():
-            chi2 = self.Tracks.get_chi2(cut=False, trk_cut=-1)
-            chi_max = quantile(chi2, self.Cuts.get_config('chi2 quantile', dtype=float))
-            return self.Tracks.get_chi2(cut=False, trk_cut=False if tracks else -1) < chi_max
-        return array(do_hdf5(self.make_hdf5_path('chi2', sub_dir='tracks' if tracks else None), f, redo))
+    @save_hdf5('Chi2', sub_dir='cuts', arr=True, suf_args='all')
+    def make_chi2(self, tracks=False, q=None, _redo=False):
+        x = self.Tracks.get_chi2(cut=False, trk_cut=False if tracks else -1)
+        return x < quantile(x, choose(q, self.Cuts.get_config('chi2 quantile', dtype=float)))
 
     def make_mask(self):
         x, y = self.get_xy(local=True, cut=False)
@@ -207,14 +207,22 @@ class DUTAnalysis(Analysis):
         self.add_cuts()
         self.add_track_cuts()
 
-    def tel2dut(self, x):
-        return x[self.Tracks.get_events()][self.Cuts['cluster']]
+    def ev2dut(self, x):
+        return self.ev2trk(x)[self.Cuts['cluster']]
 
-    def dut2tel(self, x):
+    def dut2ev(self, x):
         c0 = self.Cuts['cluster'].copy()
         c0[c0] = x
         c = zeros(self.NEvents, '?')
         c[self.Tracks.get_events()[c0]] = True
+        return c
+
+    def ev2trk(self, x):
+        return x[self.Tracks.get_events()]
+
+    def trk2ev(self, x):
+        c = zeros(self.NEvents, '?')
+        c[self.Tracks.get_events()[x]] = True
         return c
     # endregion CUTS
     # ----------------------------------------
@@ -304,6 +312,10 @@ class DUTAnalysis(Analysis):
 
     def get_trigger_phase(self, cut=None, trk_cut: Any = -1):
         return self.get_track_data('TriggerPhase', cut=cut, trk_cut=trk_cut)
+
+    def get_ev(self, cut=None):
+        """ returns: event numbers of the dut cut. """
+        return where(self.dut2ev(self.Cuts(cut)))[0]
 
     def get_events(self):
         """ returns: event numbers with clusters. """
@@ -434,9 +446,8 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region CORRELATION
     def corr_cuts(self, pl=2):
-        n = self.Tel.get_n_clusters(pl, cut=False)
-        cdut = self.tel2dut(n == 1)
-        return cdut, self.dut2tel(cdut).repeat(n)
+        cdut = self.ev2dut(self.Tel.get_n_clusters(pl, cut=False) == 1)
+        return cdut, self.dut2ev(cdut)
 
     def draw_x_correlation(self, res=1, pl=2, **dkw):
         cdut, ctel = self.corr_cuts(pl)
