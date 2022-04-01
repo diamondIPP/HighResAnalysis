@@ -3,8 +3,7 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from pathlib import Path
-from numpy import sum, append, delete
+from numpy import sum, append, delete, average
 
 from src.utils import *
 
