@@ -3,6 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.utils import load_json, OrderedDict, critical, join, ufloat, choose, array, Dir, load, loads
+from plotting.utils import Config
 from os.path import expanduser
 
 
@@ -16,7 +17,7 @@ class DUT:
         self.Number = number
         self.Name = run_log['dut{}'.format(self.Number)]
         self.Bias = run_log['hv{}'.format(self.Number)]
-        self.Plane = Plane(self.Config.getint('TELESCOPE', 'planes') + number, config, 'DUT')
+        self.Plane = Plane(self.Config.getint('TELESCOPE', 'planes') + number, config('DUT'))
 
         # Specs
         self.Specs = self.load_specs()
@@ -64,14 +65,14 @@ class DUT:
 
 class Plane:
     """ Class with all information about a single pixel plane. """
-    def __init__(self, n, config, section='TELESCOPE'):
+    def __init__(self, n, config: Config):
 
-        self.IsDUT = 'DUT' in section
+        self.IsDUT = 'DUT' in config.Section
         self.Number = n
-        self.Type = config.get(section, 'name')
-        self.NCols, self.NRows = loads(config.get(section, 'pixel'))
+        self.Type = config.get_value('name')
+        self.NCols, self.NRows = config.get_value('pixel')
         self.NPixels = self.NCols * self.NRows
-        self.PX, self.PY = loads(config.get(section, 'pitch'))
+        self.PX, self.PY = config.get_value('pitch')
         self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
         self.W, self.H = self.PX * self.NCols, self.PY * self.NRows
@@ -80,15 +81,7 @@ class Plane:
         return f'Plane{self.Number}'
 
     def __repr__(self):
-        return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Type.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
-
-    def __call__(self, number=None):
-        if number is not None:
-            self.set_number(number)
-        return self
-
-    def get_name(self):
-        return 'Plane{}'.format(self.Number)
+        return f'{self.Type.upper()} Plane with {self.NCols}x{self.NRows} pixels of a size {self.PX * 1e3:1.1f}x{self.PY * 1e3:1.1f}um'
 
     def get_max_width(self):
         return max(self.get_x_width(), self.get_y_width())
@@ -98,6 +91,3 @@ class Plane:
 
     def get_y_width(self):
         return self.PY * self.NRows
-
-    def set_number(self, n):
-        self.Number = n
