@@ -3,10 +3,11 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from numpy import array, invert, all, zeros, quantile, max
+
+from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
-from plotting.utils import Config, prep_kw
 from src.utils import Dir, save_hdf5, parallel, make_list, choose
-from numpy import array, invert, all, zeros, quantile
 
 
 class DUTCut(Cuts):
@@ -68,6 +69,30 @@ class DUTCut(Cuts):
         x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
         return x < quantile(x, q)
     # endregion GENERATE
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region FIDUCIAL
+    def get_fid_config(self, surface=False, name=None):
+        p = self.get_config(choose(name, 'surface fiducial' if surface else 'fiducial'))
+        p = make_box_args(*p[[0, 2, 1, 3]]) if p.size == 4 else p  # unpack short box notation
+        p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
+        return p - .5  # pixel centre is at the integer
+
+    def get_fid(self, surface=False, name=None, **dkw):
+        x, y = self.get_fid_config(surface, name)
+        return Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=choose(name, f'fid{surface:d}')))
+
+    def get_full_fid(self):
+        return self.get_fid(name='full size')
+
+    def draw_fid(self, surface=False, name=None, **dkw):
+        self.get_fid(surface, name, **prep_kw(dkw, show=True))
+
+    @staticmethod
+    def point_in_polygon(p, poly: TCutG):
+        return poly.IsInside(*p)
+    # endregion FIDUCIAL
     # ----------------------------------------
 
     def get_xy(self):
