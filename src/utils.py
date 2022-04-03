@@ -246,13 +246,13 @@ def get_buf(buf, n, dtype=None):
 def get_tree_vec(tree, var, cut='', dtype=None, nentries=None, firstentry=0):
     strings = make_list(var)
     n = tree.Draw(':'.join(strings), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
-    dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
-    vals = [get_buf(tree.GetVal(i), n, dtypes[i]) for i in range(strings.size)]
+    dtypes = dtype if type(dtype) in [list, ndarray] else full(len(strings), dtype)
+    vals = [get_buf(tree.GetVal(i), n, dtypes[i]) for i in range(len(strings))]
     return vals[0] if len(vals) == 1 else vals
 
 
 def make_list(value, dtype=None):
-    v = array([choose(value, [])]).flatten()
+    v = value if is_iter(value) and not type(value) is str else array([choose(value, [])]).flatten()
     return v.tolist() if dtype == list else v.astype(dtype) if dtype is not None else v
 
 
