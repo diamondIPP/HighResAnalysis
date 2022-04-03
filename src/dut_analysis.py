@@ -15,6 +15,7 @@ from src.cut import Cut
 from src.desy_converter import DESYConverter
 from src.desy_run import DESYRun
 from src.dummy import Dummy
+from src.dut import Plane
 from plotting.fit import *
 from src.reference import RefAnalysis
 from src.utils import *
@@ -34,6 +35,7 @@ class DUTAnalysis(Analysis):
         # MAIN
         self.Run = self.run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
         self.DUT = self.Run.DUT
+        self.Planes = self.init_planes()
         self.Plane = self.DUT.Plane
 
         # DATA
@@ -75,6 +77,14 @@ class DUTAnalysis(Analysis):
     @property
     def converter(self):
         return DESYConverter if self.BeamTest.Location == 'DESY' else Converter
+
+    def init_planes(self):
+        n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
+        return [Plane(i, self.Config('TELESCOPE' if i < n_tel else 'DUT')) for i in range(n_tel + n_dut)]
+
+    def init_ref(self):
+        from mod.reference import RefAnalysis
+        return RefAnalysis(self)
 
     def init_eff(self):
         from mod.efficiency import Efficiency

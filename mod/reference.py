@@ -19,7 +19,7 @@ class RefAnalysis(DUTAnalysis):
         self.__dict__.update(parent.__dict__)
         self.MetaSubDir = 'REF'
 
-        self.Plane = Plane(self.Config.getint('DUT', 'reference plane'), self.Config, 'DUT')
+        self.Plane = Plane(self.Config.getint('DUT', 'reference plane'), self.Config('DUT'))
         self.Data = self.F[str(self.Plane)]
         self.N = self.Data['Clusters']['X'].size
 
