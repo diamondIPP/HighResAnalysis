@@ -465,12 +465,12 @@ def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', verbose=False, **pkw
     return inner
 
 
-def parallel(fp, what=''):
+def parallel(fp, what='something'):
     def inner(f):
         @wraps(f)
         def my_f(ana, *args, **kwargs):
             with Pool() as pool:
-                ana.info(f'generate {what}')
+                ana.info(f'generate {what} for {ana}')
                 r = f(ana, *args, **kwargs)
                 d, fargs = (r[0], r[1:]) if len(r) > 1 else (r, [])
                 pbar = PBar(d.shape[0] // cpu_count())
