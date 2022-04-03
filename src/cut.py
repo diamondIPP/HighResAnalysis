@@ -4,11 +4,10 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from typing import Any
-from numpy import array, all, in1d, invert, ones, count_nonzero, max
+from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil
 
 from src.utils import print_table, warning, join, make_list, choose, Dir, is_iter
 from plotting.utils import Config
-from plotting.draw import make_box_args, Draw, prep_kw, TCutG
 
 
 class Cuts:
@@ -45,19 +44,6 @@ class Cuts:
         v = self.Config.get_value(option, dtype=dtype)
         return array(v) if is_iter(v) else v
 
-    def get_fid_config(self, surface=False):
-        p = self.get_config('surface fiducial' if surface else 'fiducial')
-        p = make_box_args(*p[[0, 2, 1, 3]]) if p.size == 4 else p  # unpack short box notation
-        p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
-        return p - .5  # pixel centre is at the integer
-
-    def get_fid(self, surface=False, **dkw):
-        x, y = self.get_fid_config(surface)
-        return Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=f'fid{surface:d}'))
-
-    def draw_fid(self, surface=False, **dkw):
-        self.get_fid(surface, **prep_kw(dkw, show=True))
-
     def generate(self):
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
         return all(cuts, axis=0).flatten() if len(cuts) else ...
@@ -78,16 +64,12 @@ class Cuts:
     def n(self):
         return len([cut for cut in self.Cuts.values() if cut.Level < Cut.MaxLevel])
 
+    @property
+    def size(self):
+        return self().size
+
     def get_consecutive(self):
-        cuts = sorted([cut for cut in self.Cuts.values() if cut.Level < Cut.MaxLevel])
-        consecutive = ones(cuts[0].Size, dtype=bool)
-        p0 = 0
-        for cut in cuts:
-            consecutive = Cut.add(cut, consecutive)
-            cut.set_values(consecutive)
-            cut.set_p(cut.P - p0)
-            p0 += cut.P
-        return cuts
+        return cumsum(sorted(filter(lambda x: x.Level < Cut.MaxLevel, self.Cuts.values())))
 
     def get_nofid(self, cut=None, fid=False):
         return self(cut) if fid else self.exclude('fid', cut)
@@ -103,19 +85,9 @@ class Cuts:
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def show(self, raw=False):
-        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.get_p_str(), cut.Value if raw else cut.Description] for cut in self.get_consecutive()]
+        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.nstr, cut.exstr, cut.pstr, cut.Value if raw else cut.Description] for cut in self.get_consecutive()]
         c = Cut('all', self.generate(), 0, 'final cut')
-        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Size', 'P', 'Description'], [c.Name, '', c.Size, c.get_p_str(), c.Description])
-
-    def make_pixel_mask(self, x, y):
-        data = x.astype('i') * 10000 + y  # make unique number out of the tuple... Is there a way to compare tuples?
-        mx, my = array(self.get_config('mask')).T
-        mask = mx * 10000 + my
-        return in1d(data, mask, invert=True)
-
-    @staticmethod
-    def point_in_polygon(p, poly: TCutG):
-        return poly.IsInside(*p)
+        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Size', 'N', 'Exl', 'P', 'Description'], [c.Name, '', c.Size, c.nstr, c.exstr, c.pstr, c.Description])
 
 
 class Cut:
@@ -123,44 +95,53 @@ class Cut:
 
     MaxLevel = 80
 
-    def __init__(self, name, values: Any, level=99, description=None):
+    def __init__(self, name='', values: Any = 1, level=99, description=None, n0=None):
 
         self.Name = name
-        self.Values = values.Values if isinstance(values, Cut) else array(values)
+        self.Values = ones(values, '?') if type(values) is int else values.Values if isinstance(values, Cut) else array(values)
         self.Level = level
         self.Description = description
         self.Size = self.Values.size
         self.P = self.calc_p()
         self.N = round(self.Size * (1 - self.P))
+        self.N0 = choose(n0, self.Size)  # n excluded before adding
 
     def __call__(self):
         return self.Values
 
     def __add__(self, other=None):
-        values = array(other)
-        if isinstance(other, Cut):
-            values = other.Values
-        elif array(other).size == 1:
+        if type(other) is bool or other is ...:
             return self
+        values = other.Values if isinstance(other, Cut) else array(other)
         if values.size != self.Size:
-            warning('cut array has incorrect size ({}), {} required'.format(values.size, self.Size))
+            warning(f'could not add cuts! Array has incorrect size ({values.size}), {self.Size} required')
             return self
-        return Cut('add', all([self.Values, values], axis=0))
+        n, d, lev = (other.Name, other.Description, other.Level) if isinstance(other, Cut) else (self.Name, self.Description, self.Level)
+        return Cut(n, self.Values & values, lev, d, self.N)
 
     def __gt__(self, other):
         return self.Level > other.Level
 
     def __str__(self):
-        return '{}, {} cut, {}: {}'.format(self.Level, self.Name, self.get_p_str(), self.Description)
+        return self.Name
 
     def __repr__(self):
-        return self.__str__()
+        return f'{self.Level}, {self.Name} cut, {self.pstr}: {self.Description}'
 
     def calc_p(self):
         return invert(self.Values).nonzero()[0].size / self.Size
 
-    def get_p_str(self):
-        return '{:.1f}%'.format(self.P * 100)
+    @property
+    def pstr(self):
+        return f'{self.P * 100:.1f}%'
+
+    @property
+    def nstr(self):
+        return f'{self.N:{int(ceil(log10(self.Size)))}d}'
+
+    @property
+    def exstr(self):
+        return f'{self.N0 - self.N:{int(ceil(log10(self.Size)))}d}'
 
     def set_p(self, p):
         self.P = p
