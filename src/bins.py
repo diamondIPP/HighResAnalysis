@@ -4,7 +4,7 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import arange, concatenate, append
+from numpy import arange, append
 
 
 # Pixel
@@ -36,8 +36,8 @@ def get_local_y(plane, bin_width=1, aspect_ratio=False):
     return make(-extra_pixel - .5, plane.NRows + extra_pixel - .5, bin_width)
 
 
-def get_corr(mode, plane0, plane1, bin_width=1):
-    return list(concatenate([get_local_x(pl, bin_width) if mode.lower() == 'x' else get_local_y(pl, bin_width) for pl in [plane0, plane1]]))
+def get_corr(mode, pl0, pl1, bw=1):
+    return sum([get_local_x(pl, bw) if mode.lower() == 'x' else get_local_y(pl, bw) for pl in [pl0, pl1]], start=[])
 
 
 def get_global(plane, res=1):
