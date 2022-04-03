@@ -19,10 +19,11 @@ class Cuts:
         self.Cuts = {}
         self.make()
 
-    def __call__(self, cut=None, pl=None):
+    def __call__(self, cut=None, data=None, pl=None):
         cut = cut.Values if isinstance(cut, Cut) else cut
         values = array(cut)
-        return values if values.size > 1 else self.generate() if cut is None else ...
+        cut = values if values.size > 1 else self.generate() if cut is None else ...
+        return data[cut] if data is not None and (cut is ... or cut.size == data.size) else cut
 
     def __add__(self, other=None):
         return self.generate() if other is None else all([self.generate(), other], axis=0)
