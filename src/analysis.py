@@ -4,7 +4,6 @@ from shutil import copyfile
 
 from plotting.draw import *
 from src.utils import PBar, Dir, print_banner, byte2str
-from src.cut import Cuts
 
 
 class BeamTest:
@@ -49,8 +48,6 @@ class Analysis:
         self.BeamTest = self.load_test_campaign(beamtest)
         self.MetaSubDir = meta_sub_dir
 
-        self.Cuts = Cuts()
-
         self.PBar = PBar()
         self.Draw = Draw(Analysis.Config.FilePath, self.Verbose)
 
@@ -85,9 +82,6 @@ class Analysis:
     def add_info(self, t, msg='Done', prnt=None):
         add_to_info(t, msg, choose(prnt, self.Verbose))
 
-    def set_meta_sub_dir(self, name):
-        self.MetaSubDir = name
-
     def make_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
         directory = join(self.MetaDir, self.MetaSubDir if sub_dir is None else sub_dir)
         ensure_dir(directory)
@@ -110,6 +104,10 @@ class Analysis:
         for p in self.get_meta_files():
             info(f'{p}: {byte2str(p.stat().st_size)}')
         self.meta_file_size()
+
+    def remove_metadata(self):
+        for p in self.get_meta_files():
+            remove_file(p)
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
