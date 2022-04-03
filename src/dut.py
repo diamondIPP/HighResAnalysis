@@ -77,7 +77,7 @@ class Plane:
         self.W, self.H = self.PX * self.NCols, self.PY * self.NRows
 
     def __str__(self):
-        return 'DUT Plane' if self.IsDUT else 'Plane {}'.format(self.Number)
+        return f'Plane{self.Number}'
 
     def __repr__(self):
         return '{} Plane with {}x{} pixels of a size {:1.1f}x{:1.1f}um'.format(self.Type.upper(), self.NCols, self.NRows, self.PX * 1e3, self.PY * 1e3)
