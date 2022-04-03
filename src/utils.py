@@ -24,9 +24,10 @@ from plotting.utils import info, warning, critical, add_to_info, get_kw
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
 from hashlib import md5
+from pathlib import Path
 
 
-Dir = dirname(dirname(realpath(__file__)))
+Dir = Path(__file__).resolve().parent.parent
 
 type_dict = {'int32': 'I',
              'uint16': 's',
