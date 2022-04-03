@@ -21,7 +21,7 @@ class Dummy:
         self.NTelPlanes = n_tel
         self.NDUTPlanes = n_dut
         self.TelPlane = Plane(0, config)
-        self.DUTPlane = Plane(self.NTelPlanes, config, 'DUT')
+        self.DUTPlane = Plane(self.NTelPlanes, config('DUT'))
         self.NEvents = 0
         self.Config = config
         self.PBar = PBar()
@@ -89,7 +89,7 @@ class Dummy:
         lam = array([.077, .15])
         c = [[450, 40], [200, 25]]
         for i in range(self.NTelPlanes, self.NDUTPlanes + self.NTelPlanes):
-            dut_plane = Plane(i, self.Config, 'DUT')
+            dut_plane = Plane(i, self.Config('DUT'))
             g = self.File.create_group('Plane{}'.format(i))
             g_clu = g.create_group('Clusters')
             size = poisson(lam[[i - self.NTelPlanes]], self.File['Tracks']['X'].size)
