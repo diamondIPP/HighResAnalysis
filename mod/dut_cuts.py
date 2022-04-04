@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max
+from numpy import array, invert, all, zeros, quantile, max, inf
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
@@ -22,12 +22,12 @@ class DUTCut(Cuts):
     def make(self, redo=False):
         self.register('fid', self.make_fiducial(_redo=redo), 10, 'fid cut')
         self.register('mask', self.make_cluster_mask(), 20, 'mask pixels')
-        self.register('charge', self.Ana.get_charges(cut=False) != 0, 30, 'events with non-zero charge')
+        self.register('charge', self.Ana.get_phs(cut=False) != 0, 30, 'events with non-zero charge')
         self.register('cluster', self.make_cluster(_redo=redo), 90, 'tracks with a cluster')
 
     def make_additional(self, redo=False):
         self.register('res', self.make_residual(_redo=redo), 69, 'small residuals to REF plane')
-        self.register('triggerphase', self.make_trigger_phase(_redo=redo), 61, 'trigger phase')
+        self.register('tp', self.make_trigger_phase(_redo=redo), 61, 'trigger phase')
         self.register('tstart', self.make_start_time(_redo=redo), 40, 'exclude first events')
         self.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')
 
@@ -68,6 +68,10 @@ class DUTCut(Cuts):
     def make_chi2(self, q=None, _redo=False):
         x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
         return x < quantile(x, q)
+
+    def make_ph(self, xmax, xmin=None):
+        x = self.Ana.get_phs(cut=False)
+        return (x >= choose(xmin, -inf)) & (x < xmax)
     # endregion GENERATE
     # ----------------------------------------
 
@@ -126,6 +130,10 @@ class DUTCut(Cuts):
         c = zeros(self.Ana.NEvents, '?')
         c[self.get_track_events()[x]] = True
         return c
+
+    @staticmethod
+    def to_trk(cut):
+        return -1 if type(cut) is bool or cut is ... else cut
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.Ana.make_hdf5_path(*args, **prep_kw(kwargs, sub_dir=self.MetaSubDir))
