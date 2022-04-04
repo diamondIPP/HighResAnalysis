@@ -16,7 +16,7 @@ from src.calibration import Calibration
 from src.converter import Converter
 from src.desy_run import DESYRun
 from src.dut import Plane
-from src.utils import print_banner, file_exists, basename, h5py, get_tree_vec
+from src.utils import print_banner, file_exists, basename, h5py, get_tree_vec, update_pbar
 from ROOT import TFile
 import toml
 
@@ -49,6 +49,11 @@ class DESYConverter(Converter):
         self.NSteps = len(self.FileNames)
         self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
         self.NDUTPlanes = self.Config.getint('DUT', 'planes')
+
+        # FILES
+        self.F = None
+        self.TrackFile = TFile()
+        self.MatchFile = TFile()
 
         self.Draw = Draw()
 
@@ -126,27 +131,27 @@ class DESYConverter(Converter):
             remove_file(self.FinalFileName)
         start_time = info('Start root->hdf5 conversion ...')
         # files
-        f = h5py.File(self.FinalFileName, 'w')
-        track_file = TFile(self.TrackFileName)
-        match_file = TFile(self.MatchFileName)
+        self.F = h5py.File(self.FinalFileName, 'w')
+        self.TrackFile = TFile(self.TrackFileName)
+        self.MatchFile = TFile(self.MatchFileName)
 
-        self.add_tracks(track_file, match_file, f)
-        self.add_time_stamp(track_file, f)
-        self.add_tel_planes(track_file, f)
-        self.add_dut_planes(match_file, f)
+        self.add_track_vars()
+        self.add_time_stamp()
+        self.add_tel_planes()
+        self.add_dut_planes()
 
         add_to_info(start_time, '\nFinished conversion in')
 
-    def add_tracks(self, track_file, match_file, hdf5_file):
+    def add_track_vars(self):
         info('add track information ...')
-        g = hdf5_file.create_group('Tracks')
+        g = self.F.create_group('Tracks')
 
         track_types = {'Chi2': 'f2', 'Dof': 'u1', 'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2'}
         match_types = {'evt_frame': 'u4', 'evt_ntracks': 'u1', 'trk_size': 'f2'}
         self.PBar.start(len(track_types) + len(match_types), counter=True, t='s')
 
         # from tracking tree
-        t_tree = track_file.Get('Tracks')
+        t_tree = self.TrackFile.Get('Tracks')
         t_tree.SetEstimate(t_tree.GetEntries())
         g.create_dataset('NTracks', data=get_tree_vec(t_tree, var='NTracks', dtype='u1'))
         t_tree.SetEstimate(sum(g['NTracks']))
@@ -155,73 +160,51 @@ class DESYConverter(Converter):
             self.PBar.update()
 
         # from match tree
-        m_tree = match_file.Get('C0').Get('tracks_clusters_matched')
+        m_tree = self.MatchFile.Get('C0').Get('tracks_clusters_matched')  # same for all plane dirs
         m_tree.SetEstimate(m_tree.GetEntries())
         for n, t in match_types.items():
             g.create_dataset(n.replace('trk_', '').title().replace('_', ''), data=get_tree_vec(m_tree, n, dtype=t))
             self.PBar.update()
 
-    @staticmethod
-    def add_time_stamp(root_file, hdf5_file):
-        tree = root_file.Get('Event')
+    def add_time_stamp(self):
+        tree = self.TrackFile.Get('Event')
         tree.SetEstimate(tree.GetEntries())
-        t_vec = get_tree_vec(root_file.Get('Event'), var='TriggerTime', dtype='u8')
-        g = hdf5_file.create_group('Event')
+        t_vec = get_tree_vec(self.TrackFile.Get('Event'), var='TriggerTime', dtype='u8')
+        g = self.F.create_group('Event')
         g.create_dataset('Time', data=((t_vec - t_vec[0]) / 1e9).astype('f4'))  # convert time vec to seconds
 
-    def add_tel_planes(self, root_file, hdf5_file):
-        names = [f'Plane{i}' for i in range(self.NTelPlanes)]
-        info(f'reading branches for {len(names)} telescope planes ... ')
-        hit_types = {'X': 'u2', 'Y': 'u2', 'ADC': 'u1', 'HitInCluster': 'u1'}
-        plane_types = {'X': 'f2', 'Y': 'f2', 'VarX': 'f2', 'VarY': 'f2', 'NTracks': 'u1'}
-        intercept_types = {'X': 'f2', 'Y': 'f2', 'SlopeX': 'f2', 'SlopeY': 'f2', 'NTracks': 'u1'}
-        self.PBar.start(sum(len(lst) for lst in [hit_types, plane_types, intercept_types]) * len(names))
-        for i, name in enumerate(names):
-            g = hdf5_file.create_group(name)
-            # hits: NHits, PixX, PixY, Timing, Value, HitInCluster
-            self.convert_plane_data(root_file, g, name, branch_name='Hits', types=hit_types)
-            # clusters:  NClusters, Col, Row, VarCol, VarRow, CovColRow, Timing, Value, Track
-            self.convert_plane_data(root_file, g, name, 'Clusters', plane_types, exclude='Value')  # adc doesn't make sense for clusters
-            # intercepts
-            self.convert_plane_data(root_file, g, name, 'Intercepts', intercept_types)  # adc doesn't make sense for clusters
+    def add_plane(self, i):
+        group = self.F.create_group(f'Plane{i}')
+        i_dut = i - self.NTelPlanes
+        pl_tag = f'C{i_dut}' if i_dut >= 0 else f'M{i}'
 
-    def convert_plane_data(self, root_file, group, plane_name, branch_name, types, exclude=None):
-        g0 = group.create_group(branch_name)
-        tree = root_file.Get(plane_name).Get(branch_name)  # NHits, PixX, PixY, Timing, Value, HitInCluster
-        n_name = f'N{branch_name}'
-        tree.SetEstimate(tree.GetEntries())
-        g0.create_dataset(n_name, data=get_tree_vec(tree, var=n_name, dtype='u2'))
-        tree.SetEstimate(sum(array(g0[n_name])))
-        exclude = ['Timing', 'Cov', 'CovColRow'] + make_list(exclude).tolist()  # Timing & CovColRow is empty, Cov too much data
-        names = [b.GetName() for b in tree.GetListOfBranches() if b.GetName() not in exclude][1:]
-        data = get_tree_vec(tree, names, dtype=list(types.values()))
-        for i, key in enumerate(types.keys()):
-            if key == 'ADC' and mean(data) == 1:  # don't save empty data... not all planes have pulse height information
-                continue
-            g0.create_dataset(key, data=data[i])
-            self.PBar.update()
+        # mask
+        m_tree = self.MatchFile.Get(pl_tag).Get('masked_pixels')
+        m_tree.SetEstimate(m_tree.GetEntries())
+        group.create_dataset('Mask', data=get_tree_vec(m_tree, ['col', 'row'], dtype='u2'))
 
-    def add_dut_planes(self, match_file, f):
-        info(f'reading branches for {self.NDUTPlanes} DUT planes ... ')
-        for i in range(self.NDUTPlanes):
-            group = f.create_group(f'Plane{i + self.NTelPlanes}')
-
-            # mask
-            m_tree = match_file.Get(f'C{i}').Get('masked_pixels')
-            m_tree.SetEstimate(m_tree.GetEntries())
-            data = array([get_tree_vec(m_tree, var='col', dtype='u2'), get_tree_vec(m_tree, var='row', dtype='u2')]).T
-            group.create_dataset('Mask', data=data)
-
-            # cluster
-            tree = match_file.Get(f'C{i}').Get('tracks_clusters_matched')
-            tree.SetEstimate(tree.GetEntries())
-            self.add_dut_tracks(group, tree)
-            self.add_clusters(group, tree)
-            self.add_cluster_charge(tree, group, i)
+        # cluster
+        tree = self.MatchFile.Get(pl_tag).Get('tracks_clusters_matched')
+        tree.SetEstimate(-1)
+        self.add_tracks(group, tree)
+        self.add_clusters(group, tree)
+        if i_dut >= 0:
+            self.add_cluster_charge(tree, group, i_dut)
             self.remove_doubles(group, tree)
 
             # trigger info
-            self.add_trigger_info(group, array(f['Tracks']['EvtFrame']))
+            self.add_trigger_info(group)
+
+    def add_tel_planes(self):
+        info(f'reading branches for {self.NTelPlanes} telescope planes ... ')
+        self.PBar.start(self.NTelPlanes * 2)
+        for i in range(self.NTelPlanes):
+            self.add_plane(i)
+
+    def add_dut_planes(self):
+        info(f'reading branches for {self.NDUTPlanes} DUT planes ... ')
+        for i in arange(self.NDUTPlanes) + self.NTelPlanes:
+            self.add_plane(i)
 
     @staticmethod
     def remove_doubles(group, tree, only_1cluster=False):
@@ -255,39 +238,48 @@ class DESYConverter(Converter):
             del group['Clusters'][name]
             group['Clusters'].create_dataset(name, data=data)
 
-    @staticmethod
-    def add_dut_tracks(group, tree):
-        group.create_group('Tracks')
-        names = {'trk_u': 'U', 'trk_v': 'V', 'trk_col': 'X', 'trk_row': 'Y'}
-        for nb, ng in names.items():
-            group['Tracks'].create_dataset(ng, data=get_tree_vec(tree, nb, dtype='f2'))
+    @update_pbar
+    def add_tracks(self, group, tree):
+        gr = group.create_group('Tracks')
+        data = get_tree_vec(tree, [f'trk_{n}' for n in ['u', 'v', 'col', 'row', 'du', 'dv']], dtype='f2')
+        for i, name in enumerate(['U', 'V', 'X', 'Y', 'dU', 'dV']):
+            gr.create_dataset(name, data=data[i])
 
-    @staticmethod
-    def add_clusters(group, tree):
-        group.create_group('Clusters')
+    @update_pbar
+    def add_clusters(self, group, tree):
+        gr = group.create_group('Clusters')
+
+        # tracking
+        t = self.TrackFile.Get(group.name.strip('/')).Get('Clusters')
+        t.SetEstimate(-1)
+        gr.create_dataset('N', data=get_tree_vec(t, 'NClusters', dtype='u1'))
+
+        # matching
         branches = [f'clu_{n}' for n in ['size', 'col', 'row', 'u', 'v']]
         data = get_tree_vec(tree, branches, dtype=['u2'] + ['f2'] * len(branches))
         cluster_size = data[0]
-        group['Clusters'].create_dataset('Size', data=cluster_size)
+        gr.create_dataset('Size', data=cluster_size)
         for i, name in enumerate(['X', 'Y', 'U', 'V'], 1):
-            group['Clusters'].create_dataset(name, data=data[i][cluster_size > 0])  # filter out the nan events
+            gr.create_dataset(name, data=data[i][cluster_size > 0])  # filter out the nan events
 
-    def add_trigger_info(self, group, evt_frame):
+    def add_trigger_info(self, group):
         f = TFile(self.ROOTFileName)
         tree = f.Get(group.name.strip('/')).Get('Hits')
         tree.SetEstimate(tree.GetEntries())
-        group.create_dataset('TriggerPhase', data=get_tree_vec(tree, var='TriggerPhase')[evt_frame], dtype='u1')
-        group.create_dataset('TriggerCount', data=get_tree_vec(tree, var='TriggerCount')[evt_frame], dtype='u1')
+        data = get_tree_vec(tree, ['TriggerPhase', 'TriggerCount'], dtype='u1')
+        for i, name in enumerate(['TriggerPhase', 'TriggerCount']):
+            group.create_dataset(name, data=data[i])
 
     def add_cluster_charge(self, match_tree, group, dut_nr):
-        plane = Plane(dut_nr + self.NTelPlanes, self.Config, 'DUT')
+        plane = Plane(dut_nr + self.NTelPlanes, self.Config('DUT'))
         hit_list = self.get_hits(match_tree, group, dut_nr)
-        info('calculating cluster charges for DUT Plane {} ... '.format(dut_nr))
+        info(f'calculating cluster charges for DUT Plane {dut_nr} ... ')
         clusters = []
         self.PBar.start(group['Clusters']['X'].size)
         for hits in split(hit_list, cumsum(group['Clusters']['Size'])[:-1].astype('i')):
             clusters.append(self.clusterise(hits))
             self.PBar.update()
+        t = info(f'recalculating cluster positions according to new charge weights for DUT {dut_nr} ... ', endl=False)
         clusters = concatenate(clusters)
         group = group['Clusters']
         group.create_dataset('Charge', data=array([nan if cluster is None else cluster.get_charge() for cluster in clusters], dtype='f2'))
@@ -297,9 +289,10 @@ class DESYConverter(Converter):
         group['V'][...] = array(group['V']) + (y - array(group['Y'])) * plane.PY
         group['X'][...] = x
         group['Y'][...] = y
+        add_to_info(t)
 
     def get_hits(self, match_tree, group, dut_nr):
-        t = info('getting hit charges for DUT Plane {} ...'.format(dut_nr), endl=True)
+        t = info('getting hit charges for DUT Plane {} ...'.format(dut_nr), endl=False)
         calibration = self.get_calibration(dut_nr)
         x, y, adc = get_tree_vec(match_tree, ['hit_col', 'hit_row', 'hit_value'], dtype=['u2', 'u2', 'u1'])
         hits = array([x, y, calibration(x, y, adc)]).T
