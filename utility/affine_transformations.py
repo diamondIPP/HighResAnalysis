@@ -35,9 +35,6 @@ def matrix(sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt'):
     return multiply(*array([s, t, r])[matrix_order(order)])
 
 
-def transform(x=None, y=None, sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt', invert=False):
-    x = ones(y.size, 'i') if x is None else x
-    y = ones(x.size, 'i') if y is None else y
-    z = ones(x.size, 'i')
+def transform(x, y, sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt', invert=False):
     m = matrix(sx, sy, ox, oy, rx, ry, order)
-    return dot(inv(m) if invert else m, array([x, y, z]))[:2]
+    return dot(inv(m) if invert else m, array([x, y, ones(x.size, 'i')]))[:2]
