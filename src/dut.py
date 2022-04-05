@@ -81,7 +81,7 @@ class Plane:
         return f'Plane{self.Number}'
 
     def __repr__(self):
-        return f'{self.Type.upper()} Plane with {self.NCols}x{self.NRows} pixels of a size {self.PX * 1e3:1.1f}x{self.PY * 1e3:1.1f}um'
+        return f'{self}, {self.Type.upper()}: {self.NCols}x{self.NRows} pixels ({self.PX * 1e3:1.1f}x{self.PY * 1e3:1.1f}μm)'
 
     def get_max_width(self):
         return max(self.get_x_width(), self.get_y_width())
