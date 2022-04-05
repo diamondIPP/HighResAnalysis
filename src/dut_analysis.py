@@ -3,8 +3,6 @@
 #       class for analysis of a single DUT
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import arctan
-
 import src.bins as bins
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
@@ -41,10 +39,10 @@ class DUTAnalysis(Analysis):
 
         self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
         self.F = self.load_file(test)
-        self.Data = self.F[str(self.Plane)]
+        self.T = False
 
         # INFO
-        self.N = self.Data['Clusters']['X'].size
+        self.N = self.n
         self.NEvents = self.F['Tracks']['NTracks'].size
         self.NTracks = self.F['Tracks']['Size'].size
         self.StartTime = self.get_start_time()
@@ -55,11 +53,13 @@ class DUTAnalysis(Analysis):
         # SUBCLASSES
         self.Cut = DUTCut(self)
         self.Calibration = Calibration(self.Run)
+        self.Residuals = self.init_residuals()
+
         self.Tel = self.init_tel()
         self.REF = self.init_ref()
         self.Tracks = TrackAnalysis(self)
-        self.Currents = Currents(self)
 
+        self.Currents = Currents(self)
         self.Cut.make_additional()
         self.Efficiency = self.init_eff()
 
@@ -79,6 +79,10 @@ class DUTAnalysis(Analysis):
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
         return [Plane(i, self.Config('TELESCOPE' if i < n_tel else 'DUT')) for i in range(n_tel + n_dut)]
+
+    def init_residuals(self):
+        from mod.residuals import ResidualAnalysis
+        return ResidualAnalysis(self)
 
     def init_ref(self):
         from mod.reference import RefAnalysis
@@ -124,10 +128,10 @@ class DUTAnalysis(Analysis):
     # region DATA
     def get_time(self, cut=None):
         t = self.Cut.ev2trk(array(self.F['Event']['Time']).astype('f8') + self.Run.StartTime)
-        return t if cut is ... else t[self.Cut.dut2trk(cut)]
+        return t if cut is ... else t[self.Cut.pl2trk(cut)]
 
-    def get_data(self, grp, key=None, cut=None, pl=None):
-        data = self.Data[grp]
+    def get_data(self, grp, key=None, cut=None, pl=None, main_grp=None):
+        data = self.F[choose(main_grp, str(self.Planes[choose(pl, self.Plane.Number)]))][grp]
         data = array(data) if key is None else array(data[key])
         return data if type(cut) is bool else self.Cut(cut, data, pl)
 
@@ -145,34 +149,56 @@ class DUTAnalysis(Analysis):
     def get_y(self, cut=None, pl=None):
         return self.get_data('Clusters', 'Y', cut, pl)
 
+    def get_tx(self, cut=None, pl=None):
+        return self.get_data('Tracks', 'X', cut, pl)
+
+    def get_ty(self, cut=None, pl=None):
+        return self.get_data('Tracks', 'Y', cut, pl)
+
     def l2g(self, x=None, y=None, centre=False):
         return self.Tel.l2g(x, y, self.Plane.Number, centre=centre, s=[-1, 1, 1])
 
-    def get_u(self, cut=None, pl=None, t=False, centre=False):
-        return self.l2g(self.get_x(cut, pl), centre=centre)[0] if t else self.get_data('Clusters', 'U', cut, pl)
+    def get_u(self, cut=None, pl=None, centre=False):
+        return self.l2g(self.get_x(cut, pl), centre=centre)[0] if self.T else self.get_data('Clusters', 'U', cut, pl)
 
-    def get_v(self, cut=None, pl=None, t=False, centre=False):
-        return self.l2g(y=self.get_y(cut, pl), centre=centre)[1] if t else self.get_data('Clusters', 'V', cut, pl)
+    def get_v(self, cut=None, pl=None, centre=False):
+        return self.l2g(y=self.get_y(cut, pl), centre=centre)[1] if self.T else self.get_data('Clusters', 'V', cut, pl)
+
+    def get_tu(self, cut=None, pl=None):
+        return self.l2g(self.get_data('Tracks', 'X', cut, pl)) if self.T else self.get_data('Tracks', 'U', cut, pl)
+
+    def get_tv(self, cut=None, pl=None):
+        return self.l2g(y=self.get_data('Tracks', 'Y', cut, pl)) if self.T else self.get_data('Tracks', 'V', cut, pl)
 
     def get_xy(self, local=True, cut=None, pl=None):
         return array([self.get_x(cut, pl) if local else self.get_u(cut, pl), self.get_y(cut, pl) if local else self.get_v(cut, pl)])
 
+    def get_txy(self, local=True, cut=None, pl=None):
+        return array([f(cut, pl) for f in ([self.get_tx, self.get_ty] if local else [self.get_tu, self.get_tv])])  # noqa
+
     def get_mask(self):
         return self.get_data('Mask', cut=False)
 
-    def get_trigger_phase(self, cut=None):
-        return self.Tracks.get_trigger_phase(-1 if type(cut) is bool else cut)
+    def get_trigger_phase(self, cut=None, pl=None):
+        return self.get_data('TriggerPhase', cut=cut, pl=pl)
 
     def get_cluster_size(self, cut=None, pl=None):
-        return self.Tracks.get_cluster_size(-1 if type(cut) is bool else cut)
+        return self.get_data('Clusters', 'Size', cut, pl)
 
     def get_chi2(self, cut=None):
-        return self.Tracks.get_chi2(-1 if type(cut) is bool else cut)
+        return self.get_data('Chi2', cut=cut, main_grp='Tracks')
     # endregion DATA
     # ----------------------------------------
 
     # ----------------------------------------
     # region MISC
+    def plane(self, pl):
+        return self.Planes[choose(pl, self.Plane.Number)]
+
+    @property
+    def n(self):
+        return self.get_x(cut=False).size
+
     def activate_surface(self, on=True):
         self.Cut.register('fid', self.Cut.make_fiducial(surface=on), 10, 'fid cut')
         self.Tracks.Cut.register('fid', self.Tracks.Cut.make_fiducial(surface=on), 30)
@@ -271,59 +297,6 @@ class DUTAnalysis(Analysis):
         self.Draw.box(0, 0, 1, 1)
         update_canvas()
     # endregion DRAW
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # region RESIDUALS
-    def get_du_(self, cut=None):
-        return self.get_data('Tracks', 'dU', cut) * 1e3  # still not clear what this dU is... error on U of the track?
-
-    def get_dv_(self, cut=None):
-        return self.get_data('Tracks', 'dV', cut) * 1e3
-
-    def get_tu(self, cut=None, t=False):
-        return self.l2g(self.Tracks.get_x(self.Cut.to_trk(cut)))[0] if t else self.Tracks.get_u(self.Cut.to_trk(cut))
-
-    def get_tv(self, cut=None, t=False):
-        return self.l2g(y=self.Tracks.get_y(self.Cut.to_trk(cut)))[1] if t else self.Tracks.get_v(self.Cut.to_trk(cut))
-
-    def get_du(self, cut=None, t=False):
-        return self.get_u(cut=cut, t=t) - self.get_tu(cut, t)
-
-    def get_dv(self, cut=None, t=False):
-        return self.get_v(cut=cut, t=t) - self.get_tv(cut, t)
-
-    def get_residuals(self, cut=None):
-        return sqrt(self.get_du(cut) ** 2 + self.get_dv(cut) ** 2)
-
-    def draw_x_residuals(self, cut=None, **dkw):
-        self.Draw.distribution(self.get_du(cut) * 1e3, **prep_kw(dkw, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]'))
-
-    def draw_y_residuals(self, cut=None, **dkw):
-        self.Draw.distribution(self.get_dv(cut) * 1e3, **prep_kw(dkw, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]'))
-
-    def draw_xy_residuals(self, bw=10, cut=None, **dkw):
-        x, y = array([f(self.Cut.exclude('res', cut)) for f in [self.get_du, self.get_dv]]) * 1e3
-        self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]'))
-
-    def draw_residuals(self, bw=10, **dkw):
-        self.Draw.distribution(self.get_residuals() * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
-
-    def draw_residuals_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
-        cut = self.Cut.to_trk(self.Cut.get_nofid(cut, fid))
-        (x, y), z_ = [f(cut=cut) for f in [partial(self.Tracks.get_coods, local=local), self.get_residuals]]
-        self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.ax_tits(local)))
-
-    def draw_angle(self, x, y, prof=False, xb=True, local=False, **dkw):
-        b = (bins.get_x if xb else bins.get_y)(self.Plane, local=local) + find_bins(y)
-        return arctan(FitRes((self.Draw.profile if prof else self.Draw.histo_2d)(x, y, b[:2 if prof else 4], graph=True, **dkw).Fit('pol1', 'qs'))[1].n)
-
-    def draw_udv(self, cut=None, prof=True, t=False, **dkw):
-        return self.draw_angle(self.get_u(cut, t=t), self.get_dv(cut, t), prof, **prep_kw(dkw, title='X dY', x_tit='X [mm]', y_tit='dY [mm]'))
-
-    def draw_vdu(self, cut=None, prof=True, t=False, **dkw):
-        return self.draw_angle(self.get_v(cut, t=t), self.get_du(cut, t), prof, xb=False, **prep_kw(dkw, title='Y dX', x_tit='Y [mm]', y_tit='dX [mm]'))
-    # endregion RESIDUALS
     # ----------------------------------------
 
     # ----------------------------------------
