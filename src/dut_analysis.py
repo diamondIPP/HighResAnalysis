@@ -128,8 +128,7 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region DATA
     def get_time(self, cut=None):
-        t = self.Cut.ev2trk(array(self.F['Event']['Time']).astype('f8') + self.Run.StartTime)
-        return t if cut is ... else t[self.Cut.pl2trk(cut)]
+        return self.get_data('Time', cut=cut, main_grp='Event').astype('f8')
 
     def get_data(self, grp, key=None, cut=None, pl=None, main_grp=None):
         data = self.F[choose(main_grp, str(self.Planes[choose(pl, self.Plane.Number)]))][grp]
@@ -156,26 +155,29 @@ class DUTAnalysis(Analysis):
     def get_ty(self, cut=None, pl=None):
         return self.get_data('Tracks', 'Y', cut, pl)
 
-    def l2g(self, x=None, y=None, centre=False):
-        return self.Tel.l2g(x, y, self.Plane.Number, centre=centre, s=[-1, 1, 1])
-
     def get_u(self, cut=None, pl=None, centre=False):
-        return self.l2g(self.get_x(cut, pl), centre=centre)[0] if self.T else self.get_data('Clusters', 'U', cut, pl)
+        return self.get_uv(cut, pl, centre)[0] if self.T else self.get_data('Clusters', 'U', cut, pl)
 
     def get_v(self, cut=None, pl=None, centre=False):
-        return self.l2g(y=self.get_y(cut, pl), centre=centre)[1] if self.T else self.get_data('Clusters', 'V', cut, pl)
+        return self.get_uv(cut, pl, centre)[1] if self.T else self.get_data('Clusters', 'V', cut, pl)
 
     def get_tu(self, cut=None, pl=None):
-        return self.l2g(self.get_data('Tracks', 'X', cut, pl)) if self.T else self.get_data('Tracks', 'U', cut, pl)
+        return self.get_tuv(cut, pl)[0] if self.T else self.get_data('Tracks', 'U', cut, pl)
 
     def get_tv(self, cut=None, pl=None):
-        return self.l2g(y=self.get_data('Tracks', 'Y', cut, pl)) if self.T else self.get_data('Tracks', 'V', cut, pl)
+        return self.get_tuv(cut, pl)[1] if self.T else self.get_data('Tracks', 'V', cut, pl)
 
-    def get_xy(self, local=True, cut=None, pl=None):
-        return array([self.get_x(cut, pl) if local else self.get_u(cut, pl), self.get_y(cut, pl) if local else self.get_v(cut, pl)])
+    def get_xy(self, local=True, cut=None, pl=None, centre=False):
+        return array([self.get_x(cut, pl), self.get_y(cut, pl)]) if local else self.get_uv(cut, pl, centre)
 
-    def get_txy(self, local=True, cut=None, pl=None):
-        return array([f(cut, pl) for f in ([self.get_tx, self.get_ty] if local else [self.get_tu, self.get_tv])])  # noqa
+    def get_uv(self, cut=None, pl=None, centre=False):
+        return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if self.T else array([(self.get_u(cut, pl), self.get_v(cut, pl))])
+
+    def get_txy(self, local=True, cut=None, pl=None, centre=False):
+        return array([self.get_tx(cut, pl), self.get_ty(cut, pl)]) if local else self.get_tuv(cut, pl, centre)
+
+    def get_tuv(self, cut=None, pl=None, centre=False):
+        return self.l2g(self.get_tx(cut, pl), self.get_ty(cut, pl), pl, centre) if self.T else array([(self.get_tu(cut, pl), self.get_tv(cut, pl))])
 
     def get_mask(self):
         return self.get_data('Mask', cut=False)
@@ -302,14 +304,19 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CORRELATION
-    def draw_x_correlation(self, pl=2, **dkw):
-        return self.Tel.draw_x_correlation(pl, self.Plane.Number, **dkw)
+    def draw_x_correlation(self, pl=2, pl1=None, **dkw):
+        c = self.Cut.make_correlation(pl, pl1)
+        return self.Draw.histo_2d(self.get_x(c, pl), self.get_x(c, pl1), **prep_kw(dkw, title='XCorr', x_tit=f'Column Plane {pl}', y_tit=f'Column Plane {choose(pl1, self.Plane.Number)}'))
 
-    def draw_y_correlation(self, pl=2, **dkw):
-        return self.Tel.draw_y_correlation(pl, self.Plane.Number, **dkw)
+    def draw_y_correlation(self, pl=2, pl1=None, **dkw):
+        c = self.Cut.make_correlation(pl, pl1)
+        return self.Draw.histo_2d(self.get_y(c, pl), self.get_y(c, pl1), **prep_kw(dkw, title='YCorr', x_tit=f'Row Plane {pl}', y_tit=f'Row Plane {choose(pl1, self.Plane.Number)}'))
 
-    def draw_correlation_trend(self, pl=2, thresh=.2, **dkw):
-        return self.Tel.draw_correlation_trend(pl, self.Plane.Number, thresh, **prep_kw(dkw, y_range=[-1.05, 1.05]))
+    def draw_correlation_trend(self, pl=0, pl1=None, thresh=.2, **dkw):
+        c = self.Cut.make_correlation(pl, pl1)
+        d0, d1, t = self.get_xy(pl=pl, cut=c), self.get_xy(pl=pl1, cut=c), self.get_time(c)
+        g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), thresh=thresh), y_tit='Correlation Factor', show=False) for i in range(2)]
+        return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args(), y_range=[-1.05, 1.05]))
 
     def draw_alignment(self, pl=2, thresh=.3, **dkw):
         gx, gy = self.draw_correlation_trend(pl, show=False).GetListOfGraphs()
@@ -366,6 +373,24 @@ class DUTAnalysis(Analysis):
         self.Draw.box(0, 0, 1, 1)
         update_canvas()
     # endregion SIGNAL
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region COORDINATE TRANSFORM
+    @property
+    def inv_x(self):
+        return self.Converter.get_alignment()['sensors'][self.Plane.Number]['unit_u'][0] < 0
+
+    def l2g(self, x, y, pl=None, centre=False, inv_x=None, invert=False):
+        pl = self.plane(pl)
+        a = self.Converter.get_alignment()['sensors'][pl.Number]
+        ox, oy = array(a['offset'][:2]) - (array([pl.W, pl.H]) / 2 if centre else 0)
+        rx, ry = array(a['unit_u']) * (-1 if choose(inv_x, self.inv_x) else 1), a['unit_v']
+        return transform(x, y, sx=pl.PX, sy=pl.PY, ox=ox, oy=oy, rx=rx, ry=ry, order='trs', invert=invert)
+
+    def g2l(self, x, y, pl=None, centre=False, inv_x=None):
+        return self.l2g(x, y, pl, centre, inv_x, invert=True)
+    # endregion COORDINATE TRANSFORM
     # ----------------------------------------
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
