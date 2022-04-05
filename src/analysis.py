@@ -3,7 +3,7 @@ from os import getcwd
 from shutil import copyfile
 
 from plotting.draw import *
-from src.utils import PBar, Dir, print_banner, byte2str
+from utility.utils import PBar, Dir, print_banner, byte2str
 
 
 class BeamTest:

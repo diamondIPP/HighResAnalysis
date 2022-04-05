@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import sum, append, delete, average
 
-from src.utils import *
+from utility.utils import *
 
 
 class Converter:

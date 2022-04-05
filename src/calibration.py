@@ -10,7 +10,7 @@ from numpy import genfromtxt, split, all, delete, round
 from plotting.draw import Draw
 from glob import glob
 from src.run import Run
-from src.utils import *
+from utility.utils import *
 
 
 class Calibration:

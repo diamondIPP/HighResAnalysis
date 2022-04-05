@@ -12,7 +12,7 @@ from ROOT import TFile, vector, TF1
 
 from plotting.draw import Draw
 from src.converter import Converter, Hit, Cluster
-from src.utils import *
+from utility.utils import *
 
 
 # todo revise

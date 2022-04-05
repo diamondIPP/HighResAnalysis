@@ -5,7 +5,7 @@ from pytz import timezone
 
 import src.bins as bins
 from src.analysis import *
-from src.utils import *
+from utility.utils import *
 from glob import glob
 
 

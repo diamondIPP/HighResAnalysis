@@ -16,7 +16,8 @@ from src.desy_run import DESYRun
 from src.dummy import Dummy
 from src.dut import Plane
 from src.tracks import TrackAnalysis
-from src.utils import *
+from utility.utils import *
+from utility.affine_transformations import transform
 
 
 class DUTAnalysis(Analysis):

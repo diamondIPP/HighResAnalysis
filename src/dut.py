@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.utils import load_json, OrderedDict, critical, join, ufloat, choose, array, Dir, load, loads
+from utility.utils import load_json, OrderedDict, critical, join, ufloat, choose, array, Dir, load, loads
 from plotting.utils import Config
 from os.path import expanduser
 

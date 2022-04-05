@@ -9,7 +9,7 @@ from numpy import round, invert, delete
 from numpy.random import poisson, normal, randint
 
 from src.dut import Plane
-from src.utils import *
+from utility.utils import *
 
 
 class Dummy:

@@ -4,7 +4,7 @@
 # created on February 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.run import Run
-from src.utils import *
+from utility.utils import *
 
 
 class DESYRun(Run):

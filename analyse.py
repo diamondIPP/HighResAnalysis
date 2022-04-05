@@ -10,7 +10,7 @@ from numpy import *
 import src.bins as bins  # noqa
 from plotting.draw import *
 from src.dut_analysis import DUTAnalysis, Analysis
-from src.utils import *  # noqa
+from utility.utils import *  # noqa
 
 t_start = time()
 aparser = ArgumentParser()

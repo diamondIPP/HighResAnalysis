@@ -4,7 +4,7 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.utils import *
+from utility.utils import *
 from os.path import join
 from src.analysis import Analysis
 from src.dut import DUT

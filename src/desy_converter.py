@@ -16,7 +16,7 @@ from src.calibration import Calibration
 from src.converter import Converter
 from src.desy_run import DESYRun
 from src.dut import Plane
-from src.utils import print_banner, file_exists, basename, h5py, get_tree_vec, update_pbar
+from utility.utils import print_banner, file_exists, basename, h5py, get_tree_vec, update_pbar
 from ROOT import TFile
 import toml
 
