@@ -19,10 +19,10 @@ class ResidualAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region DATA
     def du(self, cut=None, pl=None):
-        return self.get_u(cut, pl) - self.get_tu(cut)
+        return self.get_u(cut, pl) - self.get_tu(cut, pl)
 
     def dv(self, cut=None, pl=None):
-        return self.get_v(cut, pl, self.T) - self.get_tv(cut)
+        return self.get_v(cut, pl) - self.get_tv(cut, pl)
 
     def __call__(self, cut=None, pl=None):
         return sqrt(self.du(cut, pl) ** 2 + self.dv(cut, pl) ** 2)
