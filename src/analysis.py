@@ -97,17 +97,23 @@ class Analysis:
     def get_meta_files(self):
         return [*Path(self.MetaDir).rglob(f'*_{self.BeamTest.Tag}_{self.run_str}*')] if self.run_str else []
 
+    @property
     def meta_file_size(self):
-        info(f'total size of metadata: {byte2str(sum(p.stat().st_size for p in self.get_meta_files()))}')
+        return sum(p.stat().st_size for p in self.get_meta_files())
 
-    def meta_file_sizes(self):
+    def print_meta_file_size(self):
+        info(f'total size of metadata: {byte2str(self.meta_file_size)}')
+
+    def print_meta_file_sizes(self):
         for p in self.get_meta_files():
             info(f'{p}: {byte2str(p.stat().st_size)}')
-        self.meta_file_size()
+        self.print_meta_file_size()
 
     def remove_metadata(self):
+        s = self.meta_file_size
         for p in self.get_meta_files():
             remove_file(p)
+        info(f'removed {byte2str(s)} of meta files')
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')

@@ -32,6 +32,7 @@ try:
     c = z.Converter
     cut = z.Cut
     cal = z.Calibration
+    res = z.Residuals
     tel = z.Tel
     ref = z.REF
     t = z.Tracks
