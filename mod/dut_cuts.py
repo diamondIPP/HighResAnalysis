@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
@@ -16,6 +16,16 @@ class DUTCut(Cuts):
         self.MetaSubDir = meta_sub_dir
         super().__init__()
 
+    def __call__(self, cut=None, data=None, pl=None):
+        cut = super().__call__(cut)
+        if data is None:
+            return cut
+        if data.size == self.Ana.NTracks:
+            return self.trk2pl(data, pl)[cut]
+        if data.size == self.Ana.NEvents:
+            return self.ev2pl(data, pl)[cut]
+        return data[cut]
+
     def init_config(self):
         return Config(Dir.joinpath('cuts', f'cut{self.Ana.BeamTest.Tag}.ini'), section=self.Ana.DUT.Name)
 
@@ -26,7 +36,7 @@ class DUTCut(Cuts):
         self.register('cluster', self.make_cluster(_redo=redo), 90, 'tracks with a cluster')
 
     def make_additional(self, redo=False):
-        self.register('res', self.make_residual(_redo=redo), 69, 'small residuals to REF plane')
+        self.register('res', self.make_ref_residual(redo=redo), 69, 'small residuals to REF plane')
         self.register('tp', self.make_trigger_phase(_redo=redo), 61, 'trigger phase')
         self.register('tstart', self.make_start_time(_redo=redo), 40, 'exclude first events')
         self.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')
@@ -47,27 +57,31 @@ class DUTCut(Cuts):
 
     @save_hdf5('TP', arr=True, dtype='?')
     def make_trigger_phase(self, _redo=False):
-        tp = self.Ana.get_trigger_phase(cut=False)
+        tp = self.Ana.get_trigger_phase(cut=0)
         low, high = self.get_config('trigger phase')
         return (tp >= low) & (tp <= high)
 
-    @save_hdf5('Clu', arr=True, dtype='?')
-    def make_cluster(self, _redo=False):
-        return self.Ana.get_data('Clusters', 'Size', cut=False) > 0
-
-    @save_hdf5('Res', arr=True, dtype='?')
-    def make_residual(self, _redo=False):
-        return self.Ana.REF.Cut.make_residual()[self['cluster']]
+    @save_hdf5('Clu', arr=True, dtype='?', suf_args='all')
+    def make_cluster(self, pl=None, _redo=False):
+        return self.Ana.get_data('Clusters', 'Size', cut=False, pl=pl) > 0
 
     @save_hdf5('Time', arr=True, dtype='?')
     def make_start_time(self, _redo=False):
-        t = self.Ana.get_time(cut=False)
+        t = self.Ana.get_time(cut=0)
         return t >= t[0] + self.get_config('start time', dtype=int) * 60
 
     @save_hdf5('Chi2', arr=True, dtype='?', suf_args='all')
     def make_chi2(self, q=None, _redo=False):
-        x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
+        x, q = self.Ana.get_chi2(cut=0), choose(q, self.get_config('chi2 quantile', dtype=float))
         return x < quantile(x, q)
+
+    @save_hdf5('Res', arr=True, dtype='?', suf_args='all')
+    def make_residual(self, v=None, _redo=False):
+        x, y, (mx, my) = self.Ana.Residuals.du(cut=0), self.Ana.Residuals.dv(cut=0), self.Ana.Residuals.get_means(cut=0)
+        return sqrt((x - mx.n) ** 2 + (y - my.n) ** 2) < choose(v, self.get_config('residuals', dtype=float))
+
+    def make_ref_residual(self, pl=None, redo=False):
+        return self.trk2pl(self.Ana.REF.Cut.make_trk_residual(redo), pl)
 
     def make_ph(self, xmax, xmin=None):
         x = self.Ana.get_phs(cut=False)
@@ -110,18 +124,18 @@ class DUTCut(Cuts):
         c[make_list(ev).astype('i')] = True
         return c
 
-    def ev2dut(self, x):
-        return self.ev2trk(x)[self['cluster']]
+    def ev2pl(self, x, pl=None):
+        return self.trk2pl(self.ev2trk(x), pl)
 
     def dut2ev(self, x):
         c = zeros(self.Ana.NEvents, '?')
-        c[self.get_track_events()[self.dut2trk(x)]] = True
+        c[self.get_track_events()[self.pl2trk(x)]] = True
         return c
 
-    def dut2trk(self, x):
-        c0 = self['cluster'].copy()
-        c0[c0] = True if self(x) is ... else self(x)
-        return c0
+    def pl2trk(self, x, pl=None):
+        c = zeros(self.Ana.NTracks, '?')
+        c[self.make_cluster(pl)] = True if self(x) is ... else self(x)
+        return c
 
     def ev2trk(self, x):
         return x[self.get_track_events()]
@@ -130,6 +144,9 @@ class DUTCut(Cuts):
         c = zeros(self.Ana.NEvents, '?')
         c[self.get_track_events()[x]] = True
         return c
+
+    def trk2pl(self, x, pl=None):
+        return x[self.make_cluster(pl)]
 
     @staticmethod
     def to_trk(cut):
