@@ -7,7 +7,7 @@ from numpy import array, invert, all, zeros, quantile, max, inf, sqrt
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
-from src.utils import Dir, save_hdf5, parallel, make_list, choose
+from utility.utils import Dir, save_hdf5, parallel, make_list, choose
 
 
 class DUTCut(Cuts):
@@ -23,8 +23,8 @@ class DUTCut(Cuts):
         if data.size == self.Ana.NTracks:
             return self.trk2pl(data, pl)[cut]
         if data.size == self.Ana.NEvents:
-            return self.ev2pl(data, pl)[cut]
-        return data[cut]
+            return self.ev2pl(data, pl)[cut] if cut is ... or cut.size == self.Ana.N else self.ev2trk(data)[cut]
+        return data if cut is ... else data[cut] if cut.size == data.size else data[self.trk2pl(cut, pl)]
 
     def init_config(self):
         return Config(Dir.joinpath('cuts', f'cut{self.Ana.BeamTest.Tag}.ini'), section=self.Ana.DUT.Name)
@@ -86,6 +86,9 @@ class DUTCut(Cuts):
     def make_ph(self, xmax, xmin=None):
         x = self.Ana.get_phs(cut=False)
         return (x >= choose(xmin, -inf)) & (x < xmax)
+
+    def make_correlation(self, pl0, pl1=None):
+        return self.make_cluster(pl0) & self.make_cluster(pl1)
     # endregion GENERATE
     # ----------------------------------------
 
