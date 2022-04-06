@@ -5,7 +5,8 @@
 # --------------------------------------------------------
 
 from numpy import arctan, sqrt, array
-from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, fit_fwhm, save_pickle
+from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle
+from plotting.fit import Gauss
 
 
 class ResidualAnalysis(DUTAnalysis):
@@ -24,6 +25,12 @@ class ResidualAnalysis(DUTAnalysis):
     def dv(self, cut=None, pl=None):
         return self.get_v(cut, pl) - self.get_tv(cut, pl)
 
+    def dx(self, cut=None, pl=None):
+        return self.get_x(cut, pl) - self.get_tx(cut, pl)
+
+    def dy(self, cut=None, pl=None):
+        return self.get_y(cut, pl) - self.get_ty(cut, pl)
+
     def __call__(self, cut=None, pl=None):
         return sqrt(self.du(cut, pl) ** 2 + self.dv(cut, pl) ** 2)
 
@@ -38,18 +45,24 @@ class ResidualAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region GET
     @save_pickle('RM', suf_args='all', field='Plane')
-    def get_means(self, cut=None, pl=None, _redo=False):
-        return [fit_fwhm(f(show=False, cut=cut, pl=pl))[1] / 1e3 for f in [self.draw_x, self.draw_y]]
+    def get_means(self, local=False, cut=None, pl=None, _redo=False):
+        return array([Gauss(f(show=False, cut=cut, pl=pl), thresh=.05).fit()[1] for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])]) / (1 if local else 1e3)
     # endregion DATA
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
-    def draw_x(self, cut=None, pl=None, **dkw):
+    def draw_u(self, cut=None, pl=None, **dkw):
         return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]'))
 
-    def draw_y(self, cut=None, pl=None, **dkw):
+    def draw_v(self, cut=None, pl=None, **dkw):
         return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]'))
+
+    def draw_x(self, cut=None, pl=None, **dkw):
+        return self.Draw.distribution(self.dx(cut, pl), **prep_kw(dkw, title='X Residuals', x_tit='Residual [Columns]'))
+
+    def draw_y(self, cut=None, pl=None, **dkw):
+        return self.Draw.distribution(self.dy(cut, pl), **prep_kw(dkw, title='Y Residuals', x_tit='Residual [Rows]'))
 
     def draw_xy(self, bw=10, cut=None, pl=None, **dkw):
         x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3  # noqa
