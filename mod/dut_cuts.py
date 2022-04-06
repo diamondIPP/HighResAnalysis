@@ -14,6 +14,7 @@ class DUTCut(Cuts):
     def __init__(self, ana, meta_sub_dir='dut_cuts'):
         self.Ana = ana
         self.MetaSubDir = meta_sub_dir
+        self.N = self.Ana.N
         super().__init__()
 
     def __call__(self, cut=None, data=None, pl=None):
@@ -25,6 +26,10 @@ class DUTCut(Cuts):
         if data.size == self.Ana.NEvents:
             return self.ev2pl(data, pl)[cut] if cut is ... or cut.size == self.Ana.N else self.ev2trk(data)[cut]
         return data if cut is ... else data[cut] if cut.size == data.size else data[self.trk2pl(cut, pl)]
+
+    def register(self, name, values=None, level=None, description=None):
+        """ guarantee that the cut array has the correct size """
+        return super().register(name, self(cut=False, data=values), level, description)
 
     def init_config(self):
         return Config(Dir.joinpath('cuts', f'cut{self.Ana.BeamTest.Tag}.ini'), section=self.Ana.DUT.Name)
@@ -46,7 +51,7 @@ class DUTCut(Cuts):
     @save_hdf5('Fid', arr=True, dtype='?', suf_args='all')
     @parallel('point_in_polygon', 'fiducial cut')
     def make_fiducial(self, surface=False, _redo=False):
-        x, y = self.get_xy()
+        x, y = self.Ana.get_xy(local=True, cut=False)
         return array([x, y]).T, self.get_fid(surface=surface)
 
     def make_cluster_mask(self):
@@ -57,7 +62,7 @@ class DUTCut(Cuts):
 
     @save_hdf5('TP', arr=True, dtype='?')
     def make_trigger_phase(self, _redo=False):
-        tp = self.Ana.get_trigger_phase(cut=0)
+        tp = self.Ana.get_trigger_phase(cut=False)
         low, high = self.get_config('trigger phase')
         return (tp >= low) & (tp <= high)
 
@@ -67,12 +72,12 @@ class DUTCut(Cuts):
 
     @save_hdf5('Time', arr=True, dtype='?')
     def make_start_time(self, _redo=False):
-        t = self.Ana.get_time(cut=0)
+        t = self.Ana.get_time(cut=False)
         return t >= t[0] + self.get_config('start time', dtype=int) * 60
 
     @save_hdf5('Chi2', arr=True, dtype='?', suf_args='all')
     def make_chi2(self, q=None, _redo=False):
-        x, q = self.Ana.get_chi2(cut=0), choose(q, self.get_config('chi2 quantile', dtype=float))
+        x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
         return x < quantile(x, q)
 
     @save_hdf5('Res', arr=True, dtype='?', suf_args='all')
@@ -115,9 +120,6 @@ class DUTCut(Cuts):
         return poly.IsInside(*p)
     # endregion FIDUCIAL
     # ----------------------------------------
-
-    def get_xy(self):
-        return self.Ana.get_xy(local=True, cut=False)
 
     def get_track_events(self):
         return array(self.Ana.F['Tracks']['EvtFrame'])
