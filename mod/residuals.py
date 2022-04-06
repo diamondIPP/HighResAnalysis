@@ -37,7 +37,7 @@ class ResidualAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
-    @save_pickle('RM', suf_args='all', verbose=True, field='Plane')
+    @save_pickle('RM', suf_args='all', field='Plane')
     def get_means(self, cut=None, pl=None, _redo=False):
         return [fit_fwhm(f(show=False, cut=cut, pl=pl))[1] / 1e3 for f in [self.draw_x, self.draw_y]]
     # endregion DATA
