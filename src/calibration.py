@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
-#       pulse height calibration of the cms pixel planes
+#       pulse height calibration of the CMS pixel planes
 # created on July 2nd 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TF1, TGraph
-from numpy import genfromtxt, split, all, delete, round
+from ROOT import TGraph
+from numpy import genfromtxt, all, delete, round, argmax, vectorize
 
-from plotting.draw import Draw
+from plotting.draw import Draw, FitRes
+from plotting.fit import Erf
 from glob import glob
 from src.run import Run
+import src.bins as bins
 from utility.utils import *
 
 
@@ -20,13 +22,15 @@ class Calibration:
         # INFO
         self.Run = run
         self.Plane = run.DUT.Plane
+        self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
         self.Draw = Draw(config=self.Run.Config)
         self.Dir = join(self.Run.TCDir, 'calibrations', self.Run.DUT.Name)
 
         # Calibration
         self.HighRangeFactor = 7
         self.Trim, self.Number = self.get_trim_number(n)
-        self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
+        # self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
+        self.Fit = Erf(fit_range=[0, 255 * 7]).Fit
         self.Points = None
         self.Fits = None
 
@@ -36,16 +40,16 @@ class Calibration:
         self.correct_file()
 
     def __call__(self, x, y, adc):
-        return self.read()[x, y, adc]
+        return self.get_lookup_table()[x, y, adc]
 
     # ----------------------------------------
     # region INIT
     def get_trim_number(self, n=None):
-        trim, number = [int(v) for v in self.Run.Logs['trim{}'.format(self.Run.DUT.Number)].split('-')]
+        trim, number = [int(v) for v in self.Run.Logs[f'trim{self.Run.DUT.Number}'].split('-')]
         return trim, choose(n, number)
 
     def get_file_name(self):
-        f = glob(join(self.Dir, 'phCalibration{}*-{}.dat'.format(self.Trim, self.Number)))
+        f = glob(join(self.Dir, f'phCalibration{self.Trim}*-{self.Number}.dat'))
         if len(f):
             return f[0]
         critical('Pulse height calibration file does not exist...')
@@ -66,7 +70,7 @@ class Calibration:
             warning('Found corrupted file from pxar. Correcting ...')
             low_range = self.get_vcals()['low range']
             lines = []
-            data = self.read_points()
+            data = self.get_all_points()
             i_corr = arange(100, 100 + hr_size)  # indices of the corrupted data
             with open(self.get_file_name(), 'r+') as f:
                 for line in f.readlines():
@@ -89,109 +93,97 @@ class Calibration:
 
     # ----------------------------------------
     # region GET
-    def read_points(self):
-        cols = arange(sum(a.size for a in self.get_vcals().values()))
-        return array(split(genfromtxt(self.get_file_name(), skip_header=3, usecols=cols, dtype='u2'), self.get_splits()))
+    def make_hdf5_path(self, name='', suf=''):
+        d = ensure_dir(Dir.joinpath('metadata', 'calibration'))
+        return d.joinpath(f'{"_".join(str(v) for v in [name, self.Run.DUT, self.Trim, self.Number, suf] if v)}.hdf5')
+
+    @save_hdf5('Points', arr=True)
+    def get_all_points(self):
+        return genfromtxt(self.get_file_name(), skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
+
+    def get_thresholds(self):
+        return self.vcals[argmax(self.get_all_points() > 0, axis=2)]
 
     def read_fit_pars(self):
-        return array(split(genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2'), self.get_splits()))
+        return genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2').reshape((self.NX, self.NY, -1))
+
+    def get_formula(self):
+        return str(genfromtxt(self.get_fit_file(), skip_header=1, max_rows=1, dtype=str)).replace('par', '').replace('x[0]', 'x')
 
     def get_points(self, col, row):
-        if self.Points is None:
-            self.Points = self.read_points()
-        return self.Points[col][row]
-
-    def get_all_points(self):
-        if self.Points is None:
-            self.Points = self.read_points()
-        return self.Points
-
-    def get_splits(self):
-        """ :returns: array of indices when to split the calibration data -> at every new column and after NRows of the chip. """
-        return arange(self.Plane.NRows, self.Plane.NCols * self.Plane.NRows, self.Plane.NRows)
+        return self.get_all_points()[col, row]
 
     def get_vcals(self):
         """ :returns: the vcal dacs used for the calibration, which are saved in the header of the files. """
         f = self.get_file_name()
         return {'low range': genfromtxt(f, 'u2', skip_header=1, max_rows=1)[2:], 'high range': genfromtxt(f, 'u2', skip_header=2, max_rows=1)[2:]}
 
-    def get_vcal_vec(self):
+    @property
+    def vcals(self):
         return concatenate([v * f for v, f in zip(self.get_vcals().values(), [1, self.HighRangeFactor])])
-
-    def get_charge(self, col, row, adc):
-        fit = self.fit_erf(self.get_vcal_vec(), self.get_points(col, row)) if self.Fits is None else self.Fits[col][row]
-        return -1 if fit is None else fit.GetX(adc)
-
-    def get_chi2s(self, reload=False):
-        def f():
-            fits = self.get_fits()
-            chi2s = zeros(fits.shape, dtype='f2')
-            for col, rows in enumerate(self.Fits):
-                for row, fit in enumerate(rows):
-                    chi2s[col][row] = 1000 if fit is None else fit.GetChisquare() / fit.GetNDF()
-            return chi2s
-        return do_hdf5(join(self.Dir, 'chi2-{}-{}'.format(self.Trim, self.Number)), f, redo=reload)
-
-    def get_fits(self):
-        if self.Fits is None:
-            self.load_fits()
-        return self.Fits
     # endregion GET
     # ----------------------------------------
 
-    def load_fits(self, pbar=True):
-        info('Fitting calibration points ...', prnt=pbar)
-        do(self.PBar.start, self.Plane.NPixels, pbar)
-        x = self.get_vcal_vec()
-        fits = zeros((self.Plane.NCols, self.Plane.NRows), dtype=object)
-        self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        for col, rows in enumerate(self.get_all_points()):
-            for row, y in enumerate(rows):
-                fits[col][row] = self.fit_erf(x, y)
-                if pbar:
-                    self.PBar.update()
-        self.Fits = array(fits)
-
-    def read(self, reload=False):
-        return array(do_hdf5(self.FileName, self.save, redo=reload))
-
-    def save(self):
-        self.load_fits()
-        info('Creating calibration file ... ')
-        v = zeros(self.Fits.shape + (256,))
-        self.PBar.start(v.size)
-        for col, rows in enumerate(self.Fits):
-            for row, fit in enumerate(rows):
-                for i in range(256):
-                    v[col][row][i] = 0 if fit is None else fit.GetX(i)
-                    self.PBar.update()
-        return v.astype('f2')
-
-    def fit_erf(self, x, y, pars=None):
-        if pars is not None:
-            self.Fit.SetParameters(*pars)
+    # ----------------------------------------
+    # region FIT
+    @update_pbar
+    def fit(self, x, y):
         x, y = x[y > 0], y[y > 0]  # take only non zero values
         if x.size < 5:
-            return
-        g = TGraph(x.size, x.astype('d'), y.astype('d'))
-        g.Fit(self.Fit, 'q0', '', 0, 255 * 7)
-        return deepcopy(self.Fit)
+            return None
+        self.Fit.SetParameters(255 / 2, 255 / 2, 400, 500)
+        TGraph(x.size, x.astype('d'), y.astype('d')).Fit(self.Fit, 'q0', '', 0, 255 * 7)
+        return FitRes(self.Fit)
 
-    def draw_fit(self, col=14, row=14, **dkw):
-        f = self.fit_erf(self.get_vcal_vec(), self.get_points(col, row), pars=[309.2062, 112.8961, 1.022439, 35.89524])
-        self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pix {col} {row}', leg=f))
-        return f
+    def fit_all(self):
+        info('fit calibration points ...')
+        x, y = self.vcals, self.get_all_points()
+        self.PBar.start(self.NPix)
+        self.Fits = array([[self.fit(x, iy) for iy in lst] for lst in y], dtype=object)
+        return self.Fits
+
+    def get_fits(self):
+        return self.fit_all() if self.Fits is None else self.Fits
+
+    @save_hdf5('Chi2', arr=True, dtype='f4')
+    def get_chi2s(self, _redo=False):
+        return vectorize(lambda x: 1000 if x is None else x.get_chi2())(self.get_fits())
+
+    @update_pbar
+    def get_vcal(self, f, adc):
+        return f.GetX(adc) if adc > f.GetMinimum() else 0
+
+    @save_hdf5('LUT', arr=True, dtype='f2')
+    def get_lookup_table(self, _redo=False):
+        fits = self.get_fits()
+        info('creating calibration LUT ... ')
+        self.PBar.start(256 * self.NPix)
+        return array([[[0 if f is None else self.get_vcal(f.Fit, i) for i in range(256)] for f in lst] for lst in fits])
+    # endregion FIT
+    # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
     def draw(self, col=14, row=14, **dkw):
-        x, y = self.get_vcal_vec(), self.get_points(col, row)
+        x, y = self.vcals, self.get_points(col, row)
         return self.Draw.graph(x, y, **prep_kw(dkw, title=f'Calibration Points for Pixel {col} {row}', draw_opt='ap', x_tit='VCAL', y_tit='ADC', markersize=.7))
 
-    def draw_calibration_fit(self, col=14, row=14, **dkw):
+    def draw_fit(self, col=14, row=14, **dkw):
+        f = self.fit(self.vcals, self.get_points(col, row))
+        return self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pix {col} {row}', leg=f.Fit))
+
+    def draw_pxar_fit(self, col=14, row=14, **dkw):
         """ draws the Erf fit from pXar """
-        self.Fit.SetParameters(*self.read_fit_pars()[col][row])
-        self.draw(col, row, **dkw).SetTitle('Calibration Fit for Pixel {} {}'.format(col, row))
-        self.Fit.Draw('same')
+        f = Draw.make_f(None, self.get_formula(), 0, 255 * 7, pars=self.read_fit_pars()[col, row])
+        return self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pixel {col} {row}', leg=f))
+
+    def draw_thresholds(self, **dkw):
+        return self.Draw.prof2d(self.get_thresholds(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Threshold [vcal]'))
+
+    def draw_chi2_map(self, **dkw):
+        return self.Draw.prof2d(self.get_chi2s(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='#chi^{2}'))
+
+    def draw_chi2(self, **dkw):
+        return self.Draw.distribution(self.get_chi2s().flatten(), **prep_kw(dkw, rf=1, x0=0, x_tit='#chi^{2}'))
     # endregion DRAW
     # ----------------------------------------
