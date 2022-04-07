@@ -44,3 +44,6 @@ try:
     e = z.Efficiency
 except AttributeError:
     pass
+
+from plotting.save import SaveDraw
+sl = SaveDraw.save_last
