@@ -82,6 +82,7 @@ def ensure_dir(path):
     if not exists(path):
         info('Creating directory: {d}'.format(d=path))
         makedirs(path)
+    return path
 
 
 def remove_file(file_path, string=None):
