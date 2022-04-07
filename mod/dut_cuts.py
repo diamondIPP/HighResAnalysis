@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
@@ -36,7 +36,9 @@ class DUTCut(Cuts):
 
     def make(self, redo=False):
         self.register('fid', self.make_fiducial(_redo=redo), 10, 'fid cut')
-        self.register('mask', self.make_cluster_mask(), 20, 'mask pixels')
+        self.register('mask', self.make_conf_mask(), 20, 'mask pixels')
+        self.register('tmask', self.make_cal_thresh_mask(), 21, 'mask pixels with high treshold')
+        self.register('cmask', self.make_cal_chi2_mask(), 22, f'mask pixels with calibration fit chi2 > {self.get_config("calibration chi2", default=10.)}')
         self.register('charge', self.Ana.get_phs(cut=False) != 0, 30, 'events with non-zero charge')
         self.register('cluster', self.make_cluster(_redo=redo), 90, 'tracks with a cluster')
 
@@ -54,11 +56,28 @@ class DUTCut(Cuts):
         x, y = self.Ana.get_xy(local=True, cut=False)
         return array([x, y]).T, self.get_fid(surface=surface)
 
-    def make_cluster_mask(self):
+    def make_cluster_mask(self, mx, my, t=.5):
         """ exclude all clusters within half a pixel distance of the masked pixel"""
         x, y = self.Ana.get_xy(local=True, cut=False)
-        mx, my = array(self.get_config('mask')).T
-        return all([invert((x >= mx[i] - .5) & (x <= mx[i] + .5) & (y >= my[i] - .5) & (y <= my[i] + .5)) for i in range(mx.size)], axis=0)
+        return all([invert((x >= mx[i] - t) & (x <= mx[i] + t) & (y >= my[i] - t) & (y <= my[i] + t)) for i in range(mx.size)], axis=0)
+
+    @save_hdf5('Mask', arr=True, dtype='?')
+    def make_conf_mask(self):
+        return self.make_cluster_mask(*self.get_config('mask', default=zeros((0, 2))).T)
+
+    def get_thresh_mask(self):
+        return where(self.Ana.Calibration.get_thresholds() > self.Ana.Calibration.Trim * 1.5)
+
+    @save_hdf5('TMask', arr=True, dtype='?')
+    def make_cal_thresh_mask(self):
+        return self.make_cluster_mask(*self.get_thresh_mask())
+
+    def get_cal_chi2_mask(self):
+        return where(self.Ana.Calibration.get_chi2s() > self.get_config('calibration chi2', default=10.))
+
+    @save_hdf5('CMask', arr=True, dtype='?')
+    def make_cal_chi2_mask(self):
+        return self.make_cluster_mask(*self.get_cal_chi2_mask())
 
     @save_hdf5('TP', arr=True, dtype='?')
     def make_trigger_phase(self, _redo=False):
@@ -100,7 +119,7 @@ class DUTCut(Cuts):
     # ----------------------------------------
     # region FIDUCIAL
     def get_fid_config(self, surface=False, name=None):
-        p = self.get_config(choose(name, 'surface fiducial' if surface else 'fiducial'))
+        p = self.get_config(choose(name, 'surface fiducial' if surface else 'fiducial'), default=self.get_config('full size'))
         p = make_box_args(*p[[0, 2, 1, 3]]) if p.size == 4 else p  # unpack short box notation
         p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
         return p - .5  # pixel centre is at the integer
