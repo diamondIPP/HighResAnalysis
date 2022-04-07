@@ -40,8 +40,8 @@ class Cuts:
     def make(self, redo=False):
         pass
 
-    def get_config(self, option, dtype=str):
-        v = self.Config.get_value(option, dtype=dtype)
+    def get_config(self, option, dtype=str, default=None):
+        v = self.Config.get_value(option, dtype=dtype, default=default)
         return array(v) if is_iter(v) else v
 
     def generate(self):
