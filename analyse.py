@@ -20,8 +20,12 @@ aparser.add_argument('--testcampaign', '-tc', nargs='?', default=Analysis.find_t
 aparser.add_argument('--verbose', '-v', action='store_false')
 aparser.add_argument('--single_mode', '-s', action='store_false')
 aparser.add_argument('--test', '-t', action='store_true')
+aparser.add_argument('--remove_meta', '-rm', action='store_true')
 args = aparser.parse_args()
 
+if args.remove_meta:
+    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=False, test=True)
+    z.remove_metadata()
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 z.add_info(t_start, prnt=True)
 
