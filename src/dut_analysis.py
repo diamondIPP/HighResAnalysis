@@ -281,7 +281,7 @@ class DUTAnalysis(Analysis):
 
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         cut = self.Cut.get_nofid(cut, fid)
-        (x, y), cs = self.Tracks.get_coods(cut, local), self.get_cluster_size(cut)
+        (x, y), cs = self.Tracks.get_xy(local, cut), self.get_cluster_size(cut)
         self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, z_tit='Cluster Size', **self.ax_tits(local)))
 
     def draw_trigger_phase(self, cut=None, **dkw):
@@ -298,7 +298,7 @@ class DUTAnalysis(Analysis):
         self.Draw.grid(*self.get_segments(nx, ny, width), w)
 
     def draw_inpixel_map(self, res=.1, cut=None, cell=False, show=True):
-        x, y = self.expand_inpixel(cell=cell, *self.Tracks.get_coods(cut=cut))
+        x, y = self.expand_inpixel(cell=cell, *self.Tracks.get_xy(cut=cut))
         self.Draw.histo_2d(x, y, bins.get_pixel(self.Plane, res, cell=cell), 'Hit Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.Draw.box(0, 0, 1, 1)
         update_canvas()
@@ -347,7 +347,7 @@ class DUTAnalysis(Analysis):
         self.draw_hit_map(res, cut=self.Cut.get_nofid() + self.Cut.make_ph(cmax, cmin), **dkw)
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
-        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_coods, self.get_phs]]
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_xy, self.get_phs]]
         self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits()))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
@@ -370,7 +370,7 @@ class DUTAnalysis(Analysis):
         return fit
 
     def draw_inpixel_charge(self, res=.1, cut=None, show=True, cell=False):
-        (x, y), c = self.Tracks.get_coods(cut), self.get_phs(cut=cut)
+        (x, y), c = self.Tracks.get_xy(cut=cut), self.get_phs(cut=cut)
         x, y, c = self.expand_inpixel(x, y, c, cell)
         self.Draw.prof2d(x, y, c, bins.get_pixel(self.Plane, res, cell=cell), 'Charge Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.Draw.box(0, 0, 1, 1)
