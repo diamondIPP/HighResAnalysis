@@ -51,8 +51,8 @@ class DUTAnalysis(Analysis):
         self.Surface = False
 
         # SUBCLASSES
-        self.Cut = DUTCut(self)
         self.Calibration = Calibration(self.Run)
+        self.Cut = DUTCut(self)
         self.Residuals = self.init_residuals()
 
         self.Tel = self.init_tel()
@@ -265,12 +265,15 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region DRAW
     def draw_mask(self, **dkw):
-        self.Draw.histo_2d(*self.get_mask(), self.loc_bins, 'Masked Pixels', **prep_kw(dkw, **self.ax_tits(), leg=self.Cut.get_fid(), fill_color=1, rm=.03, draw_opt='box'))
+        masks = self.Cut.get_config('mask', default=zeros((2, 0))), self.get_mask(), self.Cut.get_thresh_mask(), self.Cut.get_cal_chi2_mask()
+        d = concatenate([tile(m, i) for i, m in enumerate(masks, 1)], axis=1)
+        self.Draw.histo_2d(*d, self.loc_bins, 'PixMask', **prep_kw(dkw, **self.ax_tits(), leg=self.Cut.get_fid(), pal=set_n_palette(len(masks)), rm=.03, stats=False, draw_opt='col', z_range=[0, 5]))
+        Draw.legend([Draw.box(*[-1] * 4, line_color=0, fillcolor=i, show=False) for i in Draw.get_colors(len(masks))], ['Config', 'Noise Scan', 'High Thresh', 'Bad Calibration'], 'f', bottom=True)
 
     def draw_occupancy(self, local=True, bw=1, cut=None, fid=False, pl=None, **dkw):
         x, y = self.get_xy(local, self.Cut.get_nofid(cut, fid), pl)
         pl = self.Plane if local else self.Planes[0]
-        self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, **self.ax_tits(local), stats=set_statbox(entries=True, m=True)))
+        return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local)))
 
     def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, **dkw):
         self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
