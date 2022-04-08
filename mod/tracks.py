@@ -7,6 +7,7 @@
 from numpy import rad2deg, where
 
 import src.bins as bins
+from mod.track_cuts import TrackCut
 from plotting.draw import prep_kw
 from src.dut_analysis import DUTAnalysis
 from utility.utils import uarr2n
@@ -22,7 +23,6 @@ class TrackAnalysis(DUTAnalysis):
         self.MetaSubDir = 'tracks'
         self.Tel.T = True
 
-        from mod.track_cuts import TrackCut
         self.Cut = TrackCut(self)
 
     def ax_tits(self, local=True):
