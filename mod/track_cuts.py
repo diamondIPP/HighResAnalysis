@@ -24,7 +24,8 @@ class TrackCut(DUTCut):
     def make(self, redo=False):
         self.register('tp', self.make_trigger_phase(_redo=redo), 10, 'trigger phase')
         self.register('res', self.Ana.REF.Cut.make_trk_residual(redo), 20, 'tracks with a small residual in the REF')
-        self.register('fid', self.make_fiducial(redo=redo), 30, 'tracks in fiducial area')
+        if not hasattr(self.Ana, 'IsRef'):
+            self.register('fid', self.make_fiducial(redo=redo), 30, 'tracks in fiducial area')
         self.register('mask', self.make_mask(_redo=redo), 31, 'masked pixels for tracks')
         self.register('tstart', self.make_start_time(_redo=redo), 40, 'exclude first events')
         self.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')

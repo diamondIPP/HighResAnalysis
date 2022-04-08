@@ -14,6 +14,7 @@ class RefAnalysis(DUTAnalysis):
 
     def __init__(self, parent):  # noqa
 
+        self.IsRef = True
         self.Parent = parent
         self.REF = self.Parent  # make DUTAna ref
         self.__dict__.update(parent.__dict__)

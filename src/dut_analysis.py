@@ -347,7 +347,7 @@ class DUTAnalysis(Analysis):
         return self.draw_signal_distribution(cut, draw_thresh, e=True, **dkw)
 
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
-        self.draw_hit_map(res, cut=self.Cut.get_nofid() + self.Cut.make_ph(cmax, cmin), **dkw)
+        self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **dkw)
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_xy, self.get_phs]]
