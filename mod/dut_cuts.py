@@ -57,7 +57,6 @@ class DUTCut(Cuts):
         self.register('tmask', self.make_cal_thresh_mask(), 21, 'mask pixels with high treshold')
         self.register('cmask', self.make_cal_chi2_mask(), 22, f'mask pixels with calibration fit chi2 > {self.get_config("calibration chi2", default=10.)}')
         self.register('charge', self.Ana.get_phs(cut=False) != 0, 30, 'events with non-zero charge')
-        self.register('cluster', self.make_cluster(_redo=redo), 90, 'tracks with a cluster')
 
     def make_additional(self, redo=False):
         self.register('res', self.make_ref_residual(redo=redo), 69, 'small residuals to REF plane')
@@ -96,7 +95,7 @@ class DUTCut(Cuts):
     def get_cal_chi2_mask(self):
         return where(self.Ana.Calibration.get_chi2s() > self.get_config('calibration chi2', default=10.))
 
-    @save_cut('CMask')
+    @save_cut('CMask', cfg='calibration chi2')
     def make_cal_chi2_mask(self, _redo=False):
         return self.make_cluster_mask(*self.get_cal_chi2_mask())
 
