@@ -48,8 +48,8 @@ class Efficiency(DUTAnalysis):
         if show:
             self.activate_surface(surface)
             self.Cut.get_fid(surface, show=show)
-            x, y = self.Cut.get_fid_config(surface)
-            self.Draw.textbox(f'{self.get_value(cut)[0]:2.1f}%', mean(ax_range(x)), mean(ax_range(y)), s=2, opacity=.4, ndc=False)
+            x, y = [.5 if i is None else mean(ax_range(i)) for i in self.Cut.get_fid_config(surface)]
+            self.Draw.textbox(f'{self.get_value(cut)[0]:2.1f}%', x, y, s=2, opacity=.4, ndc=False)
 
     def draw_segments(self, res=.5, local=True, nx=10, ny=15, cut=None, **dkw):
         e = self.get_segment_values(nx, ny, cut)
