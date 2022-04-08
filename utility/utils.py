@@ -393,6 +393,12 @@ def prep_kw(dic, **default):
     return d
 
 
+def get_field(obj, field: str):
+    if '.' in field:
+        return get_field(getattr(obj, field.split('.')[0]), '.'.join(field.split('.')[1:]))
+    return getattr(obj, field) if hasattr(obj, field) else None
+
+
 def make_suffix(*values):
     vals = [md5(val).hexdigest() if type(val) is ndarray else f'{val:.0f}' if isint(val) else val for val in values if val is not None]
     return '_'.join(str(val) for val in vals)
@@ -403,7 +409,7 @@ def prep_suffix(f, ana, args, kwargs, suf_args, field=None):
     names, values = list(def_pars.keys())[1:], [par.default for par in def_pars.values()][1:]  # first par is class instance
     i_arg = arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
-    suf_vals += [getattr(ana, str(field))] if field is not None and hasattr(ana, field) else []
+    suf_vals += [] if field is None else [get_field(ana, field)]
     return make_suffix(*suf_vals)
 
 
@@ -435,11 +441,11 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     return inner
 
 
-def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', verbose=False, **pkwargs):
+def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', field=None, verbose=False, **pkwargs):
     def inner(f):
         @wraps(f)
         def wrapper(ana, *args, **kwargs):
-            file_path = ana.make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, ana, args, kwargs, suf_args)))
+            file_path = ana.make_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, ana, args, kwargs, suf_args, field)))
             info(f'HDF5 path: {file_path}', prnt=verbose)
             redo = kwargs['_redo'] if '_redo' in kwargs else False
             if file_exists(file_path) and not redo:
