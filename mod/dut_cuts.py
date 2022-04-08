@@ -3,11 +3,11 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
-from utility.utils import Dir, save_hdf5, parallel, make_list, choose, save_pickle
+from utility.utils import Dir, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
 
 
 def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, **pkwargs):
@@ -165,6 +165,13 @@ class DUTCut(Cuts):
         return poly.IsInside(*p)
     # endregion FIDUCIAL
     # ----------------------------------------
+
+    def get_res(self, **dkw):
+        r, mx, my = append(self.get_config('residuals', dtype=float), uarr2n(self.Ana.Residuals.get_means(cut=0))) * 1e3
+        return Draw.circle(r, mx, my, **prep_kw(dkw, show=False))
+
+    def draw_res(self, **dkw):
+        self.get_res(**prep_kw(dkw, show=True))
 
     def get_track_events(self):
         return array(self.Ana.F['Tracks']['EvtFrame'])
