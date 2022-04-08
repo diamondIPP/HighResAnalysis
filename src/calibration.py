@@ -42,6 +42,9 @@ class Calibration:
     def __call__(self, x, y, adc):
         return self.get_lookup_table()[x, y, adc]
 
+    def __repr__(self):
+        return f'ADC Calibration of {self.Run.DUT}'
+
     # ----------------------------------------
     # region INIT
     def get_trim_number(self, n=None):
