@@ -3,11 +3,28 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
-from utility.utils import Dir, save_hdf5, parallel, make_list, choose
+from utility.utils import Dir, save_hdf5, parallel, make_list, choose, save_pickle
+
+
+def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, **pkwargs):
+    def inner(f):
+        def wrapper(*args, **kwargs):
+            ana = args[0]
+            redo, kw_redo = False, kwargs.pop('_redo') if '_redo' in kwargs else False
+            if cfg is not None:
+                @save_pickle(cfg.replace(' ', ''), run='', sub_dir='cuts', verbose=verbose)
+                def get_config(a, c, _redo=False):
+                    return a.get_config(c)
+                redo = ana.get_config(cfg) != get_config(ana, cfg)
+                redo = any(redo) if type(redo) is ndarray else redo
+                get_config(ana, cfg, _redo=redo)
+            return save_hdf5(*pargs, suf_args=suf_args, arr=True, dtype='?', field=field, verbose=verbose, **pkwargs)(f)(*args, _redo=redo or kw_redo, **kwargs)
+        return wrapper
+    return inner
 
 
 class DUTCut(Cuts):
@@ -29,13 +46,13 @@ class DUTCut(Cuts):
 
     def register(self, name, values=None, level=None, description=None):
         """ guarantee that the cut array has the correct size """
-        return super().register(name, self(cut=False, data=values), level, description)
+        return None if values is None else super().register(name, self(cut=False, data=values), level, description)
 
     def init_config(self):
         return Config(Dir.joinpath('cuts', f'cut{self.Ana.BeamTest.Tag}.ini'), section=self.Ana.DUT.Name)
 
     def make(self, redo=False):
-        self.register('fid', self.make_fiducial(_redo=redo), 10, 'fid cut')
+        self.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')
         self.register('mask', self.make_conf_mask(), 20, 'mask pixels')
         self.register('tmask', self.make_cal_thresh_mask(), 21, 'mask pixels with high treshold')
         self.register('cmask', self.make_cal_chi2_mask(), 22, f'mask pixels with calibration fit chi2 > {self.get_config("calibration chi2", default=10.)}')
@@ -50,59 +67,66 @@ class DUTCut(Cuts):
 
     # ----------------------------------------
     # region GENERATE
-    @save_hdf5('Fid', arr=True, dtype='?', suf_args='all')
+
+    @save_cut('Fid', suf_args='all', cfg='fiducial')
     @parallel('point_in_polygon', 'fiducial cut')
-    def make_fiducial(self, surface=False, _redo=False):
+    def make_fiducial_(self, surface=False, _redo=False):
         x, y = self.Ana.get_xy(local=True, cut=False)
         return array([x, y]).T, self.get_fid(surface=surface)
+
+    def make_fiducial(self, surface=False, redo=False):
+        return None if self.get_fid(surface=surface) is None else self.make_fiducial_(surface, _redo=redo)
 
     def make_cluster_mask(self, mx, my, t=.5):
         """ exclude all clusters within half a pixel distance of the masked pixel"""
         x, y = self.Ana.get_xy(local=True, cut=False)
         return all([invert((x >= mx[i] - t) & (x <= mx[i] + t) & (y >= my[i] - t) & (y <= my[i] + t)) for i in range(mx.size)], axis=0)
 
-    @save_hdf5('Mask', arr=True, dtype='?')
-    def make_conf_mask(self):
+    @save_cut('Mask', cfg='mask')
+    def make_conf_mask(self, _redo=False):
         return self.make_cluster_mask(*self.get_config('mask', default=zeros((0, 2))).T)
 
     def get_thresh_mask(self):
         return where(self.Ana.Calibration.get_thresholds() > self.Ana.Calibration.Trim * 1.5)
 
-    @save_hdf5('TMask', arr=True, dtype='?')
-    def make_cal_thresh_mask(self):
+    @save_cut('TMask')
+    def make_cal_thresh_mask(self, _redo=False):
         return self.make_cluster_mask(*self.get_thresh_mask())
 
     def get_cal_chi2_mask(self):
         return where(self.Ana.Calibration.get_chi2s() > self.get_config('calibration chi2', default=10.))
 
-    @save_hdf5('CMask', arr=True, dtype='?')
-    def make_cal_chi2_mask(self):
+    @save_cut('CMask')
+    def make_cal_chi2_mask(self, _redo=False):
         return self.make_cluster_mask(*self.get_cal_chi2_mask())
 
-    @save_hdf5('TP', arr=True, dtype='?')
+    @save_cut('TP', cfg='trigger phase')
     def make_trigger_phase(self, _redo=False):
         tp = self.Ana.get_trigger_phase(cut=False)
         low, high = self.get_config('trigger phase')
         return (tp >= low) & (tp <= high)
 
-    @save_hdf5('Clu', arr=True, dtype='?', suf_args='all')
+    @save_cut('Clu', suf_args='all')
     def make_cluster(self, pl=None, _redo=False):
         return self.Ana.get_data('Clusters', 'Size', cut=False, pl=pl) > 0
 
-    @save_hdf5('Time', arr=True, dtype='?')
+    @save_cut('Time', cfg='start time')
     def make_start_time(self, _redo=False):
         t = self.Ana.get_time(cut=False)
         return t >= t[0] + self.get_config('start time', dtype=int) * 60
 
-    @save_hdf5('Chi2', arr=True, dtype='?', suf_args='all')
+    @save_cut('Chi2', suf_args='all', cfg='chi2 quantile')
     def make_chi2(self, q=None, _redo=False):
         x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
         return x < quantile(x, q)
 
-    @save_hdf5('Res', arr=True, dtype='?', suf_args='all')
+    @save_cut('Res', suf_args='all', cfg='residuals')
     def make_residual(self, v=None, _redo=False):
         x, y, (mx, my) = self.Ana.Residuals.du(cut=0), self.Ana.Residuals.dv(cut=0), self.Ana.Residuals.get_means(cut=0)
         return sqrt((x - mx.n) ** 2 + (y - my.n) ** 2) < choose(v, self.get_config('residuals', dtype=float))
+
+    def make_trk_residual(self, redo=False):
+        return self.pl2trk(self.make_residual(_redo=redo))
 
     def make_ref_residual(self, pl=None, redo=False):
         return self.trk2pl(self.Ana.REF.Cut.make_trk_residual(redo), pl)
@@ -120,13 +144,15 @@ class DUTCut(Cuts):
     # region FIDUCIAL
     def get_fid_config(self, surface=False, name=None):
         p = self.get_config(choose(name, 'surface fiducial' if surface else 'fiducial'), default=self.get_config('full size'))
+        if p is None:
+            return None, None
         p = make_box_args(*p[[0, 2, 1, 3]]) if p.size == 4 else p  # unpack short box notation
         p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
         return p - .5  # pixel centre is at the integer
 
     def get_fid(self, surface=False, name=None, **dkw):
         x, y = self.get_fid_config(surface, name)
-        return Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=choose(name, f'fid{surface:d}')))
+        return None if x is None else Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=choose(name, f'fid{surface:d}')))
 
     def get_full_fid(self):
         return self.get_fid(name='full size')
@@ -178,6 +204,9 @@ class DUTCut(Cuts):
 
     def make_hdf5_path(self, *args, **kwargs):
         return self.Ana.make_hdf5_path(*args, **prep_kw(kwargs, sub_dir=self.MetaSubDir))
+
+    def make_pickle_path(self, *args, **kwargs):
+        return self.Ana.make_pickle_path(*args, **prep_kw(kwargs, sub_dir=self.MetaSubDir))
 
     def info(self, *args, **kwargs):
         return self.Ana.info(*args, **kwargs)

@@ -15,6 +15,3 @@ class RefCut(DUTCut):
 
     def make(self, redo=False):
         self.register('cluster', self.make_cluster(), 90, 'tracks with a cluster')
-
-    def make_trk_residual(self, redo=False):
-        return self.pl2trk(self.make_residual(_redo=redo))
