@@ -42,6 +42,7 @@ try:
     t = z.Tracks
     cur = z.Currents
     e = z.Efficiency
+    re = ref.Efficiency
 except AttributeError:
     pass
 
