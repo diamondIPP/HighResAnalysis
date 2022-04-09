@@ -31,7 +31,8 @@ class DUT:
         if self.Pixel is not None:
             self.NColumns = choose(2 * self.Pixel[0] * self.Pixel[1] + self.Pixel[0] + self.Pixel[1] + 1, default=None, decider=self.Pixel)
             self.ColumnDiameter = self.load_spec('column diameter', typ=float, error=.05)
-            self.CellSize = self.load_spec('cell size', typ=int)
+            self.CellSize = self.load_spec('cell size', lst=True)
+            self.PX, self.PY = self.CellSize
         self.VcalToEl = self.Config.getfloat('DUT', 'vcal to electrons')
 
     def __str__(self):
