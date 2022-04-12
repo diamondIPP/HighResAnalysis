@@ -3,7 +3,7 @@
 #       class for efficiency of a single DUT
 # created on March 22nd 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.dut_analysis import DUTAnalysis, calc_eff, prep_kw, bins, get_2d_hist_vec, update_canvas, partial, mean, ax_range
+from src.dut_analysis import DUTAnalysis, calc_eff, prep_kw, bins, get_2d_hist_vec, partial, mean, ax_range
 
 
 class Efficiency(DUTAnalysis):
@@ -26,8 +26,8 @@ class Efficiency(DUTAnalysis):
     def get_segment_values(self, nx=2, ny=3, cut=None):
         return get_2d_hist_vec(self.draw_map(local=True, cut=cut, binning=bins.make2d(*self.get_segments(nx, ny)), show=False), err=False, flat=False)
 
-    def get_value(self, trk_cut=None):
-        return calc_eff(values=self.get_values(trk_cut))
+    def get_value(self, cut=None):
+        return calc_eff(values=self.get_values(cut))
 
     def draw(self, bw=None, **dkw):
         t, e = self.get_time(), self.get_values() / 100
@@ -62,9 +62,8 @@ class Efficiency(DUTAnalysis):
         e = self.get_segment_values(nx, ny, cut).flatten() if segments else get_2d_hist_vec(self.draw_map(.5, show=False), err=False)
         self.Draw.distribution(e, **prep_kw(dkw, title='Segment Efficiencies', x_tit='Efficiency [%]'))
 
-    def draw_in_pixel(self, res=.1, cut=None, show=True, cell=False):
-        (x, y), e = self.Tracks.get_xy(trk_cut=cut), self.get_values(cut)
-        x, y, e = self.expand_inpixel(x, y, e, cell)
-        self.Draw.prof2d(x, y, e, bins.get_pixel(self.Plane, res, cell=cell), 'Efficiency Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
-        self.Draw.box(0, 0, 1, 1)
-        update_canvas()
+    def draw_in_pixel(self, n=10, ox=0, oy=0, cut=None, **dkw):
+        return super().draw_in_pixel(ox, oy, n, cut, self.get_values, tit='Efficiency', **dkw)
+
+    def draw_in_cell(self, n=10, ox=0, oy=0, cut=None, **dkw):
+        return super().draw_in_cell(ox, oy, n, cut, self.get_values, tit='Efficiency', **dkw)
