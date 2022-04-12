@@ -16,7 +16,7 @@ from src.desy_run import DESYRun
 from src.dummy import Dummy
 from src.dut import Plane
 from utility.utils import *
-from utility.affine_transformations import transform
+from utility.affine_transformations import transform, m_transform
 
 
 class DUTAnalysis(Analysis):
@@ -176,8 +176,9 @@ class DUTAnalysis(Analysis):
     def get_uv(self, cut=None, pl=None, centre=False):
         return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if self.T else array([self.get_u(cut, pl), self.get_v(cut, pl)])
 
-    def get_txy(self, local=True, cut=None, pl=None, centre=False):
-        return array([self.get_tx(cut, pl), self.get_ty(cut, pl)]) if local else self.get_tuv(cut, pl, centre)
+    def get_txy(self, local=True, cut=None, pl=None, centre=False, trans=True):
+        d = array([self.get_tx(cut, pl), self.get_ty(cut, pl)]) if local else self.get_tuv(cut, pl, centre)
+        return m_transform(self.Residuals.m, *d) if trans and local else d
 
     def get_tuv(self, cut=None, pl=None, centre=False):
         return self.l2g(self.get_tx(cut, pl), self.get_ty(cut, pl), pl, centre) if self.T else array([self.get_tu(cut, pl), self.get_tv(cut, pl)])
@@ -275,8 +276,8 @@ class DUTAnalysis(Analysis):
         pl = self.Plane if local else self.Planes[0]
         return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local)))
 
-    def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, **dkw):
-        self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
+    def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, trans=True, **dkw):
+        self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(cut, pl)
