@@ -3,6 +3,7 @@
 #       class for analysis of a single DUT
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from numpy import vstack
 import src.bins as bins
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
@@ -252,7 +253,7 @@ class DUTAnalysis(Analysis):
         return x[:-1] + diff(x) / 2, y[:-1] + diff(y) / 2
 
     def expand_inpixel(self, x, y, e=None, cell=False):
-        cx, cy = [self.DUT.CellSize / 1000. / self.Plane.PX, self.DUT.CellSize / 1000. / self.Plane.PY]
+        cx, cy = [self.DUT.PXY / 1000. / self.Plane.PX, self.DUT.PXY / 1000. / self.Plane.PY]
         x, y = [(x % cx) / cx,  (y % cy) / cy] if cell else [x % 1, y % 1]
         # add edges of the neighbouring pixels
         xf = concatenate([x, x[x < .5] + 1, x[x >= .5] - 1, x[y < .5], x[y > .5]])
@@ -289,7 +290,7 @@ class DUTAnalysis(Analysis):
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         cut = self.Cut.get_nofid(cut, fid)
         (x, y), cs = self.Tracks.get_xy(local, cut), self.get_cluster_size(cut)
-        self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, z_tit='Cluster Size', **self.ax_tits(local)))
+        self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Cluster Size', **self.ax_tits(local)))
 
     def draw_trigger_phase(self, cut=None, **dkw):
         cut = -1 if type(cut) is bool else self.Cut.exclude('tp', cut)
@@ -401,6 +402,57 @@ class DUTAnalysis(Analysis):
     def g2l(self, x, y, pl=None, centre=False, inv_x=None):
         return self.l2g(x, y, pl, centre, inv_x, invert=True)
     # endregion COORDINATE TRANSFORM
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region IN PIXEL
+    def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None):
+        (x, y), z_ = self.get_txy(cut=cut), (self.get_phs if fz is None else fz)(cut=cut)
+        x, y = (x + .5 + ox) % mx, (y + .5 + oy) % my
+        x, y, z_ = self.expand_mod_vars(x, y, z_, mx, my)
+        return vstack((transform(x, y, sx=self.Plane.PX * 1e3, sy=self.Plane.PY * 1e3), z_))  # convert from pixel to um
+
+    @staticmethod
+    def expand_mod_vars(x, y, e, mx, my):
+        d = array([x, y]).T
+        (x, y), e = concatenate([d + [i, j] for i in [-mx, 0, mx] for j in [-my, 0, my]]).T, tile(e, 9)  # copy arrays in each direction
+        cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
+        return x[cut], y[cut], e[cut]
+
+    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, zvar=None, **dkw):
+        x, y, z_ = self.get_mod_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, zvar, cut)
+        n = choose(n, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
+        d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
+        binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
+        cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
+        h = self.Draw.prof2d(x, y, z_, binning, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
+        return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
+
+    def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, zvar=None, tit='PH', **dkw):
+        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, zvar, **prep_kw(dkw, title=f'{tit} in Cell'))
+
+    def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, zvar=None, tit='PH', **dkw):
+        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, zvar, **prep_kw(dkw, title=f'{tit} in Pixel'))
+
+    def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_cell(ox, oy, n, cut, **prep_kw(dkw, pal=53))
+
+    def draw_cs_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_cell(ox, oy, n, cut, zvar=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+
+    def draw_cs_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_pixel(ox, oy, n, cut, zvar=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+
+    def draw_columns(self, show=True):
+        if hasattr(self.DUT, 'ColumnDiameter'):
+            wx, wy, c, d = self.DUT.PX, self.DUT.PY, get_last_canvas(), self.DUT.ColumnDiameter.n
+            x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
+            b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
+            r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
+            g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
+            return [Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)] + b + r
+        return []
+    # endregion IN PIXEL
     # ----------------------------------------
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
