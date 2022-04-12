@@ -10,13 +10,13 @@ from src.cut import Cuts
 from utility.utils import Dir, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
 
 
-def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, **pkwargs):
+def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, cfield=None, **pkwargs):
     def inner(f):
         def wrapper(*args, **kwargs):
             ana = args[0]
             redo, kw_redo = False, kwargs.pop('_redo') if '_redo' in kwargs else False
             if cfg is not None:
-                @save_pickle(cfg.replace(' ', ''), run='', sub_dir='cuts', verbose=verbose)
+                @save_pickle(cfg.replace(' ', ''), field=cfield, run='', sub_dir='cuts', verbose=verbose)
                 def get_config(a, c, _redo=False):
                     return a.get_config(c)
                 redo = ana.get_config(cfg) != get_config(ana, cfg)
@@ -67,7 +67,7 @@ class DUTCut(Cuts):
     # ----------------------------------------
     # region GENERATE
 
-    @save_cut('Fid', suf_args='all', cfg='fiducial')
+    @save_cut('Fid', suf_args='all', cfg='fiducial', cfield='MetaSubDir')
     @parallel('point_in_polygon', 'fiducial cut')
     def make_fiducial_(self, surface=False, _redo=False):
         x, y = self.Ana.get_xy(local=True, cut=False)
