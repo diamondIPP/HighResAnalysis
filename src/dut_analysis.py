@@ -118,13 +118,16 @@ class DUTAnalysis(Analysis):
     def show_structure(self):
         print('.')
         for i0, (key, grp) in enumerate(self.F.items()):
-            if 'Plane' not in key or key == 'Plane0' or key == f'Plane{self.Plane.Number}':
+            if 'Plane' not in key or key == 'Plane0' or key == str(self.Plane):
                 print(f'├── {key}')
                 for k, g in grp.items():
                     print(f'{"│" if i0 < len(self.F.keys()) - 1 else " "}   ├── {k}')
                     if hasattr(g, 'keys'):
                         for i in g.keys():
                             print(f'│   │   ├── {i}')
+
+    def has_alignment(self, imax=20):
+        return all([file_exists(self.make_pickle_path('AM', imax, 'alignment', run='', dut=i)) for i in [self.DUT.Number, self.REF.DUT.Number]])
     # endregion INIT
     # ----------------------------------------
 
