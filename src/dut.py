@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from utility.utils import load_json, OrderedDict, critical, join, ufloat, choose, array, Dir, load, loads
-from plotting.utils import Config
+from plotting.draw import Config, Draw, arange, prep_kw
 from os.path import expanduser
 
 
@@ -92,3 +92,9 @@ class Plane:
 
     def get_y_width(self):
         return self.PY * self.NRows
+
+    def get_grid(self, off=-.5, **dkw):
+        return Draw.grid(arange(self.NCols + 1) + off, arange(self.NRows + 1) + off, **prep_kw(dkw, show=False))
+
+    def draw_grid(self, off=-.5, **dkw):
+        self.get_grid(off, **prep_kw(dkw, show=True))
