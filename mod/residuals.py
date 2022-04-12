@@ -98,13 +98,14 @@ class ResidualAnalysis(DUTAnalysis):
     # region ALIGN
     @property
     def m(self):
-        return self.align()
+        return self.align(_save=False)
 
     @save_pickle('AM', sub_dir='alignment', run='', suf_args='[6]')
     def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False, _save=False):
         if d is None:
             self.PBar.start(imax)
         sx, sy = self.plane(pl).PX, self.plane(pl).PY
+        cut = self.Cut(cut) & self.Cut['res']
         x, y = transform(*self.get_xy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[:2]  # convert to mm
         tx, ty = transform(*self.get_txy(local=True, cut=cut, pl=pl, trans=False), sx, sy) if d is None else d[2:]
         d = self.rotate(x, y, *((tx, ty) if m is None else m_transform(m, *d[2:])), p=p)
@@ -114,7 +115,7 @@ class ResidualAnalysis(DUTAnalysis):
         m = choose(m, identity(3)) @ matrix(1, 1, *t, rx=d[4], order='str')
         self.PBar.update()
         if i < imax - 1:
-            return self.align([x, y, tx, ty], m, p=p, i=i + 1, imax=imax, _redo=_redo)
+            return self.align([x, y, tx, ty], m, p=p, i=i + 1, imax=imax, _redo=_redo, _save=_save)
         s = scale_matrix(sx, sy)
         return inv(s) @ m @ s
 
