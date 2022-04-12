@@ -2,7 +2,7 @@
 #       methods to apply 2D affine transformations
 # created on April 5th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, append, sin, cos, ones, dot
+from numpy import array, append, sin, cos, ones
 from numpy.linalg import inv
 
 
@@ -27,7 +27,7 @@ def matrix_order(order):
 
 def multiply(m0, m1, m2):
     """returns: M0 * M1 * M2 """
-    return dot(m0, dot(m1, m2))
+    return m0 @ m1 @ m2
 
 
 def matrix(sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt'):
@@ -37,4 +37,8 @@ def matrix(sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt'):
 
 def transform(x, y, sx=1, sy=1, ox=0, oy=0, rx=0, ry=None, order='srt', invert=False):
     m = matrix(sx, sy, ox, oy, rx, ry, order)
-    return dot(inv(m) if invert else m, array([x, y, ones(x.size, 'i')]))[:2]
+    return ((inv(m) if invert else m) @ array([x, y, ones(x.size, 'i')]))[:2]
+
+
+def m_transform(m, x, y, invert=False):
+    return ((inv(m) if invert else m) @ array([x, y, ones(x.size, 'i')]))[:2]
