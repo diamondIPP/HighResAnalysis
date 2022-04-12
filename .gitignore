@@ -4,6 +4,7 @@
 !*.py
 !*.md
 !*.ini
+!config/dia_info.json
 
 config/main.ini
 venv/
