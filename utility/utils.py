@@ -422,14 +422,14 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     def inner(func):
         @wraps(func)
         def wrapper(ana, *args, **kwargs):
-            if not get_kw('_save', kwargs, default=True):
-                return func(ana, *args, **kwargs)
             run = ana.Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
             pickle_path = ana.make_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, ana, args, kwargs, suf_args, field)))
             info(f'Pickle path: {pickle_path}', prnt=verbose)
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 return load_pickle(pickle_path)
+            if not get_kw('_save', kwargs, default=True):
+                return func(ana, *args, **kwargs)
             prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
             t = (ana.info if hasattr(ana, 'info') else info)(f'{ana.__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
             value = func(ana, *args, **kwargs)
