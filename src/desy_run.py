@@ -4,7 +4,7 @@
 # created on February 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.run import Run
-from utility.utils import *
+from plotting.utils import load_json
 
 
 class DESYRun(Run):
@@ -16,16 +16,16 @@ class DESYRun(Run):
         Run.__init__(self, run_number, dut_nr, tc_dir, config, single_mode)
 
     def load_run_logs(self):
-        data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')), ordered=True)
+        data = load_json(self.TCDir.joinpath(self.Config.get('MAIN', 'run log file')))
         if self.SingleMode:
             return data[str(self.Number)]
 
     def load_file_name(self):
-        return join(self.TCDir, 'data', 'run{:04d}.hdf5'.format(self.Number))
+        return self.TCDir.joinpath('data', f'run{self.Number:04d}.hdf5')
 
 
 if __name__ == '__main__':
 
     from analysis import Analysis
     a = Analysis()
-    z = DESYRun(4, 1, a.TCDir, a.Config, single_mode=True)
+    z = DESYRun(4, 1, a.BeamTest.Path, a.Config, single_mode=True)

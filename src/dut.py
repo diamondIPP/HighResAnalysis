@@ -2,38 +2,35 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from utility.utils import load_json, OrderedDict, critical, join, ufloat, choose, array, Dir, load, loads
-from plotting.draw import Config, Draw, arange, prep_kw
-from os.path import expanduser
+from utility.utils import critical, ufloat, array, Dir
+from plotting.draw import Config, Draw, arange, prep_kw, add_perr
 
 
 class DUT:
     """ Class with all information about a single DUT. """
-    def __init__(self, number=1, run_log=None, config=None):
+    def __init__(self, number=1, run_log: dict = None, config: Config = None):
 
         self.Config = config
 
         # Info
         self.Number = number
-        self.Name = run_log['dut{}'.format(self.Number)]
-        self.Bias = run_log['hv{}'.format(self.Number)]
+        self.Name = run_log[f'dut{self.Number}']
+        self.Bias = run_log[f'hv{self.Number}']
         self.Plane = Plane(self.Config.getint('TELESCOPE', 'planes') + number, config('DUT'))
 
         # Specs
-        self.Specs = self.load_specs()
-        self.Irradiation = self.load_spec('irradiation')
-        self.Thickness = self.load_spec('thickness', typ=int, default=500)
-        self.CCD = self.load_spec('CCD', typ=int)
-        self.Size = self.load_spec('size', lst=True)
-        self.ActiveSize = self.load_spec('active size', lst=True, error=.02)
-        self.ActiveArea = self.ActiveSize[0] * self.ActiveSize[1] if self.ActiveSize is not None else None
-        self.Pixel = self.load_spec('pixel', lst=True)
-        if self.Pixel is not None:
-            self.NColumns = choose(2 * self.Pixel[0] * self.Pixel[1] + self.Pixel[0] + self.Pixel[1] + 1, default=None, decider=self.Pixel)
-            self.ColumnDiameter = self.load_spec('column diameter', typ=float, error=.05)
-            self.CellSize = self.load_spec('cell size', lst=True)
-            self.PX, self.PY = self.CellSize
-        self.VcalToEl = self.Config.getfloat('DUT', 'vcal to electrons')
+        self.Info = self.load_specs()
+        self.Irradiation = self.Info.get_value('irradiation', default={})
+        self.Thickness = self.Info.get_value('thickness', default=500)
+        self.CCD = self.Info.get_value('CCD')
+        self.Size = self.Info.get_value('size', default=[5, 5])
+        self.Cells = self.Info.get_value('cells')
+        if self.Cells is not None:
+            self.NColumns = 2 * self.Cells[0] * self.Cells[1] + sum(self.Cells) + 1
+            self.ColumnDiameter = add_perr(self.Info.get_float('column diameter'), .05)
+            self.PXY = array(self.Info.get_list('cell size'))
+            self.PX, self.PY = self.PXY
+        self.VcalToEl = self.Config.get_float('DUT', 'vcal to electrons')
 
     def __str__(self):
         return self.Name
@@ -42,23 +39,15 @@ class DUT:
         return f'DUT {self.Number}, {self}, Bias: {self.Bias:1.0f}V'
 
     def load_specs(self):
-        file_name = join(expanduser(self.Config.get('MAIN', 'data directory')), 'dia_info.json')
-        data = load_json(file_name)
-        if not self.Name.upper() in data:
-            critical('You have to add the DUT {} to the diamond info ({})'.format(self.Name.upper(), file_name))
-        return data[self.Name.upper()]
-
-    def load_irradiation(self):
-        with open(join(Dir, self.Config.get('MISC', 'irradiation file'))) as f:
-            data = load(f)
-            return OrderedDict([(key, dic[self.Name]) for key, dic in sorted(data.iteritems()) if self.Name in dic])
+        f = Dir.joinpath('config', 'dia_info.json')
+        return Config(f, section=self.Name, from_json=True)
 
     def get_irradiation(self, tc):
         return self.Irradiation[tc] if tc in self.Irradiation else critical('Please add "{}" to the irradiation file for {}'.format(self.Name, tc))
 
     def load_spec(self, section, typ=None, lst=False, error=None, default=None):
-        spec = default if section not in self.Specs or self.Specs[section] == 'None' else self.Specs[section] if typ is None else typ(self.Specs[section])
-        return [v if error is None else ufloat(v, error) for v in loads(spec)] if lst and spec is not None else ufloat(spec, error) if error is not None and spec is not None else spec
+        spec = default if section not in self.Info or self.Info[section] == 'None' else self.Info[section] if typ is None else typ(self.Info[section])
+        return [v if error is None else ufloat(v, error) for v in spec] if lst and spec is not None else ufloat(spec, error) if error is not None and spec is not None else spec
 
     def set_number(self, value):
         self.Number = value
@@ -73,7 +62,8 @@ class Plane:
         self.Type = config.get_value('name')
         self.NCols, self.NRows = config.get_value('pixel')
         self.NPixels = self.NCols * self.NRows
-        self.PX, self.PY = config.get_value('pitch')
+        self.PXY = array(config.get_value('pitch'))
+        self.PX, self.PY = self.PXY
         self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
         self.W, self.H = self.PX * self.NCols, self.PY * self.NRows
