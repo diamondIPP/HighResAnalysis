@@ -101,7 +101,7 @@ class ResidualAnalysis(DUTAnalysis):
         return self.align()
 
     @save_pickle('AM', sub_dir='alignment', run='', suf_args='[6]')
-    def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False):
+    def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False, _save=False):
         if d is None:
             self.PBar.start(imax)
         sx, sy = self.plane(pl).PX, self.plane(pl).PY

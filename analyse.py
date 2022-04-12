@@ -27,6 +27,13 @@ if args.remove_meta:
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=False, test=True)
     z.remove_metadata()
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
+
+if not z.has_alignment():
+    z.Residuals.align(_save=True)
+    z.REF.Residuals.align(_save=True)
+    z.remove_metadata()
+    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
+
 z.add_info(t_start, prnt=True)
 
 # aliases
