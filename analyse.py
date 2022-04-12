@@ -39,6 +39,7 @@ z.add_info(t_start, prnt=True)
 # aliases
 try:
     dut = z.DUT
+    pl = dut.Plane
     r = z.Run
     c = z.Converter
     cut = z.Cut
