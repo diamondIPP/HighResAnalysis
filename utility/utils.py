@@ -9,8 +9,7 @@ from os.path import isfile, exists, isdir, dirname, realpath, join, basename
 from os import makedirs, environ, remove, devnull
 from subprocess import call
 from ROOT import TFile
-from json import load, loads
-from collections import OrderedDict
+from json import loads
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from numpy import sqrt, array, arange, mean, exp, concatenate, zeros, log2, log10, array_split, ndarray, full, frombuffer
@@ -153,14 +152,6 @@ def read_root_file(filename):
     if file_exists(filename):
         return TFile(filename)
     critical('The file: "{}" does not exist...'.format(filename))
-
-
-def load_json(filename, ordered=None):
-    if not file_exists(filename):
-        warning('json file does not exist: {}'.format(filename))
-        return {}
-    with open(filename) as f:
-        return load(f, object_hook=None if ordered is None else OrderedDict)
 
 
 def choose(v, default, decider='None', *args, **kwargs):
