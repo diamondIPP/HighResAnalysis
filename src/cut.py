@@ -4,7 +4,7 @@
 # created on July 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from typing import Any
-from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil
+from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil, ndarray
 
 from utility.utils import print_table, warning, join, make_list, choose, Dir, is_iter
 from plotting.utils import Config
@@ -87,6 +87,12 @@ class Cuts:
         exclude = make_list(exclude)
         cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80 and cut.Name not in exclude]
         return all(cuts, axis=0).flatten() if len(cuts) else ...
+
+    def add(self, cut: ndarray):
+        return self() & cut
+
+    def remove(self, name):
+        return self.Cuts.pop(name) if name in self.Cuts else None
 
     def show(self, raw=False):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Size, cut.nstr, cut.exstr, cut.pstr, cut.Value if raw else cut.Description] for cut in self.get_consecutive()]
