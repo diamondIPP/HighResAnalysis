@@ -40,7 +40,7 @@ z.add_info(t_start, prnt=True)
 try:
     dut = z.DUT
     pl = dut.Plane
-    r = z.Run
+    run = z.Run
     c = z.Converter
     cut = z.Cut
     cal = z.Calibration
@@ -51,6 +51,8 @@ try:
     cur = z.Currents
     e = z.Efficiency
     re = ref.Efficiency
+    r = z.Resolution
+
 except AttributeError:
     pass
 
