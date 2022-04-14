@@ -12,7 +12,3 @@ class RefCut(DUTCut):
         self.Ana = ana
         super().__init__(ana, meta_sub_dir='ref_cuts')
         self.N = self.Ana.N
-
-    def make_additional(self, redo=False):
-        super().make_additional(redo=redo)
-        self.get('res').set_level(91)
