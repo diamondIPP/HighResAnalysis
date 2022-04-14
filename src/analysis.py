@@ -1,4 +1,3 @@
-from os.path import expanduser
 from os import getcwd
 from shutil import copyfile
 
@@ -24,10 +23,10 @@ class BeamTest:
 
 
 def load_config():
-    config_file_path = join(Dir, 'config', 'main.ini')
+    config_file_path = Dir.joinpath('config', 'main.ini')
     if not isfile(config_file_path):
         warning('The main config file "config/main.ini" does not exist! Using the default!')
-        copyfile(join(Dir, 'config', 'default.ini'), config_file_path)
+        copyfile(Dir.joinpath('config', 'default.ini'), config_file_path)
     return Config(config_file_path)
 
 
@@ -37,9 +36,9 @@ class Analysis:
     Config = load_config()
     Locations = Config.get_list('MAIN', 'locations')
 
-    DataDir = expanduser(Config.get('MAIN', 'data directory'))
-    ResultsDir = join(Dir, 'results')
-    MetaDir = join(Dir, Config.get('SAVE', 'meta directory'))
+    DataDir = Path(Config.get('MAIN', 'data directory')).expanduser()
+    ResultsDir = Dir.joinpath('results')
+    MetaDir = Dir.joinpath(Config.get('SAVE', 'meta directory'))
 
     def __init__(self, beamtest=None, meta_sub_dir='', verbose=False):
 
@@ -83,12 +82,12 @@ class Analysis:
         add_to_info(t, msg, choose(prnt, self.Verbose))
 
     def make_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
-        directory = join(self.MetaDir, self.MetaSubDir if sub_dir is None else sub_dir)
+        directory = self.MetaDir.joinpath(self.MetaSubDir if sub_dir is None else sub_dir)
         ensure_dir(directory)
         campaign = choose(camp, self.BeamTest.T.strftime('%Y%m'))
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
         run = choose(run, self.run_str)
-        return join(directory, f'{"_".join([v for v in [name, campaign, run, dut, str(suf)] if v])}.pickle')
+        return directory.joinpath(f'{"_".join([v for v in [name, campaign, run, dut, str(suf)] if v])}.pickle')
 
     @property
     def run_str(self):
