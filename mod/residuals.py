@@ -30,10 +30,23 @@ class ResidualAnalysis(DUTAnalysis):
         return self.get_v(cut, pl) - self.get_tv(cut, pl)
 
     def dx(self, cut=None, pl=None):
-        return self.get_x(cut, pl) - self.get_tx(cut, pl)
+        return self.dxy(cut, pl, local=True)[0]
 
     def dy(self, cut=None, pl=None):
-        return self.get_y(cut, pl) - self.get_ty(cut, pl)
+        return self.dxy(cut, pl, local=True)[1]
+
+    def tx(self, cut=None, pl=None):
+        return self.txy(cut, pl, local=True)[0]
+
+    def ty(self, cut=None, pl=None):
+        return self.txy(cut, pl, local=True)[1]
+
+    def txy(self, cut=None, pl=None, local=True, trans=True):
+        return m_transform(self.m, *self.get_txy(local, cut, pl, trans=False)) if trans else self.get_txy(local, cut, pl, trans=False)
+
+    def dxy(self, cut=None, pl=None, local=True, trans=True):
+        (x, y), (tx, ty) = self.get_xy(local, cut, pl), self.txy(cut, pl, local, trans)
+        return x - tx, y - ty
 
     def __call__(self, cut=None, pl=None):
         return sqrt(self.du(cut, pl) ** 2 + self.dv(cut, pl) ** 2)
@@ -78,6 +91,14 @@ class ResidualAnalysis(DUTAnalysis):
     def draw(self, bw=10, pl=None, **dkw):
         self.Draw.distribution(self(cut=False, pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
 
+    def draw_x_map(self, res=.3, cut=None, fid=False, pl=None, **dkw):
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid), pl=pl) for f in [self.txy, self.dx]]  # noqa
+        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [Col]', **self.ax_tits(True)))
+
+    def draw_y_map(self, res=.3, cut=None, fid=False, pl=None, **dkw):
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid), pl=pl) for f in [self.txy, self.dy]]  # noqa
+        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [Row]', **self.ax_tits(True)))
+
     def draw_map(self, res=.3, local=True, cut=None, fid=False, pl=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(fid, cut), pl=pl) for f in [partial(self.get_txy, local=local), self]]
         self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.ax_tits(local)))
@@ -91,6 +112,12 @@ class ResidualAnalysis(DUTAnalysis):
 
     def draw_vdu(self, cut=None, prof=True, pl=None, **dkw):
         return self._draw_angle(self.get_v(cut, pl), self.du(cut, pl), prof, pl=pl, xb=False, **prep_kw(dkw, title='Y dX', x_tit='Y [mm]', y_tit='dX [mm]'))
+
+    def draw_xdy(self, cut=None, prof=True, pl=None, **dkw):
+        self._draw_angle(self.tx(cut, pl), self.dy(cut, pl), prof, pl=pl, local=True, **prep_kw(dkw, title='X dY', x_tit='X [Cols]', y_tit='dY [Rows]'))
+
+    def draw_ydx(self, cut=None, prof=True, pl=None, **dkw):
+        self._draw_angle(self.ty(cut, pl), self.dx(cut, pl), prof, pl=pl, xb=False, local=True, **prep_kw(dkw, title='Y dX', x_tit='Y [Rows]', y_tit='dX [Cols]'))
     # endregion DRAW
     # ----------------------------------------
 
