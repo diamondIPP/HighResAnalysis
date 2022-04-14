@@ -4,7 +4,7 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import arange, append
+from numpy import arange, append, diff
 
 
 # Pixel
@@ -107,6 +107,12 @@ def make2d(x, y):
 
 def from_vec(x):
     return [x.size, append([i.n - i.s for i in x], x[-1].n + x[-1].s).astype('d')]
+
+
+def from_p(x):
+    d = x[-1] - x[-2]
+    x = append(x, [x[-1] + d, x[-1] + 2 * d])
+    return [x.size - 2, x[:-1] - diff(x) / 2]
 
 
 # Binning
