@@ -63,6 +63,7 @@ class DUTAnalysis(Analysis):
         self.Currents = Currents(self)
         self.Cut.make_additional()
         self.Efficiency = self.init_eff()
+        self.Resolution = self.init_resolution()
 
     def __repr__(self):
         return f'{super().__repr__()} ({ev2str(self.NEvents)} ev)'
@@ -100,6 +101,10 @@ class DUTAnalysis(Analysis):
     def init_tel(self):
         from mod.telescope import TelescopeAnalysis
         return TelescopeAnalysis(self)
+
+    def init_resolution(self):
+        from mod.resolution import Resolution
+        return Resolution(self.REF)
 
     def load_file(self, test=False):
         if not test:
@@ -287,7 +292,7 @@ class DUTAnalysis(Analysis):
         return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local)))
 
     def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, trans=True, **dkw):
-        self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
+        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(cut, pl)
