@@ -30,9 +30,12 @@ class Cuts:
     def __getitem__(self, v):
         return self.get(v)()
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def __repr__(self):
         k, n = (count_nonzero(self()), self().size) if self.n else (0, 0)
-        return f'{self.__class__.__name__} instance with {self.n} cuts' + (f', selecting {k}/{n} events ({100 * k / n:.1f} %)' if n else '')
+        return f'{self} instance with {self.n} cuts' + (f', selecting {k}/{n} events ({100 * k / n:.1f} %)' if n else '')
 
     def init_config(self):
         return Config(join(Dir, 'cuts', 'cut.ini'))
@@ -59,6 +62,12 @@ class Cuts:
 
     def get(self, name):
         return self.Cuts[name]
+
+    def set(self, name, values):
+        if name not in self.Cuts:
+            return warning(f'{name} does not exist in {self} {list(self.Cuts.keys())}')
+        cut = self.Cuts[name]
+        self.Cuts[name] = Cut(name, values, cut.Level, cut.Description)
 
     @property
     def n(self):
