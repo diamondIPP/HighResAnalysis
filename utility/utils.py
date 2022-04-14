@@ -442,6 +442,8 @@ def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', field=None, verbose=
             if file_exists(file_path) and not redo:
                 d = h5py.File(file_path, 'r')['data']
                 return array(d) if arr else d
+            if not get_kw('_save', kwargs, default=True):
+                return f(ana, *args, **kwargs)
             remove_file(file_path)
             data = f(ana, *args, **kwargs)
             hf = h5py.File(file_path, 'w')
