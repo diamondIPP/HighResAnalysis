@@ -198,6 +198,12 @@ class DUTAnalysis(Analysis):
 
     def get_chi2(self, cut=None):
         return self.get_data('Chi2', cut=cut, main_grp='Tracks') / self.get_data('Dof', cut=cut, main_grp='Tracks')
+
+    def get_slope_x(self, cut=None):
+        return self.get_data('SlopeX', cut=cut, main_grp='Tracks')
+
+    def get_slope_y(self, cut=None):
+        return self.get_data('SlopeY', cut=cut, main_grp='Tracks')
     # endregion DATA
     # ----------------------------------------
 
