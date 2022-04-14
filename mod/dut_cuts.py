@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
@@ -59,14 +59,14 @@ class DUTCut(Cuts):
         self.register('charge', self.Ana.get_phs(cut=False) != 0, 30, 'events with non-zero charge')
 
     def make_additional(self, redo=False):
-        self.register('res', self.make_ref_residual(redo=redo), 69, 'small residuals to REF plane')
-        self.register('tp', self.make_trigger_phase(_redo=redo), 61, 'trigger phase')
-        self.register('tstart', self.make_start_time(_redo=redo), 40, 'exclude first events')
-        self.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')
+        self.register('res', self.make_ref_residual(redo=redo), 60, 'small residuals to REF plane')
+        self.register('tp', self.make_trigger_phase(_redo=redo), 40, 'trigger phase')
+        self.register('tstart', self.make_start_time(_redo=redo), 35, 'exclude first events')
+        self.register('chi2', self.make_chi2(_redo=redo), 50, f'small chi2 < q({self.get_config("chi2 quantile", dtype=float)})')
+        self.register('slope', self.make_slope(_redo=redo), 55, f'straight tracks < q({self.get_config("slope quantile", dtype=float)})')
 
     # ----------------------------------------
     # region GENERATE
-
     @save_cut('Fid', suf_args='all', cfg='fiducial', cfield='MetaSubDir')
     @parallel('point_in_polygon', 'fiducial cut')
     def make_fiducial_(self, surface=False, _redo=False):
@@ -107,7 +107,10 @@ class DUTCut(Cuts):
 
     @save_cut('Clu', suf_args='all')
     def make_cluster(self, pl=None, _redo=False):
-        return self.Ana.get_data('Clusters', 'Size', cut=False, pl=pl) > 0
+        return self.Ana.get_cluster_size(cut=False, pl=pl) > 0
+
+    def make_cs(self, n=1, pl=None):
+        return self.Ana.get_cluster_size(cut=0, pl=pl) == n
 
     @save_cut('Time', cfg='start time')
     def make_start_time(self, _redo=False):
@@ -115,9 +118,9 @@ class DUTCut(Cuts):
         return t >= t[0] + self.get_config('start time', dtype=int) * 60
 
     @save_cut('Chi2', suf_args='all', cfg='chi2 quantile')
-    def make_chi2(self, q=None, _redo=False):
+    def make_chi2(self, q=None, _redo=False, _save=True):
         x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
-        return x < quantile(x, q)
+        return ones(x.size, '?') if q == 1 else x < quantile(x, q)
 
     @save_cut('Res', suf_args='all', cfg='residuals')
     def make_residual(self, v=None, _redo=False):
@@ -136,7 +139,27 @@ class DUTCut(Cuts):
 
     def make_correlation(self, pl0, pl1=None):
         return self.make_cluster(pl0) & self.make_cluster(pl1)
+
+    @save_cut('Slope', suf_args='all', cfg='slope quantile')
+    def make_slope(self, q=None, _redo=False, _save=True):
+        x, y, q = self.Ana.get_slope_x(cut=False), self.Ana.get_slope_y(cut=False), choose(q, self.get_config('slope quantile', dtype=float))
+        (xmin, xmax), (ymin, ymax) = quantile(x, [q, 1 - q]), quantile(y, [q, 1 - q])
+        return ones(x.size, '?') if q >= .5 else (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
     # endregion GENERATE
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region SET
+    def set(self, name, values=None):
+        if values is not None:
+            super().set(name, self(cut=False, data=values))
+
+    def set_chi2(self, q):
+        self.set('chi2', self.make_chi2(q, _save=False))
+
+    def set_slope(self, q):
+        self.set('slope', self.make_slope(q, _save=False))
+    # endregion SET
     # ----------------------------------------
 
     # ----------------------------------------
