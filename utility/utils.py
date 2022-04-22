@@ -19,7 +19,7 @@ import pickle
 from copy import deepcopy
 from inspect import signature
 from functools import wraps
-from plotting.utils import info, warning, critical, add_to_info, get_kw
+from plotting.utils import info, warning, critical, add_to_info, get_kw, time
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
 from hashlib import md5
@@ -59,6 +59,17 @@ def dir_exists(path):
 def time_stamp(dt, off=None):
     t = float(dt.strftime('%s'))
     return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
+
+
+def print_elapsed_time(start, what='This', show=True, color=None):
+    string = f'Elapsed time for {what}: {get_elapsed_time(start)}'
+    print_banner(string, color=color) if show else do_nothing()
+    return string
+
+
+def get_elapsed_time(start, hrs=False):
+    t = str(timedelta(seconds=round(time() - start, 0 if hrs else 2)))
+    return t if hrs else t[2:-4]
 
 
 def average_list(lst, n):
@@ -477,3 +488,11 @@ def _parallel(f, d, i, pbar, *args):
             pbar.update()
         ret.append(f(v, *args))
     return ret
+
+
+def eff2u(eff):
+    return ufloat(eff[0], mean(eff[1:]))
+
+
+def eff2str(eff, u='\\percent', f='.2f'):
+    return f'\\SIerr{{{eff[0]:{f}}}}{{{eff[2]:{f}}}}{{{eff[1]:{f}}}}{{{u}}}'
