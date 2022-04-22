@@ -115,7 +115,7 @@ class Analysis:
         info(f'removed {byte2str(s)} of meta files')
 
     def make_hdf5_path(self, *args, **kwargs):
-        return self.make_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
+        return self.make_pickle_path(*args, **kwargs).with_suffix('hdf5')
 
     def print_start(self, run=None, prnt=True, tc=True):
         if prnt:
