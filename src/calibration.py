@@ -5,11 +5,10 @@
 # --------------------------------------------------------
 
 from ROOT import TGraph
-from numpy import genfromtxt, all, delete, round, argmax, vectorize
+from numpy import genfromtxt, all, delete, round, argmax, vectorize, savetxt
 
 from plotting.draw import Draw, FitRes
 from plotting.fit import Erf
-from glob import glob
 from src.run import Run
 import src.bins as bins
 from utility.utils import *
@@ -24,17 +23,18 @@ class Calibration:
         self.Plane = run.DUT.Plane
         self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
         self.Draw = Draw(config=self.Run.Config)
-        self.Dir = join(self.Run.TCDir, 'calibrations', self.Run.DUT.Name)
+        self.Dir = self.Run.TCDir.joinpath('calibrations', str(self.Run.DUT))
 
         # Calibration
         self.HighRangeFactor = 7
         self.Trim, self.Number = self.get_trim_number(n)
-        # self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
         self.Fit = Erf(fit_range=[0, 255 * 7]).Fit
         self.Points = None
         self.Fits = None
 
-        self.FileName = join(self.Dir, '{}-{}.h5py'.format(self.Trim, self.Number))
+        self.FileName = join(self.Dir, f'{self.Trim}-{self.Number}.h5py')
+        self.FitFileName = self.Dir.joinpath(f'fitpars-{self.Trim}.txt')
+        self.CalPath = self.Dir.parent.joinpath('fitpars-.txt')  # enter trim and DUT in eudaq
 
         self.PBar = PBar()
         self.correct_file()
@@ -52,16 +52,12 @@ class Calibration:
         return trim, choose(n, number)
 
     def get_file_name(self):
-        f = glob(join(self.Dir, f'phCalibration{self.Trim}*-{self.Number}.dat'))
-        if len(f):
-            return f[0]
-        critical('Pulse height calibration file does not exist...')
+        f = list(self.Dir.glob(f'phCalibration{self.Trim}*-{self.Number}.dat'))
+        return f[0] if len(f) else critical(f'Pulse height calibration file "{self.Trim}-{self.Number}" does not exist in {self.Dir} ...')
 
     def get_fit_file(self):
-        f = glob(join(self.Dir, 'phCalibrationFitErr{}*-{}.dat'.format(self.Trim, self.Number)))
-        if len(f):
-            return f[0]
-        warning('Pulse height calibration fit file does not exist...')
+        f = list(self.Dir.glob(f'phCalibrationFitErr{self.Trim}*-{self.Number}.dat'))
+        return f[0] if len(f) else warning('Pulse height calibration fit file does not exist...')
 
     def correct_file(self):
         """ correct corrupted files from pxar if there are more than 100 points... """
@@ -87,7 +83,7 @@ class Calibration:
                         # interpolate straight line from the good values around the corrupted one
                         missing = round([interpolate(99, 101 + hr_size, lst[99], lst[101 + hr_size], x) for x in i_corr]).astype('u2')
                         lst[-hr_size:] -= missing
-                        lines.append('{} Pix {} {} \n'.format(' '.join(delete(lst, i_corr).astype(str)), col, row))
+                        lines.append(f'{" ".join(delete(lst, i_corr).astype(str))} Pix {col} {row} \n')
                 f.seek(0)
                 f.truncate(0)
                 f.writelines(lines)
@@ -162,6 +158,15 @@ class Calibration:
         info('creating calibration LUT ... ')
         self.PBar.start(256 * self.NPix)
         return array([[[0 if f is None else self.get_vcal(f.Fit, i) for i in range(256)] for f in lst] for lst in fits])
+
+    def save_fit_pars(self):
+        """ [0] + [1] * TMath::Erf((x - [2]) / [3]) -> [3] * (TMath::Erf((x - [0]) / [1]) + [2])"""
+        info(f'generating calibration fit parameters for {self.Run.DUT} ...')
+        pars = array([[[0, 0, 0, 1] if fit is None else fit.get_pars(err=False)[[2, 3, 0, 1]] for fit in lst] for lst in self.get_fits()])  # fix order
+        pars[:, :, 2] /= pars[:, :, 3]  # fix offset
+        lines = [' '.join(f'{p:.6e}' for p in ps) + f' Pix {col:2d} {row:2d}' for col, lst in enumerate(pars) for row, ps in enumerate(lst)]
+        header = list(genfromtxt(self.get_fit_file(), dtype=str, max_rows=2, delimiter='abc')) + ['']
+        savetxt(self.FitFileName, header + lines, fmt='%s')  # noqa
     # endregion FIT
     # ----------------------------------------
 
