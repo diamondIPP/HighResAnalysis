@@ -3,5 +3,6 @@
 HRDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 alias analyse='ipython -i $HRDIR/analyse.py -- $@'
-alias proteus='ipython -i $HRDIR/src/proteus.py -- $@'
+alias converter='ipython -i $HRDIR/src/converter.py -- $@'
+
 alias make_run_plan='$HRDIR/src/spreadsheet.py -- $@'
