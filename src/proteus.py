@@ -28,6 +28,8 @@ class Proteus:
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
+        self.Out = self.DataDir.joinpath('root', f'tracked-{self.RunNumber:04d}')   # name for proteus
+        self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')        # final file
 
         self.N = max_events
         self.S = skip_events
@@ -103,15 +105,10 @@ class Proteus:
                 warning('geo file already exists!')
         print_elapsed_time(t)
 
-    def track(self):
+    def recon(self, raw=False):
         """ step 3: based on the alignment generate the tracks with proteus. """
-        d = Path('root')
-        self.run('pt-track', out=d.joinpath(f'track-{self.RunNumber:04d}'), cfg=self.toml_name())
-
-    def match(self):
-        """ step 4: match the tracks to the hits in the DUT with proteus. """
-        d = Path('root')
-        self.run('pt-match', out=d.joinpath(f'match-{self.RunNumber:04d}'), cfg=self.toml_name(), f=f'track-{self.RunNumber:04d}-data.root')
+        self.Out.parent.mkdir(exist_ok=True)
+        self.run('pt-recon', out=self.Out, cfg=None if raw else self.toml_name())
     # endregion RUN
     # ----------------------------------------
 
@@ -121,5 +118,5 @@ if __name__ == '__main__':
 
     a = Analysis()
     sdir = Path(a.Config.get('SOFTWARE', 'dir')).expanduser().joinpath(a.Config.get('SOFTWARE', 'proteus'))
-    f_ = a.BeamTest.Path.joinpath('data', f'run{17:06d}.root')
+    f_ = a.BeamTest.Path.joinpath('data', f'run{11:06d}.root')
     z = Proteus(sdir, a.BeamTest.Path.joinpath('proteus'), Dir.joinpath('proteus'), f_, a.Config.getint('align', 'max events'), a.Config.getint('align', 'skip events'))
