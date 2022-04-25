@@ -5,12 +5,21 @@
 # --------------------------------------------------------
 from numpy import sum, append, delete, average
 
+from src.proteus import Proteus
 from utility.utils import *
+from src.desy_run import DESYRun
+from src.calibration import Calibration
 
 
 class Converter:
 
     def __init__(self, data_dir: Path, run_number, config):
+        """ Converts EUDAQ2 raw files in several steps into hdf5 files.
+            STEP 0: raw -> root             (EUDAQ2)
+            STEP 1: noisescan               (proteus)
+            STEP 2: alignment               (proteus)
+            STEP 3: track reconstruction    (proteus)
+            STEP 4: root -> hdf5            (python) """
 
         self.RunNumber = run_number
         self.Config = config
@@ -20,15 +29,138 @@ class Converter:
         self.SaveDir = data_dir.joinpath('data')
         self.SoftDir = Path(self.Config.get('SOFTWARE', 'dir')).expanduser()
 
-        self.RawFilePath = self.load_raw_file_name()
+        # PRE-CONVERTER
+        self.Raw = self.init_raw()
+        self.Proteus = self.init_proteus()
 
+        # FILES
+        self.OutFileName = self.SaveDir.joinpath(f'run{self.RunNumber:04d}.hdf5')
+        self.TrackFile = None
+        self.F = None
+
+        self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
+        self.NDUTPlanes = self.Config.getint('DUT', 'planes')
+
+        self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFileName)]
         self.PBar = PBar()
 
-    def load_raw_file_name(self):
-        pass
+    def run(self):
+        for i, (s, f) in enumerate(self.Steps):
+            if not f.exists():
+                print_banner(f'Start converter step {i}: {s.__doc__}')
+                s()
 
-    def get_calibration(self, dut_number):
-        pass
+    # ----------------------------------------
+    # region INIT
+    def init_proteus(self):
+        soft_dir = self.SoftDir.joinpath(self.Config.get('SOFTWARE', 'proteus'))
+        data_dir = self.DataDir.joinpath('proteus')
+        conf_dir = Dir.joinpath('proteus')
+        return Proteus(soft_dir, data_dir, conf_dir, self.Raw.OutFilePath, *[self.Config.getint('align', opt) for opt in ['max events', 'skip events']])
+
+    def init_raw(self):
+        from src.raw import Raw
+        return Raw(self)
+
+    def get_calibration(self, dut_number=0):
+        return Calibration(DESYRun(self.RunNumber, dut_number, self.DataDir, self.Config))
+    # endregion INIT
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region HDF5
+    def root_2_hdf5(self):
+        """ convert tracked root file to hdf5 file. """
+        remove_file(self.OutFileName)  # remove hdf5 file if it exists
+        start_time = info('Start root->hdf5 conversion ...')
+
+        self.F = h5py.File(self.OutFileName, 'w')
+        self.TrackFile = TFile(str(self.Proteus.OutFilePath))
+
+        self.add_tracks()
+        self.add_planes()
+
+        add_to_info(start_time, '\nFinished conversion in')
+
+    def add_tracks(self):
+        info('add track information ...')
+        g = self.F.create_group('Tracks')
+        b = array([['evt_frame', 'Events', 'u4'], ['evt_ntracks', 'N', 'u1'],
+                   ['trk_size', 'Size', 'f2'],
+                   ['trk_chi2', 'Chi2', 'f2'], ['trk_dof', 'Dof', 'u1'],
+                   ['trk_du', 'SlopeX', 'f2'], ['trk_dv', 'SlopeY', 'f2']]).T
+        tree = self.TrackFile.Get('C0').Get('tracks_clusters_matched')  # same for all plane dirs
+        tree.SetEstimate(-1)
+        self.add_time_stamp(tree)
+        self.add_data(tree, g, b)
+
+    def add_time_stamp(self, tree):
+        t = get_tree_vec(tree, var='evt_timestamp', dtype='u8')
+        self.F['Tracks'].create_dataset('Time', data=((t - t[0]) / 1e9).astype('f4'))  # time stamp is just a number counting up
+
+    def add_planes(self):
+        n = self.NTelPlanes + self.NDUTPlanes
+        info(f'add {self.NTelPlanes + self.NDUTPlanes} planes ... ')
+        self.PBar.start(n * 2)
+        for pl in range(n):
+            self.add_plane(pl)
+
+    def add_plane(self, i):
+        g = self.F.create_group(f'Plane{i}')
+        key = self.TrackFile.GetListOfKeys()[i].GetName()
+
+        # mask
+        m_tree = self.TrackFile.Get(key).Get('masked_pixels')
+        g.create_dataset('Mask', data=get_tree_vec(m_tree, ['col', 'row'], dtype='u2'))
+
+        # cluster & track interpolations
+        tree = self.TrackFile.Get(key).Get('tracks_clusters_matched')
+        tree.SetEstimate(-1)
+        self.add_plane_tracks(g, tree)
+        self.add_clusters(g, tree)
+        if i >= self.NTelPlanes:
+            self.add_trigger_info(g)
+
+    @update_pbar
+    def add_plane_tracks(self, group, tree):
+        g = group.create_group('Tracks')
+        b = array([['trk_u', 'U', 'f2'], ['trk_v', 'V', 'f2'], ['trk_col', 'X', 'f2'], ['trk_row', 'Y', 'f2'], ['trk_std_u', 'eU', 'f2'], ['trk_std_v', 'eV', 'f2']]).T
+        self.add_data(tree, g, b)
+
+    @update_pbar
+    def add_clusters(self, group, tree):
+        g = group.create_group('Clusters')
+        cs = self.add_data(tree, g, array([['clu_size', 'Size', 'u2'], ['evt_nclusters', 'N', 'u2']]).T)[0]
+        b = array([['clu_u', 'U', 'f2'], ['clu_v', 'V', 'f2'], ['clu_col', 'X', 'f2'], ['clu_row', 'Y', 'f2']]).T
+        self.add_data(tree, g, b, cut=cs > 0)  # filter out the nan events
+
+    def add_trigger_info(self, group):
+        f = TFile(str(self.Raw.OutFilePath))
+        t = f.Get(group.name.strip('/')).Get('Hits')
+        t.SetEstimate(-1)
+        g = group.create_group('Trigger')
+        self.add_data(t, g, array([['TriggerPhase', 'Phase', 'u1'], ['TriggerCount', 'Count', 'u1']]).T)
+
+    @staticmethod
+    def add_data(tree, g, b, cut=...):
+        data = get_tree_vec(tree, b[0], dtype=b[2])
+        for i, n in enumerate(b[1]):
+            g.create_dataset(n, data=data[i][cut])
+        return data
+    # endregion HDF5
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region MISC
+    @staticmethod
+    def check_root_version():
+        v = gROOT.GetVersion()
+        return True if v.startswith('6') else critical(f'ROOT 6 required for the conversion! Current version: {v}')
+
+    def remove_files(self, all_=False):
+        for s, f in self.Steps:
+            if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
+                remove_file(f)
 
     @staticmethod
     def clusterise(hits):
@@ -52,6 +184,8 @@ class Converter:
                 clusters.append(Cluster(hits[0]))
                 hits = delete(hits, 0, axis=0)
         return clusters
+    # endregion MISC
+    # ----------------------------------------
 
 
 class Cluster:
@@ -86,11 +220,14 @@ class Cluster:
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
+    from analysis import Analysis
 
-    p = ArgumentParser()
-    p.add_argument('filename', nargs='?', default='')
-    # noinspection PyTypeChecker
-    p.add_argument('plane', nargs='?', default=0, type=int)
-    args = p.parse_args()
-    z = Converter(Path('/scratch2/cern/2018-10/cms-raw/ljutel_110.root'), 0, '/scratch2/cern/2018-10/II6-B6')
-    # z.run()
+    parser = ArgumentParser()
+    parser.add_argument('run', nargs='?', default=11)
+    pargs = parser.parse_args()
+    a = Analysis()
+
+    z = Converter(a.BeamTest.Path, pargs.run, a.Config)
+    r = z.Raw
+    p = z.Proteus
+    c = z.get_calibration()

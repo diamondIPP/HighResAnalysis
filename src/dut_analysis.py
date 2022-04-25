@@ -34,7 +34,7 @@ class DUTAnalysis(Analysis):
         self.Plane = self.DUT.Plane
 
         # DATA
-        self.Converter = self.converter(self.BeamTest.Path, self.Run.Number, self.Config)
+        self.Converter = Converter(self.BeamTest.Path, self.Run.Number, self.Config)
         if test:
             return
 
@@ -401,11 +401,11 @@ class DUTAnalysis(Analysis):
     # region COORDINATE TRANSFORM
     @property
     def inv_x(self):
-        return self.Converter.get_alignment()['sensors'][self.Plane.Number]['unit_u'][0] < 0
+        return self.Converter.Proteus.get_alignment()['sensors'][self.Plane.Number]['unit_u'][0] < 0
 
     def l2g(self, x, y, pl=None, centre=False, inv_x=None, invert=False):
         pl = self.plane(pl)
-        a = self.Converter.get_alignment()['sensors'][pl.Number]
+        a = self.Converter.Proteus.get_alignment()['sensors'][pl.Number]
         ox, oy = array(a['offset'][:2]) - (array([pl.W, pl.H]) / 2 if centre else 0)
         rx, ry = array(a['unit_u']) * (-1 if choose(inv_x, self.inv_x) else 1), a['unit_v']
         return transform(x, y, sx=pl.PX, sy=pl.PY, ox=ox, oy=oy, rx=rx, ry=ry, order='trs', invert=invert)
