@@ -29,6 +29,9 @@ class Converter:
         self.SaveDir = data_dir.joinpath('data')
         self.SoftDir = Path(self.Config.get('SOFTWARE', 'dir')).expanduser()
 
+        self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
+        self.NDUTPlanes = self.Config.getint('DUT', 'planes')
+
         # PRE-CONVERTER
         self.Raw = self.init_raw()
         self.Proteus = self.init_proteus()
@@ -37,9 +40,6 @@ class Converter:
         self.OutFileName = self.SaveDir.joinpath(f'run{self.RunNumber:04d}.hdf5')
         self.TrackFile = None
         self.F = None
-
-        self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
-        self.NDUTPlanes = self.Config.getint('DUT', 'planes')
 
         self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFileName)]
         self.PBar = PBar()
