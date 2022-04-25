@@ -28,6 +28,8 @@ class Raw:
         if load_file:
             self.F = TFile(str(self.OutFilePath)) if load_file else None
             self.P = [self.F.Get(key.GetName()).Get('Hits') for key in self.F.GetListOfKeys() if key.GetName().startswith('Plane')]
+
+        self.Steps = [(self.convert, self.OutFilePath)]
         self.Draw = Draw(c.Config.FilePath)
 
     def __repr__(self):

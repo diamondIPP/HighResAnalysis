@@ -34,7 +34,8 @@ class Proteus:
         self.N = max_events
         self.S = skip_events
 
-        self.Steps = self.get_align_steps()
+        self.AlignSteps = self.get_align_steps()
+        self.Steps = [(self.noise_scan, self.toml_name('tel', 'mask', 'mask')), (self.align, self.toml_name()), (self.recon, self.OutFilePath)]
 
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
@@ -47,7 +48,7 @@ class Proteus:
         return [self.ConfigDir.joinpath(name) for name in [self.toml_name('all', 'mask', 'mask'), self.toml_name()]]
 
     def get_alignment(self, step=-1):
-        return toml.load(str(self.ConfigDir.joinpath(self.toml_name(self.Steps[step]))))
+        return toml.load(str(self.ConfigDir.joinpath(self.toml_name(self.AlignSteps[step]))))
 
     def get_z_positions(self, raw=False):
         d = toml.load(str(self.ConfigDir.joinpath('geometry.toml' if raw else self.toml_name())))
@@ -56,7 +57,7 @@ class Proteus:
     # ----------------------------------------
     # region MISC
     def toml_name(self, name=None, d='alignment', typ='geo'):
-        return self.ConfigDir.joinpath(d, f'{self.Steps[-1] if name is None else name}-{typ}.toml')
+        return self.ConfigDir.joinpath(d, f'{self.AlignSteps[-1] if name is None else name}-{typ}.toml')
 
     def make_empty_masks(self, cfg):
         for section in cfg:
@@ -97,10 +98,10 @@ class Proteus:
         """ step 2: align the telescope in several steps. """
         t = info('Starting alignment ...')
         d = Path('alignment')
-        for i in range(len(self.Steps)) if step is None else [step]:
-            step = self.Steps[i]
+        for i in range(len(self.AlignSteps)) if step is None else [step]:
+            step = self.AlignSteps[i]
             if not self.toml_name(step).exists() or force:
-                self.run('pt-align', out=d.joinpath(step), geo=self.toml_name(self.Steps[i - 1]) if i else None, section=step, cfg='align')
+                self.run('pt-align', out=d.joinpath(step), geo=self.toml_name(self.AlignSteps[i - 1]) if i else None, section=step, cfg='align')
             else:
                 warning('geo file already exists!')
         print_elapsed_time(t)
