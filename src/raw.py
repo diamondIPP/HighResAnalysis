@@ -3,12 +3,12 @@
 #       raw file conversion & analysis
 # created on April 22nd 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.converter import Converter
-from plotting.draw import critical, Draw, info, remove_file, Path
-from utility.utils import get_tree_vec
-from ROOT import TFile
 from subprocess import check_call
-from numpy import all
+import h5py
+from numpy import all, array
+
+from plotting.draw import critical, Draw, info, remove_file, Path
+from src.converter import Converter
 
 
 class Raw:
@@ -17,6 +17,9 @@ class Raw:
 
         self.Parent = c
         self.RunNumber = c.RunNumber
+        self.NT = c.NTelPlanes
+        self.ND = c.NDUTPlanes
+        self.P = range(self.NT)
 
         self.SoftDir = c.SoftDir.joinpath(c.Config.get('SOFTWARE', 'eudaq2'))
         self.DataDir = c.DataDir
@@ -26,8 +29,7 @@ class Raw:
         self.OutFilePath = c.SaveDir.joinpath(f'run{self.RunNumber:06d}.root')
 
         if load_file:
-            self.F = TFile(str(self.OutFilePath)) if load_file else None
-            self.P = [self.F.Get(key.GetName()).Get('Hits') for key in self.F.GetListOfKeys() if key.GetName().startswith('Plane')]
+            self.F = c.F if c.F is not None else h5py.File(c.OutFileName, 'r')
 
         self.Steps = [(self.convert, self.OutFilePath)]
         self.Draw = Draw(c.Config.FilePath)
@@ -35,6 +37,8 @@ class Raw:
     def __repr__(self):
         return f'Raw file analysis run {self.RunNumber} ({self.FilePath.name})'
 
+    # ----------------------------------------
+    # region CONVERT
     def load_file_path(self):
         n = list(self.DataDir.joinpath('raw').glob(f'run{self.RunNumber:06d}*.raw'))
         return n[0] if len(n) else None
@@ -59,17 +63,37 @@ class Raw:
         check_call(cmd, shell=True)
         for f in Path().glob('AutoDict_vector*'):
             remove_file(f)
+    # endregion CONVERT
+    # ----------------------------------------
 
-    def make_cuts(self):
-        [t.SetEstimate(t.GetEntries() * 10) for t in self.P]
-        n = [get_tree_vec(t, 'NHits', dtype='i2') for t in self.P[:6]]
-        c = all([i == 1 for i in n], axis=0)
-        return [c.repeat(i) for i in n]
+    # ----------------------------------------
+    # region ANALYSIS
+    def get(self, p, g, k):
+        return array(self.F[f'Plane{p}'][g][k])
+
+    def z(self):
+        return self.Parent.Proteus.get_z_positions(raw=True)[:self.NT]
+
+    def get_all(self, g, k):
+        return array([self.get(p, g, k)[c] for p, c in zip(self.P, self.cuts())])
+
+    def cuts(self):
+        n = [self.get(p, 'Clusters', 'Size') > 0 for p in self.P]
+        c = all(n, axis=0)
+        return [c[i] for i in n]
+
+    def draw_track_x(self, i=0):
+        self.Draw.graph(self.z(), self.get_all('Clusters', 'U').T[i], x_tit='Z [mm]', y_tit='U [mm]')
+
+    def draw_track_y(self, i=0):
+        self.Draw.graph(self.z(), self.get_all('Clusters', 'V').T[i], x_tit='Z [mm]', y_tit='V [mm]')
+    # ----------------------------------------
+    # endregion ANALYSIS
 
 
 if __name__ == '__main__':
     from src.analysis import Analysis
 
     a = Analysis()
-    c0 = Converter(a.BeamTest.Path, 17, a.Config)
-    z = Raw(c0, load_file=True)
+    c_ = Converter(a.BeamTest.Path, 11, a.Config)
+    z = Raw(c_, load_file=True)
