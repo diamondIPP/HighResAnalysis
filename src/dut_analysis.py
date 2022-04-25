@@ -12,7 +12,6 @@ from src.calibration import Calibration
 from src.cern_run import CERNRun
 from src.converter import Converter
 from src.currents import Currents
-from src.desy_converter import DESYConverter
 from src.desy_run import DESYRun
 from src.dummy import Dummy
 from src.dut import Plane
@@ -73,10 +72,6 @@ class DUTAnalysis(Analysis):
     @property
     def run(self):
         return DESYRun if self.BeamTest.Location == 'DESY' else CERNRun
-
-    @property
-    def converter(self):
-        return DESYConverter if self.BeamTest.Location == 'DESY' else Converter
 
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
