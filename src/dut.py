@@ -1,5 +1,5 @@
 # --------------------------------------------------------
-#       cut sub class to handle all the cut strings for the DUTs with digitiser
+#       define a DUT
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from utility.utils import critical, ufloat, array, Dir
@@ -14,8 +14,8 @@ class DUT:
 
         # Info
         self.Number = number
-        self.Name = run_log[f'dut{self.Number}']
-        self.Bias = run_log[f'hv{self.Number}']
+        self.Name = run_log['duts'][self.Number]
+        self.Bias = int(run_log[f'hv'][self.Number])
         self.Plane = Plane(self.Config.getint('TELESCOPE', 'planes') + number, config('DUT'))
 
         # Specs
