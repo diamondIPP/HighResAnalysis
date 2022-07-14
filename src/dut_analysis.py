@@ -9,10 +9,9 @@ from mod.dut_cuts import DUTCut
 from plotting.fit import *
 from src.analysis import *
 from src.calibration import Calibration
-from src.cern_run import CERNRun
 from src.converter import Converter
 from src.currents import Currents
-from src.desy_run import DESYRun
+from src.run import Run
 from src.dummy import Dummy
 from src.dut import Plane
 from utility.utils import *
@@ -27,7 +26,7 @@ class DUTAnalysis(Analysis):
         self.print_start(run_number)
 
         # data
-        self.Run = self.run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
+        self.Run = Run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Planes = self.init_planes()
         self.Plane = self.DUT.Plane
@@ -65,14 +64,11 @@ class DUTAnalysis(Analysis):
         self.Resolution = self.init_resolution()
 
     def __repr__(self):
-        return f'{super().__repr__()} ({ev2str(self.NEvents)} ev)'
+        ev_str = f' ({ev2str(self.NEvents)} ev)' if hasattr(self, 'NEvents') else ''
+        return f'{super().__repr__()} {ev_str}'
 
     # ----------------------------------------
     # region INIT
-    @property
-    def run(self):
-        return DESYRun if self.BeamTest.Location == 'DESY' else CERNRun
-
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
         return [Plane(i, self.Config('TELESCOPE' if i < n_tel else 'DUT')) for i in range(n_tel + n_dut)]
@@ -455,7 +451,7 @@ class DUTAnalysis(Analysis):
             x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
             b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
             r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
-            g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
+            g = [Draw.make_tgraph([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
             return [Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)] + b + r
         return []
     # endregion IN PIXEL

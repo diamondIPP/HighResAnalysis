@@ -7,7 +7,7 @@ from numpy import sum, append, delete, average, all, ones, count_nonzero
 
 from src.proteus import Proteus
 from utility.utils import *
-from src.desy_run import DESYRun
+from src.run import Run
 from src.calibration import Calibration
 
 
@@ -63,7 +63,7 @@ class Converter:
         return Raw(self)
 
     def get_calibration(self, dut_number=0):
-        return Calibration(DESYRun(self.RunNumber, dut_number, self.DataDir, self.Config))
+        return Calibration(Run(self.RunNumber, dut_number, self.DataDir, self.Config))
     # endregion INIT
     # ----------------------------------------
 

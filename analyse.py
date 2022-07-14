@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from numpy import *
 
 import src.bins as bins  # noqa
-from plotting.draw import *
+from plotting.draw import *  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
 from utility.utils import *  # noqa
 
@@ -28,7 +28,7 @@ if args.remove_meta:
     z.remove_metadata()
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 
-if not z.has_alignment():
+if not args.test and not z.has_alignment():
     z.Residuals.align(_save=True)
     z.REF.Residuals.align(_save=True)
     z.remove_metadata()
