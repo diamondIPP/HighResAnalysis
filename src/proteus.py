@@ -106,10 +106,10 @@ class Proteus:
                 warning('geo file already exists!')
         print_elapsed_time(t)
 
-    def recon(self, raw=False):
+    def recon(self, cfg=None, geo=-1):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=None if raw else self.toml_name())
+        self.run('pt-recon', out=self.Out, cfg=cfg, geo=None if geo is None else self.toml_name(self.AlignSteps[geo]))
     # endregion RUN
     # ----------------------------------------
 
