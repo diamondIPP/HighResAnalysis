@@ -11,7 +11,7 @@ from pickle import load, dump
 from ROOT import TFile, vector, TF1
 
 from plotting.draw import Draw
-from src.converter import Converter, Hit, Cluster
+from src.converter import Converter
 from utility.utils import *
 
 

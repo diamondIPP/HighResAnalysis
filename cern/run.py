@@ -22,20 +22,20 @@ class CERNRun(Run):
         if self.SingleMode:
             info('Using single raw files')
             return None
-        data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))
+        data = load_json(join(self.TCDir, self.Config.get('data', 'run plan file')))
         data = data.values()[self.DUTNr][str(self.Number)]
         data['Batches'] = data['Batches'].split(',')
         return data
 
     def load_run_logs(self):
-        data = load_json(join(self.TCDir, self.Config.get('MAIN', 'run log file')))
+        data = load_json(join(self.TCDir, self.Config.get('data', 'run log file')))
         data = {key: value for key, value in data.iteritems() if value['Run Number']['CMS'] not in ['-', '/', '\\', '']}
         if self.Info is None:
             return next(value for value in data.itervalues() if int(value['Run Number']['CMS']) == self.Number)
         return OrderedDict(sorted([(int(value['Run Number']['CMS']), value) for value in data.itervalues() if value['Batch'] in self.Info['Batches']]))
 
     def load_dut_name(self):
-        return load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file')))['Plane{}'.format(self.DUTNr)]['Name']
+        return load_json(join(self.TCDir, self.Config.get('data', 'run plan file')))['Plane{}'.format(self.DUTNr)]['Name']
 
     def load_raw_file_name(self):
         if self.SingleMode:
@@ -69,7 +69,7 @@ class CERNRun(Run):
         info('successfully merged the single files to "{}"'.format(basename(new_file)))
 
     def print_run_info(self):
-        for key, value in sorted(load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file'))).values()[self.DUTNr].iteritems(), key=lambda k: int(k[0])):
+        for key, value in sorted(load_json(join(self.TCDir, self.Config.get('data', 'run plan file'))).values()[self.DUTNr].iteritems(), key=lambda k: int(k[0])):
             print(key, value)
 
 
