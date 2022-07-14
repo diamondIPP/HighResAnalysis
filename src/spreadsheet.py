@@ -60,6 +60,7 @@ def make_desy_run_log():
 def make_cern_run_log():
     sheet = client.open_by_key('1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc').worksheet('KARTEL')
     data = sheet.get_all_values()[1:]
+    hv_supplies = {'II6-A2': 'HV1 CH5', 'CMS04': 'HV1 CH4'}  # sep 2018
     dic = {}
     for row in data:
         run = row[1]
@@ -73,6 +74,7 @@ def make_cern_run_log():
                     'end': make_timestamp(row[29], row[31]),
                     'events': int(row[34]) if row[34] else 0,
                     **dut_dict,
+                    'hv supplies': [hv_supplies[dut] if dut in hv_supplies else '' for dut in dut_dict['duts']],
                     'status': row[33],
                     'batch': row[28],
                     'comment': row[36],
