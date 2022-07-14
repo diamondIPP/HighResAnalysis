@@ -3,7 +3,7 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import sum, append, delete, average
+from numpy import sum, append, delete, average, all, ones, count_nonzero
 
 from src.proteus import Proteus
 from utility.utils import *
@@ -148,6 +148,31 @@ class Converter:
             g.create_dataset(n, data=data[i][cut])
         return data
     # endregion HDF5
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region ALIGN
+    def align_tree(self):
+        import uproot
+        hf = h5py.File(self.OutFileName)
+        with uproot.recreate('bla.root') as f:
+            n = [array(hf[f'Plane{pl}']['Clusters']['Size']) > 0 for pl in range(self.NTelPlanes)]
+            cut = all(n, axis=0) & (array(hf['Tracks']['Size']) == self.NTelPlanes)
+            for pl in range(self.NTelPlanes):
+                d = f.mkdir(f'Plane{pl}')
+                ci = cut[n[pl]]
+                i = count_nonzero(ci)
+                d['Clusters'] = {'NClusters': ones(i, 'i'),
+                                 'Col': array(hf[f'Plane{pl}']['Clusters']['X'])[ci].astype('d').reshape((-1, 1)),
+                                 'Row': array(hf[f'Plane{pl}']['Clusters']['Y'])[ci].astype('d').reshape((-1, 1)),
+                                 'VarCol': ones((i, 1)),
+                                 'VarRow': ones((i, 1)),
+                                 'Value': ones((i, 1)),
+                                 'CovColRow': zeros((i, 1)),
+                                 'Timing': zeros((i, 1)),
+                                 'Track': ones((i, 1), 'i')}
+            f['Plane0']['Clusters'].show()
+    # endregion ALIGN
     # ----------------------------------------
 
     # ----------------------------------------
