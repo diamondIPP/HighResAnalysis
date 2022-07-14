@@ -34,9 +34,9 @@ class Analysis:
     """ The analysis class provides default behaviour objects in the analysis framework and is the parent of all other analysis objects. """
 
     Config = load_config()
-    Locations = Config.get_list('MAIN', 'locations')
+    Locations = Config.get_list('data', 'locations')
 
-    DataDir = Path(Config.get('MAIN', 'data directory')).expanduser()
+    DataDir = Path(Config.get('data', 'dir')).expanduser()
     ResultsDir = Dir.joinpath('results')
     MetaDir = Dir.joinpath(Config.get('SAVE', 'meta directory'))
 
@@ -60,7 +60,7 @@ class Analysis:
     # region INIT
     @staticmethod
     def load_test_campaign(beamtest=None):
-        bt = choose(beamtest, Analysis.Config.get('MAIN', 'default test campaign'))
+        bt = choose(beamtest, Analysis.Config.get('data', 'default test campaign'))
         ps = [p for loc in Analysis.Locations for p in Path(Analysis.DataDir, loc.lower()).glob('*')]
         p = next((p for p in ps if bt == p.stem.replace('-', '')), None)
         return critical(f'The beamtest "{bt}" does not exist!') if p is None else BeamTest(p)
@@ -68,7 +68,7 @@ class Analysis:
     @staticmethod
     def find_testcampaign():
         p = Path(getcwd())
-        return BeamTest(p).Tag if p.parts[-2].upper() in Analysis.Locations else Analysis.Config.get('MAIN', 'default test campaign')
+        return BeamTest(p).Tag if p.parts[-2].upper() in Analysis.Locations else Analysis.Config.get('data', 'default test campaign')
 
     def print_testcampaign(self):
         self.info(f'{self.BeamTest!r}')

@@ -26,7 +26,7 @@ class DUTAnalysis(Analysis):
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
         self.print_start(run_number)
 
-        # MAIN
+        # data
         self.Run = self.run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
         self.DUT = self.Run.DUT
         self.Planes = self.init_planes()

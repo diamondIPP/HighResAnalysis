@@ -56,7 +56,7 @@ class Run:
         pass
 
     def print_run_info(self):
-        for key, value in sorted(load_json(join(self.TCDir, self.Config.get('MAIN', 'run plan file'))).values()[self.DUT.Number].iteritems(), key=lambda k: int(k[0])):
+        for key, value in sorted(load_json(join(self.TCDir, self.Config.get('data', 'run plan file'))).values()[self.DUT.Number].iteritems(), key=lambda k: int(k[0])):
             print(key, value)
 
 

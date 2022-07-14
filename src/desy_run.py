@@ -16,7 +16,7 @@ class DESYRun(Run):
         Run.__init__(self, run_number, dut_nr, tc_dir, config, single_mode)
 
     def load_run_logs(self):
-        data = load_json(self.TCDir.joinpath(self.Config.get('MAIN', 'run log file')))
+        data = load_json(self.TCDir.joinpath(self.Config.get('data', 'run log file')))
         if self.SingleMode:
             return data[str(self.Number)]
 
