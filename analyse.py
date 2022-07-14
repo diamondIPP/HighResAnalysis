@@ -38,6 +38,7 @@ z.add_info(t_start, prnt=True)
 
 # aliases
 try:
+    d = z.Draw
     dut = z.DUT
     pl = dut.Plane
     run = z.Run
@@ -55,6 +56,3 @@ try:
 
 except AttributeError:
     pass
-
-from plotting.save import SaveDraw
-sl = SaveDraw.save_last
