@@ -266,7 +266,15 @@
     "thickness": "455", 
     "size": "None",
     "manufacturer": "II-VI"
-  }, 
+  },
+  "II6-B5 (FEI4, 1x5)": {
+    "irradiation": {"201809": "0"},
+    "type": { "201809": "3D-pixel"},
+    "thickness": "None",
+    "column diameter": "2.6",
+    "manufacturer": "II-VI",
+    "cell size": [50, 50]
+  },
   "II6-B6": {
     "irradiation": {"201708": "0",  "201708-2": "0",  "201810": "0"},
     "type": { "201708": "3D-pixel",  "201708-2": "3D-pixel", "201810": "3D-pixel"},
