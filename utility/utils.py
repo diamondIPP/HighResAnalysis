@@ -311,12 +311,14 @@ def merge_root_files(files, new_file_name):
     info('successfully merged the single files to "{}"'.format(basename(new_file_name)))
 
 
+# ----------------------------------------
+# region CLASSES
 def update_pbar(func):
     @wraps(func)
     def my_func(*args, **kwargs):
         value = func(*args, **kwargs)
-        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished() and not get_kw('_no_update', kwargs):
-            args[0].PBar.update()
+        if PBAR is not None and PBAR.PBar is not None and not PBAR.is_finished():
+            PBAR.update()
         return value
     return my_func
 
@@ -385,6 +387,11 @@ class EventSpeed(Widget):
         if pbar.seconds_elapsed > 2e-6 and pbar.currval > 2e-6:
             value = pbar.currval / pbar.seconds_elapsed * self.factor
         return f'{value:4.1f} E/{self.unit}'
+
+
+PBAR = PBar()
+# endregion CLASSES
+# ----------------------------------------
 
 
 def prep_kw(dic, **default):
