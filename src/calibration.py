@@ -10,6 +10,7 @@ from numpy import genfromtxt, all, delete, round, argmax, vectorize, savetxt
 from plotting.draw import Draw, FitRes
 from plotting.fit import Erf
 from src.run import Run
+from src.analysis import Analysis
 import src.bins as bins
 from utility.utils import *
 
@@ -22,7 +23,7 @@ class Calibration:
         self.Run = run
         self.Plane = run.DUT.Plane
         self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
-        self.Draw = Draw(config=self.Run.Config)
+        self.Draw = Draw(config=Analysis.Config)
         self.Dir = self.Run.TCDir.joinpath('calibrations', str(self.Run.DUT))
 
         # Calibration

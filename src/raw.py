@@ -12,6 +12,7 @@ from plotting.fit import Gauss
 from src.converter import Converter
 from utility.affine_transformations import transform
 from src.dut import Plane
+from src.analysis import Analysis
 
 
 class Raw:
@@ -19,33 +20,33 @@ class Raw:
     def __init__(self, c: Converter, load_file=False, step=-1):
 
         self.Parent = c
-        self.RunNumber = c.RunNumber
+        self.Run = c.Run
         self.NT = c.NTelPlanes
         self.ND = c.NDUTPlanes
         self.P = range(self.NT)
-        self.Planes = [Plane(i, c.Config('TELESCOPE' if i < self.NT else 'DUT')) for i in range(self.NT + self.ND)]
+        self.Planes = [Plane(i, typ='TELESCOPE' if i < self.NT else 'DUT') for i in range(self.NT + self.ND)]
 
-        self.SoftDir = c.SoftDir.joinpath(c.Config.get('SOFTWARE', 'eudaq2'))
+        self.SoftDir = c.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'eudaq2'))
         self.DataDir = c.DataDir
         self.SaveDir = c.SaveDir
 
         self.FilePath = self.load_file_path()
-        self.OutFilePath = c.SaveDir.joinpath(f'run{self.RunNumber:06d}.root')
+        self.OutFilePath = c.SaveDir.joinpath(f'run{self.Run:06d}.root')
 
         if load_file:
             self.F = c.F if c.F is not None else h5py.File(c.OutFileName, 'r')
 
         self.Steps = [(self.convert, self.OutFilePath)]
         self.AtStep = step
-        self.Draw = Draw(c.Config.FilePath)
+        self.Draw = Draw(Analysis.Config.FilePath)
 
     def __repr__(self):
-        return f'Raw file analysis run {self.RunNumber} ({self.FilePath.name})'
+        return f'Raw file analysis run {self.Run} ({self.FilePath.name})'
 
     # ----------------------------------------
     # region CONVERT
     def load_file_path(self):
-        n = list(self.DataDir.joinpath('raw').glob(f'run{self.RunNumber:06d}*.raw'))
+        n = list(self.DataDir.joinpath('raw').glob(f'run{self.Run:06d}*.raw'))
         return n[0] if len(n) else None
 
     def generate_fit_files(self):
@@ -60,7 +61,7 @@ class Raw:
         """ convert binary raw file to root file with eudaq"""
         cal_path = self.generate_fit_files()
         if self.FilePath is None:
-            critical('raw file does not exist for run: {}'.format(self.RunNumber))
+            critical(f'raw file does not exist for run: {self.Run}')
         self.OutFilePath.parent.mkdir(exist_ok=True)
         cmd = f'{self.SoftDir.joinpath("bin", "euCliConverter")} -i {self.FilePath} -o {self.OutFilePath} -c {cal_path}'
         info(f'Convert {self.FilePath.name} to {self.OutFilePath.name} using EUDAQ-2\n')
@@ -138,8 +139,7 @@ class Raw:
 
 
 if __name__ == '__main__':
-    from src.analysis import Analysis
 
     a_ = Analysis()
-    c_ = Converter(a_.BeamTest.Path, 11, a_.Config)
+    c_ = Converter(a_.BeamTest.Path, 11)
     z = Raw(c_, load_file=True, step=2)

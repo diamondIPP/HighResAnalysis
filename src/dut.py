@@ -3,20 +3,19 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from utility.utils import critical, ufloat, array, Dir
-from plotting.draw import Config, Draw, arange, prep_kw, add_perr
+from plotting.draw import Draw, arange, prep_kw, add_perr, Config
+from src.analysis import Analysis
 
 
 class DUT:
     """ Class with all information about a single DUT. """
-    def __init__(self, number=1, run_log: dict = None, config: Config = None):
-
-        self.Config = config
+    def __init__(self, number=1, run_log: dict = None):
 
         # Info
         self.Number = number
         self.Name = run_log['duts'][self.Number]
         self.Bias = int(run_log[f'hv'][self.Number])
-        self.Plane = Plane(self.Config.getint('TELESCOPE', 'planes') + number, config('DUT'))
+        self.Plane = Plane(Analysis.Config.getint('TELESCOPE', 'planes') + number, typ='DUT')
 
         # Specs
         self.Info = self.load_specs()
@@ -30,7 +29,7 @@ class DUT:
             self.ColumnDiameter = add_perr(self.Info.get_float('column diameter'), .05)
             self.PXY = array(self.Info.get_list('cell size'))
             self.PX, self.PY = self.PXY
-        self.VcalToEl = self.Config.get_float('DUT', 'vcal to electrons')
+        self.VcalToEl = Analysis.Config.get_float('DUT', 'vcal to electrons')
 
     def __str__(self):
         return self.Name
@@ -55,8 +54,9 @@ class DUT:
 
 class Plane:
     """ Class with all information about a single pixel plane. """
-    def __init__(self, n, config: Config):
+    def __init__(self, n, typ='DUT'):
 
+        config = Analysis.Config(typ)
         self.IsDUT = 'DUT' in config.Section
         self.Number = n
         self.Type = config.get_value('name')

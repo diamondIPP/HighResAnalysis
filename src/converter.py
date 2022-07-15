@@ -7,13 +7,13 @@ from numpy import sum, append, delete, average, all, ones, count_nonzero
 
 from src.proteus import Proteus
 from utility.utils import *
-from src.run import Run
+from src.run import Run, Analysis
 from src.calibration import Calibration
 
 
 class Converter:
 
-    def __init__(self, data_dir: Path, run_number, config):
+    def __init__(self, data_dir: Path, run_number):
         """ Converts EUDAQ2 raw files in several steps into hdf5 files.
             STEP 0: raw -> root             (EUDAQ2)
             STEP 1: noisescan               (proteus)
@@ -21,23 +21,22 @@ class Converter:
             STEP 3: track reconstruction    (proteus)
             STEP 4: root -> hdf5            (python) """
 
-        self.RunNumber = run_number
-        self.Config = config
+        self.Run = Run(run_number, 0, data_dir, single_mode=True)
 
         # DIRECTORIES
         self.DataDir = data_dir
         self.SaveDir = data_dir.joinpath('data')
-        self.SoftDir = Path(self.Config.get('SOFTWARE', 'dir')).expanduser()
+        self.SoftDir = Path(Analysis.Config.get('SOFTWARE', 'dir')).expanduser()
 
-        self.NTelPlanes = self.Config.getint('TELESCOPE', 'planes')
-        self.NDUTPlanes = self.Config.getint('DUT', 'planes')
+        self.NTelPlanes = Analysis.Config.getint('TELESCOPE', 'planes')
+        self.NDUTPlanes = Analysis.Config.getint('DUT', 'planes')
 
         # PRE-CONVERTER
         self.Raw = self.init_raw()
         self.Proteus = self.init_proteus()
 
         # FILES
-        self.OutFileName = self.SaveDir.joinpath(f'run{self.RunNumber:04d}.hdf5')
+        self.OutFileName = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
         self.TrackFile = None
         self.F = None
 
@@ -52,18 +51,22 @@ class Converter:
 
     # ----------------------------------------
     # region INIT
+    @classmethod
+    def from_run(cls, run: Run):
+        return cls(run.TCDir, run.Number)
+
     def init_proteus(self):
-        soft_dir = self.SoftDir.joinpath(self.Config.get('SOFTWARE', 'proteus'))
+        soft_dir = self.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'proteus'))
         data_dir = self.DataDir.joinpath('proteus')
         conf_dir = Dir.joinpath('proteus')
-        return Proteus(soft_dir, data_dir, conf_dir, self.Raw.OutFilePath, *[self.Config.getint('align', opt) for opt in ['max events', 'skip events']])
+        return Proteus(soft_dir, data_dir, conf_dir, self.Raw.OutFilePath, *[Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']])
 
     def init_raw(self):
         from src.raw import Raw
         return Raw(self)
 
     def get_calibration(self, dut_number=0):
-        return Calibration(Run(self.RunNumber, dut_number, self.DataDir, self.Config))
+        return Calibration(Run(self.Run.Number, dut_number, self.DataDir))
     # endregion INIT
     # ----------------------------------------
 
@@ -245,14 +248,13 @@ class Cluster:
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
-    from analysis import Analysis
 
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=11)
     pargs = parser.parse_args()
     a = Analysis()
 
-    z = Converter(a.BeamTest.Path, pargs.run, a.Config)
+    z = Converter(a.BeamTest.Path, pargs.run)
     r = z.Raw
     p = z.Proteus
     c = z.get_calibration()

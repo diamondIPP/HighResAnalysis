@@ -4,21 +4,19 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import *
-from plotting.utils import load_json, Config
-from os.path import join
-from src.analysis import Analysis
+from utility.utils import print_table
+from plotting.utils import load_json
+from src.analysis import Analysis, Path, choose
 from src.dut import DUT
 
 
 class Run:
     """ Run class containing all the information for a single run from the tree and the json file. """
 
-    def __init__(self, run_number, dut_number, tc_dir: Path, config: Config, single_mode=False):
+    def __init__(self, run_number, dut_number, tc_dir: Path, single_mode=False):
 
         # Main Info
         self.Number = int(run_number)
-        self.Config = config
         self.TCDir = tc_dir
         self.SingleMode = single_mode
 
@@ -27,7 +25,7 @@ class Run:
 
         # Info
         self.Logs = self.load_logs()
-        self.DUT = DUT(dut_number, self.Logs, self.Config)
+        self.DUT = DUT(dut_number, self.Logs)
 
         # Times  TODO: Fix later with real timestamps from the data
         self.StartTime = self.Logs['start']
@@ -39,8 +37,11 @@ class Run:
     def __repr__(self):
         return f'Run {self}'
 
+    def __format__(self, format_spec):
+        return f'{self.Number:{format_spec}}'
+
     def load_logs(self) -> dict:
-        data = load_json(self.TCDir.joinpath(self.Config.get('data', 'runlog file')))
+        data = load_json(self.TCDir.joinpath(Analysis.Config.get('data', 'runlog file')))
         if self.SingleMode:
             return data[str(self.Number)]
         return {}
@@ -48,7 +49,11 @@ class Run:
     def print_info(self):
         print_table(rows=[[key, str(value)] for key, value in self.Logs.items()])
 
+    @classmethod
+    def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
+        ana = choose(ana, Analysis)
+        return cls(run_number, dut, ana.BeamTest.Path, single_mode)
+
 
 if __name__ == '__main__':
-    a = Analysis()
-    z = Run(41, 0, a.BeamTest.Path, a.Config, single_mode=True)
+    z = Run.from_ana(41, 1, single_mode=True)

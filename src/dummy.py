@@ -9,21 +9,21 @@ from numpy import round, invert, delete
 from numpy.random import poisson, normal, randint
 
 from src.dut import Plane
+from src.analysis import Analysis
 from utility.utils import *
 
 
 class Dummy:
 
-    def __init__(self, tc_dir, n_tel, n_dut, config):
+    def __init__(self, tc_dir, n_tel, n_dut):
 
         self.FileName = join(tc_dir, 'data', 'dummy.hdf5')
         self.File = None
         self.NTelPlanes = n_tel
         self.NDUTPlanes = n_dut
-        self.TelPlane = Plane(0, config)
-        self.DUTPlane = Plane(self.NTelPlanes, config('DUT'))
+        self.TelPlane = Plane(0, typ='TELESCOPE')
+        self.DUTPlane = Plane(self.NTelPlanes, typ='DUT')
         self.NEvents = 0
-        self.Config = config
         self.PBar = PBar()
 
     def init_file(self):
@@ -89,7 +89,7 @@ class Dummy:
         lam = array([.077, .15])
         c = [[450, 40], [200, 25]]
         for i in range(self.NTelPlanes, self.NDUTPlanes + self.NTelPlanes):
-            dut_plane = Plane(i, self.Config('DUT'))
+            dut_plane = Plane(i, Analysis.Config('DUT'))
             g = self.File.create_group('Plane{}'.format(i))
             g_clu = g.create_group('Clusters')
             size = poisson(lam[[i - self.NTelPlanes]], self.File['Tracks']['X'].size)

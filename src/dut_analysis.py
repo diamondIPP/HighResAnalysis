@@ -26,17 +26,17 @@ class DUTAnalysis(Analysis):
         self.print_start(run_number)
 
         # data
-        self.Run = Run(run_number, dut_number, self.BeamTest.Path, self.Config, single_mode)
+        self.Run = Run.from_ana(run_number, dut_number, self, single_mode)
         self.DUT = self.Run.DUT
         self.Planes = self.init_planes()
         self.Plane = self.DUT.Plane
 
         # DATA
-        self.Converter = Converter(self.BeamTest.Path, self.Run.Number, self.Config)
+        self.Converter = Converter.from_run(self.Run)
         if test:
             return
 
-        self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes, self.Config)
+        self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes)
         self.F = self.load_file(test)
         self.T = False
 
@@ -71,7 +71,7 @@ class DUTAnalysis(Analysis):
     # region INIT
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
-        return [Plane(i, self.Config('TELESCOPE' if i < n_tel else 'DUT')) for i in range(n_tel + n_dut)]
+        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT') for i in range(n_tel + n_dut)]
 
     def init_residuals(self):
         from mod.residuals import ResidualAnalysis
