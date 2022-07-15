@@ -4,7 +4,7 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table
+from utility.utils import print_table, datetime
 from plotting.utils import load_json
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
@@ -47,7 +47,8 @@ class Run:
         return {}
 
     def print_info(self):
-        print_table(rows=[[key, str(value)] for key, value in self.Logs.items()])
+        print(f'{self!r}')
+        print_table(rows=[[key, str(datetime.fromtimestamp(value) if key in ['start', 'end'] else value)] for key, value in self.Logs.items()])
 
     @classmethod
     def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
