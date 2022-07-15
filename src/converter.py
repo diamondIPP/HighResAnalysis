@@ -43,6 +43,9 @@ class Converter:
         self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFileName)]
         self.PBar = PBar()
 
+    def __repr__(self):
+        return f'{self.__class__.__name__} of {self.Run!r}'
+
     def run(self):
         for i, (s, f) in enumerate(self.Steps):
             if not f.exists():
@@ -54,6 +57,11 @@ class Converter:
     @classmethod
     def from_run(cls, run: Run):
         return cls(run.TCDir, run.Number)
+
+    @classmethod
+    def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
+        ana = choose(ana, Analysis)
+        return cls.from_run(Run.from_ana(run_number, dut, ana, single_mode))
 
     def init_proteus(self):
         soft_dir = self.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'proteus'))
