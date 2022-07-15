@@ -159,10 +159,10 @@ def has_root():
         return False
 
 
-def read_root_file(filename):
+def open_root_file(filename):
     if file_exists(filename):
-        return TFile(filename)
-    critical('The file: "{}" does not exist...'.format(filename))
+        return TFile(str(filename))
+    critical(f'The file: "{filename}" does not exist...')
 
 
 def choose(v, default, decider='None', *args, **kwargs):
