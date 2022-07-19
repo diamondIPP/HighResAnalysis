@@ -1,0 +1,62 @@
+geometry = "geometry.toml"
+pixel_masks = ["mask/tel-mask.toml", "mask/ref-mask.toml", "mask/dut-mask.toml"]
+
+[sensor_types.MIMOSA]
+measurement = "pixel_binary"
+cols = 1152
+rows = 576
+pitch_col = 0.0184
+pitch_row = 0.0184
+x_x0 = 0.0021772
+
+[sensor_types.CMSPixel-Si]
+measurement = "pixel_tot"
+cols = 52
+rows = 80
+pitch_col = 0.150
+pitch_row = 0.100
+x_x0 = 0.006
+
+[sensor_types.CMSPixel-Dia]
+measurement = "pixel_tot"
+cols = 52
+rows = 80
+pitch_col = 0.150
+pitch_row = 0.100
+x_x0 = 0.006
+
+# sensors in the order as they appear in the data file
+# the index in this list corresponds to the sensor id in other configs
+
+[[sensors]]
+type = "MIMOSA"
+name = "M0"
+
+[[sensors]]
+type = "MIMOSA"
+name = "M1"
+
+[[sensors]]
+type = "MIMOSA"
+name = "M2"
+
+[[sensors]]
+type = "MIMOSA"
+name = "M3"
+
+[[sensors]]
+type = "MIMOSA"
+name = "M4"
+
+[[sensors]]
+type = "MIMOSA"
+name = "M5"
+
+[[sensors]]
+type = "CMSPixel-Si"
+name = "C0"
+
+[[sensors]]
+type = "CMSPixel-Dia"
+name = "C1"
+

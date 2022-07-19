@@ -5,6 +5,7 @@
 !*.md
 !*.ini
 !config/dia_info.json
+!*.toml
 
 config/main.ini
 venv/

@@ -1,0 +1,80 @@
+[align.0-tel_coarse]  # coarse alignment using cluster correlation
+method = "correlations"
+sensor_ids = [0,1,2,3,4,5]
+align_ids = [1,2,3,4,5]  # keep first plane fixed
+estimate_beam_parameters = true
+
+[align.1-tel_coarse_inner]  # coarse alignment for inner planes
+method = "correlations"
+sensor_ids = [0,1,2,3,4,5]
+align_ids = [1,2,3,4]  # keep first and last plane fixed
+estimate_beam_parameters = true
+
+#[align.2-tel_fine_res_front]
+#method = "localchi2"
+#sensor_ids = [0,1,2]
+#align_ids =    [1,2]  # keep first plane fixed
+#num_steps = 50
+#search_spatial_sigma_max = 5.0 # distance search window for track finding
+#reduced_chi2_max = 5.0 # chi2 cut for track finding
+#damping = 0.9
+#estimate_beam_parameters = true
+#
+#[align.3-tel_fine_chi_front]
+#method = "localchi2"
+#sensor_ids = [0,1,2]
+#align_ids =    [1,2]  # keep first plane fixed
+#num_steps = 10
+#search_spatial_sigma_max = 5.0 # distance search window for track finding
+#reduced_chi2_max = 5.0 # chi2 cut for track finding
+#damping = 0.9
+#estimate_beam_parameters = true
+#
+#[align.tel_fine_res_back]
+#method = "residuals"
+#sensor_ids = [3,4,5]
+#align_ids = [4,5]  # keep first and last plane fixed
+#num_steps = 10
+#search_spatial_sigma_max = 10.0 # distance search window for track finding
+#reduced_chi2_max = 10.0 # chi2 cut for track finding
+#estimate_beam_parameters = true
+
+[align.2-tel_fine_res]
+method = "localchi2"
+sensor_ids = [0,1,2,3,4,5]
+align_ids =    [1,2,3,4]        # keep first and last plane fixed
+num_steps = 30                  # number of iterative alignment steps
+search_spatial_sigma_max = 20.0  # distance search window for track finding
+reduced_chi2_max = 5.0         # chi2 cut for track finding
+estimate_beam_parameters = true
+
+[align.tel_fine_chi2]
+method = "localchi2"
+sensor_ids = [0,1,2,3,4,5]
+align_ids =    [1,2,3,4]  # keep first and last plane fixed
+num_steps = 50
+search_spatial_sigma_max = 4.0
+reduced_chi2_max = 10.0
+
+[align.dut_coarse]
+method = "correlations" 
+sensor_ids = [0,1,2,3,4,5,6,7]
+align_ids = [6,7]
+estimate_beam_parameters = false
+
+[align.dut_fine]
+method = "residuals" # correlations, residuals
+sensor_ids = [0,1,2,3,4,5,6,7]
+align_ids = [6,7]
+num_steps = 20
+search_spatial_sigma_max = 5.0
+reduced_chi2_max = 10.0
+estimate_beam_parameters = false
+
+[align.dut_fine_chi2]
+method = "localchi2"
+sensor_ids = [0,1,2,3,4,5]
+align_ids =    [1,2,3,4]  # keep first and last plane fixed
+num_steps = 25
+search_spatial_sigma_max = 5.0
+reduced_chi2_max = 10.0
