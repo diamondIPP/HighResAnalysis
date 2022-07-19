@@ -3,7 +3,7 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import sum, append, delete, average, all, ones, count_nonzero
+from numpy import all, ones, count_nonzero
 
 from src.proteus import Proteus
 from utility.utils import *
@@ -38,11 +38,11 @@ class Converter:
         self.Proteus = self.init_proteus()
 
         # FILES
-        self.OutFileName = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
+        self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
         self.TrackFile = None
         self.F = None
 
-        self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFileName)]
+        self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFilePath)]
         self.PBar = PBar()
 
     def __repr__(self):
@@ -53,6 +53,8 @@ class Converter:
             if not f.exists():
                 print_banner(f'Start converter step {i}: {s.__doc__}')
                 s()
+            else:
+                info(f'found out file {f} for step {i}, continue with next step')
 
     # ----------------------------------------
     # region INIT
@@ -86,10 +88,10 @@ class Converter:
     # region HDF5
     def root_2_hdf5(self):
         """ convert tracked root file to hdf5 file. """
-        remove_file(self.OutFileName)  # remove hdf5 file if it exists
+        remove_file(self.OutFilePath)  # remove hdf5 file if it exists
         start_time = info('Start root->hdf5 conversion ...')
 
-        self.F = h5py.File(self.OutFileName, 'w')
+        self.F = h5py.File(self.OutFilePath, 'w')
         self.TrackFile = TFile(str(self.Proteus.OutFilePath))
 
         self.add_tracks()
@@ -169,7 +171,7 @@ class Converter:
     # region ALIGN
     def align_tree(self):
         import uproot
-        hf = h5py.File(self.OutFileName)
+        hf = h5py.File(self.OutFilePath)
         with uproot.recreate('bla.root') as f:
             n = [array(hf[f'Plane{pl}']['Clusters']['Size']) > 0 for pl in range(self.NTelPlanes)]
             cut = all(n, axis=0) & (array(hf['Tracks']['Size']) == self.NTelPlanes)
@@ -201,61 +203,8 @@ class Converter:
         for s, f in self.Steps:
             if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
                 remove_file(f)
-
-    @staticmethod
-    def clusterise(hits):
-        if not hits.size:
-            return []
-        # sort hits into clusters
-        clusters = [Cluster(hits[0])]
-        hits = delete(hits, 0, axis=0)
-        while hits.size:
-            in_existing_cluster = False
-            n_deleted = 0
-            for i, hit in enumerate(hits):
-                for cluster in clusters:
-                    if cluster.hit_is_adjacent(hit):
-                        cluster.add_hit(hit)
-                        hits = delete(hits, i - n_deleted, axis=0)
-                        n_deleted += 1
-                        in_existing_cluster = True
-                        break
-            if not in_existing_cluster:  # make a new cluster if none of the hits is adjacent to any of the existing Clusters
-                clusters.append(Cluster(hits[0]))
-                hits = delete(hits, 0, axis=0)
-        return clusters
     # endregion MISC
     # ----------------------------------------
-
-
-class Cluster:
-
-    def __init__(self, seed_hit):
-        self.Hits = array([seed_hit])
-
-    def add_hit(self, hit):
-        self.Hits = append(self.Hits, [hit], axis=0)
-
-    def hit_is_adjacent(self, hit):
-        """ returns: if any of the existing cluster hits has a distance of 1 to the given hit"""
-        return any(sqrt(sum(abs(hit[:2] - self.Hits[:, :2]), axis=1)) <= 1.1)
-
-    def get_charge(self):
-        return sum(self.Hits[:, 2])
-
-    def get_size(self):
-        return self.Hits.shape[0]
-
-    def get_x(self):
-        weights = self.Hits[:, 2]
-        return average(self.Hits[:, 0], weights=weights) if weights.nonzero()[0].size else mean(self.Hits[:, 0])
-
-    def get_y(self):
-        weights = self.Hits[:, 2]
-        return average(self.Hits[:, 1], weights=weights) if weights.nonzero()[0].size else mean(self.Hits[:, 1])
-
-    def __repr__(self):
-        return 'Cluster with {} hits at [{:.1f}, {:.1f}] with charge {:.1f} vcals'.format(self.get_size(), self.get_x(), self.get_y(), self.get_charge())
 
 
 if __name__ == '__main__':

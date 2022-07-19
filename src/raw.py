@@ -26,28 +26,34 @@ class Raw:
         self.P = range(self.NT)
         self.Planes = [Plane(i, typ='TELESCOPE' if i < self.NT else 'DUT') for i in range(self.NT + self.ND)]
 
-        self.SoftDir = c.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'eudaq2'))
+        self.SoftDir = self.load_soft_dir()
         self.DataDir = c.DataDir
         self.SaveDir = c.SaveDir
 
-        self.FilePath = self.load_file_path()
-        self.OutFilePath = c.SaveDir.joinpath(f'run{self.Run:06d}.root')
+        self.RawFilePath = self.load_raw_file_path()
+        self.OutFilePath = self.load_out_file_path()
 
         if load_file:
-            self.F = c.F if c.F is not None else h5py.File(c.OutFileName, 'r')
+            self.F = c.F if c.F is not None else h5py.File(c.OutFilePath, 'r')
 
         self.Steps = [(self.convert, self.OutFilePath)]
         self.AtStep = step
         self.Draw = Draw(Analysis.Config.FilePath)
 
     def __repr__(self):
-        return f'Raw file analysis run {self.Run} ({self.FilePath.name})'
+        return f'{self.__class__.__name__} file analysis run {self.Run} ({self.RawFilePath.name})'
 
     # ----------------------------------------
     # region CONVERT
-    def load_file_path(self):
+    def load_raw_file_path(self):
         n = list(self.DataDir.joinpath('raw').glob(f'run{self.Run:06d}*.raw'))
         return n[0] if len(n) else None
+
+    def load_out_file_path(self):
+        return self.SaveDir.joinpath(f'run{self.Run:06d}.root')
+
+    def load_soft_dir(self):
+        return self.Parent.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'eudaq2'))
 
     def generate_fit_files(self):
         c = None
@@ -57,14 +63,21 @@ class Raw:
                 c.save_fit_pars()
         return c.CalPath
 
+    @property
+    def soft(self):
+        return self.SoftDir.joinpath('bin', 'euCliConverter')
+
+    @property
+    def options(self):
+        return f'-c {self.generate_fit_files()}'
+
     def convert(self):
         """ convert binary raw file to root file with eudaq"""
-        cal_path = self.generate_fit_files()
-        if self.FilePath is None:
+        if self.RawFilePath is None:
             critical(f'raw file does not exist for run: {self.Run}')
         self.OutFilePath.parent.mkdir(exist_ok=True)
-        cmd = f'{self.SoftDir.joinpath("bin", "euCliConverter")} -i {self.FilePath} -o {self.OutFilePath} -c {cal_path}'
-        info(f'Convert {self.FilePath.name} to {self.OutFilePath.name} using EUDAQ-2\n')
+        cmd = f'{self.soft} -i {self.RawFilePath} -o {self.OutFilePath} {self.options}'
+        info(f'Convert {self.RawFilePath.name} to {self.OutFilePath.name} using {self.soft.name}\n')
         info(f'{cmd}\n')
         check_call(cmd, shell=True)
         for f in Path().glob('AutoDict_vector*'):
