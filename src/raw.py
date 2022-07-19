@@ -52,7 +52,7 @@ class Raw:
     def generate_fit_files(self):
         c = None
         for dut in range(self.Parent.NDUTPlanes):
-            c = self.Parent.get_calibration(dut)
+            c = self.Parent.load_calibration(dut)
             if not c.FitFileName.exists():
                 c.save_fit_pars()
         return c.CalPath
@@ -140,6 +140,5 @@ class Raw:
 
 if __name__ == '__main__':
 
-    a_ = Analysis()
-    c_ = Converter(a_.BeamTest.Path, 11)
+    c_ = Converter.from_ana(41, 1)
     z = Raw(c_, load_file=True, step=2)

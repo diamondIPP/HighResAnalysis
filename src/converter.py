@@ -56,7 +56,9 @@ class Converter:
     # region INIT
     @classmethod
     def from_run(cls, run: Run):
-        return cls(run.TCDir, run.Number)
+        cal = cls(run.TCDir, run.Number)
+        cal.Run = run
+        return cal
 
     @classmethod
     def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
@@ -73,8 +75,8 @@ class Converter:
         from src.raw import Raw
         return Raw(self)
 
-    def get_calibration(self, dut_number=0):
-        return Calibration(Run(self.Run.Number, dut_number, self.DataDir))
+    def load_calibration(self, dut_nr=None):
+        return Calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
     # endregion INIT
     # ----------------------------------------
 
@@ -258,11 +260,11 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=11)
+    parser.add_argument('run', nargs='?', default=41)
+    parser.add_argument('dut', nargs='?', default=1)
     pargs = parser.parse_args()
-    a = Analysis()
 
-    z = Converter(a.BeamTest.Path, pargs.run)
+    z = Converter.from_ana(pargs.run, pargs.dut)
     r = z.Raw
     p = z.Proteus
-    c = z.get_calibration()
+    c = z.load_calibration()
