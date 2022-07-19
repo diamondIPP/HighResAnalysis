@@ -12,14 +12,16 @@ from src.calibration import Calibration
 
 
 class Converter:
+    """
+    Converts EUDAQ2 raw files in several steps into hdf5 files.
+    STEP  0: raw -> root                  (EUDAQ2)
+    STEP  1: noisescan                    (proteus)
+    STEP  2: alignment                    (proteus)
+    STEP  3: track reconstruction         (proteus)
+    STEP  4: root -> hdf5                 (python)
+    """
 
     def __init__(self, data_dir: Path, run_number):
-        """ Converts EUDAQ2 raw files in several steps into hdf5 files.
-            STEP 0: raw -> root             (EUDAQ2)
-            STEP 1: noisescan               (proteus)
-            STEP 2: alignment               (proteus)
-            STEP 3: track reconstruction    (proteus)
-            STEP 4: root -> hdf5            (python) """
 
         self.Run = Run(run_number, 0, data_dir, single_mode=True)
 
