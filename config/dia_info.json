@@ -760,5 +760,14 @@
     "thickness": "500",
     "size": "[2.0, 2.0]",
     "manufacturer": "II-VI"
+  },
+  "Si-D7": {
+    "irradiation": {
+      "201809": "0",
+      "201810": "0"
+    },
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "PSI"
   }
 }
