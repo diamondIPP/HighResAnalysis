@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TGraph
-from numpy import genfromtxt, all, delete, round, argmax, vectorize, savetxt
+from numpy import genfromtxt, all, delete, round, argmax, savetxt
 
 from plotting.draw import Draw, FitRes
 from plotting.fit import Erf
@@ -21,6 +21,7 @@ class Calibration:
 
         # INFO
         self.Run = run
+        self.DUT = run.DUT
         self.Plane = run.DUT.Plane
         self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
         self.Draw = Draw(config=Analysis.Config)
@@ -49,12 +50,16 @@ class Calibration:
     # ----------------------------------------
     # region INIT
     def get_trim_number(self, n=None):
+        if f'trim{self.DUT.Number}' not in self.Run.Logs:
+            return None, None
         trim, number = [int(v) for v in self.Run.Logs[f'trim{self.Run.DUT.Number}'].split('-')]
         return trim, choose(n, number)
 
     def get_file_name(self):
-        f = list(self.Dir.glob(f'phCalibration{self.Trim}*-{self.Number}.dat'))
-        return f[0] if len(f) else critical(f'Pulse height calibration file "{self.Trim}-{self.Number}" does not exist in {self.Dir} ...')
+        trim, n = choose('', self.Trim), '' if self.Number is None else f'-{self.Number}'
+        f = list(self.Dir.glob(f'phCalibration{trim}*{n}.dat'))
+        info(f'reading calibration file {f[0].name} for {self.DUT}') if f else do_nothing()
+        return f[0] if f else critical(f'Pulse height calibration file {"" if trim is None else f"{trim}-{n} "}does not exist in {self.Dir} ...')
 
     def get_fit_file(self):
         f = list(self.Dir.glob(f'phCalibrationFitErr{self.Trim}*-{self.Number}.dat'))
@@ -138,8 +143,8 @@ class Calibration:
     def fit_all(self):
         info('fit calibration points ...')
         x, y = self.vcals, self.get_all_points()
-        self.PBar.start(self.NPix)
-        self.Fits = array([[self.fit(x, iy) for iy in lst] for lst in y], dtype=object)
+        PBAR.start(self.NPix)
+        self.Fits = [[self.fit(x, iy) for iy in lst] for lst in y]
         return self.Fits
 
     def get_fits(self):
@@ -147,7 +152,7 @@ class Calibration:
 
     @save_hdf5('Chi2', arr=True, dtype='f4')
     def get_chi2s(self, _redo=False):
-        return vectorize(lambda x: 1000 if x is None else x.get_chi2())(self.get_fits())
+        return array([[1000 if fit is None else fit.get_chi2() for fit in lst] for lst in self.get_fits()])
 
     @update_pbar
     def get_vcal(self, f, adc):
@@ -157,7 +162,7 @@ class Calibration:
     def get_lookup_table(self, _redo=False):
         fits = self.get_fits()
         info('creating calibration LUT ... ')
-        self.PBar.start(256 * self.NPix)
+        PBAR.start(256 * self.NPix)
         return array([[[0 if f is None else self.get_vcal(f.Fit, i) for i in range(256)] for f in lst] for lst in fits])
 
     def save_fit_pars(self):
