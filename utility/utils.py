@@ -159,10 +159,14 @@ def has_root():
         return False
 
 
-def open_root_file(filename):
+def open_root_file(filename, option=''):
     if file_exists(filename):
-        return TFile(str(filename))
+        return TFile(str(filename), option)
     critical(f'The file: "{filename}" does not exist...')
+
+
+def create_root_file(filename, option='recreate'):
+    return TFile(str(filename), option)
 
 
 def choose(v, default, decider='None', *args, **kwargs):
