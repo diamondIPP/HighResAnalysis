@@ -35,6 +35,7 @@ class Converter:
 
         # PRE-CONVERTER
         self.Raw = self.init_raw()
+        self.RawFilePath = self.load_raw_file_path()
         self.Proteus = self.init_proteus()
 
         # FILES
@@ -42,19 +43,24 @@ class Converter:
         self.TrackFile = None
         self.F = None
 
-        self.Steps = self.Raw.Steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFilePath)]
-        self.PBar = PBar()
-
     def __repr__(self):
         return f'{self.__class__.__name__} of {self.Run!r}'
 
     def run(self):
-        for i, (s, f) in enumerate(self.Steps):
+        for i, (s, f) in enumerate(self.steps):
             if not f.exists():
                 print_banner(f'Start converter step {i}: {s.__doc__}')
                 s()
             else:
-                info(f'found out file {f} for step {i}, continue with next step')
+                info(f'found out file of step {i}, continue with next step ({f})')
+
+    @property
+    def first_steps(self):
+        return self.Raw.Steps
+
+    @property
+    def steps(self):
+        return self.first_steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFilePath)]
 
     # ----------------------------------------
     # region INIT
@@ -73,7 +79,7 @@ class Converter:
         soft_dir = self.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'proteus'))
         data_dir = self.DataDir.joinpath('proteus')
         conf_dir = Dir.joinpath('proteus')
-        return Proteus(soft_dir, data_dir, conf_dir, self.Raw.OutFilePath, *[Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']])
+        return Proteus(soft_dir, data_dir, conf_dir, self.RawFilePath, *[Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']])
 
     def init_raw(self):
         from src.raw import Raw
@@ -81,6 +87,9 @@ class Converter:
 
     def load_calibration(self, dut_nr=None):
         return Calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
+
+    def load_raw_file_path(self):
+        return self.Raw.OutFilePath
     # endregion INIT
     # ----------------------------------------
 
@@ -118,7 +127,7 @@ class Converter:
     def add_planes(self):
         n = self.NTelPlanes + self.NDUTPlanes
         info(f'add {self.NTelPlanes + self.NDUTPlanes} planes ... ')
-        self.PBar.start(n * 2)
+        PBAR.start(n * 2)
         for pl in range(n):
             self.add_plane(pl)
 
@@ -200,7 +209,7 @@ class Converter:
         return True if v.startswith('6') else critical(f'ROOT 6 required for the conversion! Current version: {v}')
 
     def remove_files(self, all_=False):
-        for s, f in self.Steps:
+        for s, f in self.steps:
             if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
                 remove_file(f)
     # endregion MISC
