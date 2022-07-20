@@ -3,12 +3,16 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+import uproot
 from numpy import all, ones, count_nonzero
 
-from src.proteus import Proteus
-from utility.utils import *
-from src.run import Run, Analysis
 from src.calibration import Calibration
+from src.proteus import Proteus
+from src.run import Run, Analysis
+from utility.utils import *
+from uproot.models import TTree
+from uproot import ReadOnlyDirectory
+from dataclasses import field
 
 
 class Converter:
@@ -35,12 +39,12 @@ class Converter:
 
         # PRE-CONVERTER
         self.Raw = self.init_raw()
-        self.RawFilePath = self.load_raw_file_path()
         self.Proteus = self.init_proteus()
 
         # FILES
         self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
-        self.TrackFile = None
+        self.TrackFile = None                                # output from proteus
+        self.RawFile: ReadOnlyDirectory = field(init=False)  # output from proteus
         self.F = None
 
     def __repr__(self):
@@ -60,7 +64,7 @@ class Converter:
 
     @property
     def steps(self):
-        return self.first_steps + self.Proteus.Steps + [(self.root_2_hdf5, self.OutFilePath)]
+        return self.first_steps + self.Proteus.Steps + [(self.root2hdf5, self.OutFilePath)]
 
     # ----------------------------------------
     # region INIT
@@ -78,8 +82,9 @@ class Converter:
     def init_proteus(self):
         soft_dir = self.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'proteus'))
         data_dir = self.DataDir.joinpath('proteus')
-        conf_dir = Dir.joinpath('proteus')
-        return Proteus(soft_dir, data_dir, conf_dir, self.RawFilePath, *[Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']])
+        conf_dir = Dir.joinpath('proteus', self.DataDir.stem)
+        me, se = [Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']]
+        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se)
 
     def init_raw(self):
         from src.raw import Raw
@@ -88,20 +93,21 @@ class Converter:
     def load_calibration(self, dut_nr=None):
         return Calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
 
-    def load_raw_file_path(self):
+    def proteus_raw_file_path(self):
         return self.Raw.OutFilePath
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region HDF5
-    def root_2_hdf5(self):
+    def root2hdf5(self):
         """ convert tracked root file to hdf5 file. """
         remove_file(self.OutFilePath)  # remove hdf5 file if it exists
-        start_time = info('Start root->hdf5 conversion ...')
+        start_time = info('Start root -> hdf5 conversion ...')
 
         self.F = h5py.File(self.OutFilePath, 'w')
         self.TrackFile = TFile(str(self.Proteus.OutFilePath))
+        self.RawFile = uproot.open(self.Proteus.OutFilePath)
 
         self.add_tracks()
         self.add_planes()
@@ -109,69 +115,70 @@ class Converter:
         add_to_info(start_time, '\nFinished conversion in')
 
     def add_tracks(self):
-        info('add track information ...')
+        t0 = info('add track information ...', endl=False)
         g = self.F.create_group('Tracks')
         b = array([['evt_frame', 'Events', 'u4'], ['evt_ntracks', 'N', 'u1'],
-                   ['trk_size', 'Size', 'f2'],
-                   ['trk_chi2', 'Chi2', 'f2'], ['trk_dof', 'Dof', 'u1'],
-                   ['trk_du', 'SlopeX', 'f2'], ['trk_dv', 'SlopeY', 'f2']]).T
-        tree = self.TrackFile.Get('C0').Get('tracks_clusters_matched')  # same for all plane dirs
-        tree.SetEstimate(-1)
+                   ['trk_size',  'Size',   'f2'],
+                   ['trk_chi2',  'Chi2',   'f2'], ['trk_dof', 'Dof', 'u1'],
+                   ['trk_du',    'SlopeX', 'f2'], ['trk_dv', 'SlopeY', 'f2']]).T
+        tree = self.RawFile['C0/tracks_clusters_matched']
         self.add_time_stamp(tree)
         self.add_data(tree, g, b)
+        add_to_info(t0)
 
-    def add_time_stamp(self, tree):
-        t = get_tree_vec(tree, var='evt_timestamp', dtype='u8')
+    def add_time_stamp(self, tree: TTree):
+        t = array(tree['evt_timestamp'])
         self.F['Tracks'].create_dataset('Time', data=((t - t[0]) / 1e9).astype('f4'))  # time stamp is just a number counting up
 
     def add_planes(self):
         n = self.NTelPlanes + self.NDUTPlanes
-        info(f'add {self.NTelPlanes + self.NDUTPlanes} planes ... ')
+        info(f'add {n} planes ... ')
         PBAR.start(n * 2)
         for pl in range(n):
             self.add_plane(pl)
 
     def add_plane(self, i):
         g = self.F.create_group(f'Plane{i}')
-        key = self.TrackFile.GetListOfKeys()[i].GetName()
+        key = list(self.RawFile.keys(recursive=False))[i]
 
         # mask
-        m_tree = self.TrackFile.Get(key).Get('masked_pixels')
-        g.create_dataset('Mask', data=get_tree_vec(m_tree, ['col', 'row'], dtype='u2'))
+        m_tree = self.RawFile[f'{key}/masked_pixels']
+        g.create_dataset('Mask', data=array(list(m_tree.arrays(library='np').values()), 'u2'))
 
         # cluster & track interpolations
-        tree = self.TrackFile.Get(key).Get('tracks_clusters_matched')
-        tree.SetEstimate(-1)
+        tree = self.RawFile[f'{key}/tracks_clusters_matched']
         self.add_plane_tracks(g, tree)
         self.add_clusters(g, tree)
         if i >= self.NTelPlanes:
             self.add_trigger_info(g)
 
     @update_pbar
-    def add_plane_tracks(self, group, tree):
+    def add_plane_tracks(self, group, tree: TTree):
         g = group.create_group('Tracks')
         b = array([['trk_u', 'U', 'f2'], ['trk_v', 'V', 'f2'], ['trk_col', 'X', 'f2'], ['trk_row', 'Y', 'f2'], ['trk_std_u', 'eU', 'f2'], ['trk_std_v', 'eV', 'f2']]).T
         self.add_data(tree, g, b)
 
     @update_pbar
-    def add_clusters(self, group, tree):
+    def add_clusters(self, group, tree: TTree):
         g = group.create_group('Clusters')
-        cs = self.add_data(tree, g, array([['clu_size', 'Size', 'u2'], ['evt_nclusters', 'N', 'u2']]).T)[0]
+        cs = self.add_data(tree, g, array([['clu_size', 'Size', 'u2'], ['evt_nclusters', 'N', 'u2']]).T)['clu_size']
         b = array([['clu_u', 'U', 'f2'], ['clu_v', 'V', 'f2'], ['clu_col', 'X', 'f2'], ['clu_row', 'Y', 'f2']]).T
         self.add_data(tree, g, b, cut=cs > 0)  # filter out the nan events
 
+    def trigger_info_file(self):
+        return self.Raw.OutFilePath
+
     def add_trigger_info(self, group):
-        f = TFile(str(self.Raw.OutFilePath))
-        t = f.Get(group.name.strip('/')).Get('Hits')
-        t.SetEstimate(-1)
+        tree = uproot.open(self.trigger_info_file())[f'{group.name}/Hits']
         g = group.create_group('Trigger')
-        self.add_data(t, g, array([['TriggerPhase', 'Phase', 'u1'], ['TriggerCount', 'Count', 'u1']]).T)
+        b = array([[key, key.replace('Trigger', ''), 'u1'] for key in tree.keys(filter_name='Trigger*')]).T
+        self.add_data(tree, g, b)
 
     @staticmethod
-    def add_data(tree, g, b, cut=...):
-        data = get_tree_vec(tree, b[0], dtype=b[2])
-        for i, n in enumerate(b[1]):
-            g.create_dataset(n, data=data[i][cut])
+    def add_data(tree: TTree, g, b, cut=...):
+        data = tree.arrays(b[0], library='np')
+        for i, (old_name, new_name, dtype) in enumerate(b.T):
+            g.create_dataset(new_name, data=data[old_name][cut].astype(dtype))
         return data
     # endregion HDF5
     # ----------------------------------------
