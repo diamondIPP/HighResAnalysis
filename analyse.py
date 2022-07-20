@@ -14,7 +14,7 @@ from utility.utils import *  # noqa
 
 t_start = time()
 aparser = ArgumentParser()
-aparser.add_argument('run', nargs='?', default=17, type=int)
+aparser.add_argument('run', nargs='?', default=128, type=int)
 aparser.add_argument('dut', nargs='?', default=1, type=int)
 aparser.add_argument('--testcampaign', '-tc', nargs='?', default=Analysis.find_testcampaign())
 aparser.add_argument('--verbose', '-v', action='store_false')
@@ -34,7 +34,7 @@ if not args.test and not z.has_alignment():
     z.remove_metadata()
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 
-z.add_info(t_start, prnt=True)
+z.add_info(t_start, 'Init time:', prnt=True)
 
 # aliases
 try:

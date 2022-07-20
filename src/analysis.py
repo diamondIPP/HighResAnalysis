@@ -79,7 +79,7 @@ class Analysis:
         return info(msg, blank_lines, endl, choose(prnt, self.Verbose))
 
     def add_info(self, t, msg='Done', prnt=None):
-        add_to_info(t, msg, choose(prnt, self.Verbose))
+        add_to_info(t, msg, prnt=choose(prnt, self.Verbose))
 
     def make_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
         directory = self.MetaDir.joinpath(self.MetaSubDir if sub_dir is None else sub_dir)
