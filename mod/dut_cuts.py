@@ -7,7 +7,7 @@ from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, nd
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
-from utility.utils import Dir, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
+from utility.utils import critical, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
 
 
 def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, cfield=None, **pkwargs):
@@ -48,8 +48,14 @@ class DUTCut(Cuts):
         """ guarantee that the cut array has the correct size """
         return None if values is None else super().register(name, self(cut=False, data=values), level, description)
 
+    @property
+    def config_file(self):
+        return self.Dir.joinpath(f'cut{self.Ana.BeamTest.Tag}.ini')
+
     def init_config(self):
-        return Config(Dir.joinpath('cuts', f'cut{self.Ana.BeamTest.Tag}.ini'), section=self.Ana.DUT.Name)
+        if not self.config_file.exists():
+            critical(f'analysis config file "{self.config_file}" does not exist!')
+        return Config(self.config_file, section=self.Ana.DUT.Name)
 
     def make(self, redo=False):
         self.register('fid', self.make_fiducial(redo=redo), 10, 'fid cut')

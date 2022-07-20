@@ -6,7 +6,7 @@
 from typing import Any
 from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil, ndarray
 
-from utility.utils import print_table, warning, join, make_list, choose, Dir, is_iter
+from utility.utils import print_table, warning, join, make_list, choose, Dir, is_iter, critical
 from plotting.utils import Config
 
 
@@ -15,6 +15,7 @@ class Cuts:
 
     def __init__(self):
 
+        self.Dir = Dir.joinpath('cuts')
         self.Config = self.init_config()
         self.Cuts = {}
         self.make()
@@ -37,8 +38,14 @@ class Cuts:
         k, n = (count_nonzero(self()), self().size) if self.n else (0, 0)
         return f'{self} instance with {self.n} cuts' + (f', selecting {k}/{n} events ({100 * k / n:.1f} %)' if n else '')
 
+    @property
+    def config_file(self):
+        return self.Dir.joinpath('cut.ini')
+
     def init_config(self):
-        return Config(join(Dir, 'cuts', 'cut.ini'))
+        if not self.config_file.exists():
+            critical(f'analysis config file "{self.config_file}" does not exist!')
+        return Config(self.config_file)
 
     def make(self, redo=False):
         pass
