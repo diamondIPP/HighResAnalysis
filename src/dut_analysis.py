@@ -4,15 +4,16 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import vstack
+
+import cern.converter
 import src.bins as bins
+import src.converter
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
 from src.analysis import *
 from src.calibration import Calibration
-from src.converter import Converter
 from src.currents import Currents
 from src.run import Run
-from src.dummy import Dummy
 from src.dut import Plane
 from utility.utils import *
 from utility.affine_transformations import transform, m_transform
@@ -32,11 +33,10 @@ class DUTAnalysis(Analysis):
         self.Plane = self.DUT.Plane
 
         # DATA
-        self.Converter = Converter.from_run(self.Run)
+        self.Converter = self.converter.from_run(self.Run)
         if test:
             return
 
-        self.Dummy = Dummy(self.BeamTest.Path, self.Converter.NTelPlanes, self.Converter.NDUTPlanes)
         self.F = self.load_file(test)
         self.T = False
 
@@ -69,6 +69,10 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region INIT
+    @property
+    def converter(self):
+        return cern.converter.CERNConverter if self.BeamTest.Location == 'CERN' else src.converter.Converter
+
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
         return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT') for i in range(n_tel + n_dut)]
@@ -102,12 +106,11 @@ class DUTAnalysis(Analysis):
             self.Converter.run()
             try:
                 f = h5py.File(self.Run.FileName, 'r')
-                _ = f['Tracks']  # check if data is complete
+                _ = f['Tracks']         # check if data is complete
                 _ = f[str(self.Plane)]  # check if data is complete
                 return f
-            except (KeyError, OSError):
-                warning(f'could not load data file {self.Run.FileName} -> start with dummy')
-        return self.Dummy.load_file()
+            except (KeyError, OSError) as err:
+                critical(f'error loading data file {self.Run.FileName}\n{err}')
 
     def reload_data(self):
         self.F = self.load_file()

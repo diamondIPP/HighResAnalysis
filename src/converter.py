@@ -3,16 +3,18 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+
+from dataclasses import field
+
 import uproot
 from numpy import all, ones, count_nonzero
+from uproot import ReadOnlyDirectory
+from uproot.models import TTree
 
 from src.calibration import Calibration
 from src.proteus import Proteus
 from src.run import Run, Analysis
 from utility.utils import *
-from uproot.models import TTree
-from uproot import ReadOnlyDirectory
-from dataclasses import field
 
 
 class Converter:
@@ -43,20 +45,22 @@ class Converter:
 
         # FILES
         self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
-        self.TrackFile = None                                # output from proteus
         self.RawFile: ReadOnlyDirectory = field(init=False)  # output from proteus
         self.F = None
 
     def __repr__(self):
         return f'{self.__class__.__name__} of {self.Run!r}'
 
-    def run(self):
-        for i, (s, f) in enumerate(self.steps):
-            if not f.exists():
-                print_banner(f'Start converter step {i}: {s.__doc__}')
-                s()
-            else:
-                info(f'found out file of step {i}, continue with next step ({f})')
+    def run(self, force=False):
+        if force or not self.OutFilePath.exists():
+            t0 = info(f'Starting {self!r}\n')
+            for i, (s, f) in enumerate(self.steps):
+                if not f.exists():
+                    print_banner(f'Start converter step {i}: {s.__doc__}')
+                    s()
+                else:
+                    info(f'found out file of step {i}, continue with next step ({f})')
+            add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
 
     @property
     def first_steps(self):
@@ -106,13 +110,12 @@ class Converter:
         start_time = info('Start root -> hdf5 conversion ...')
 
         self.F = h5py.File(self.OutFilePath, 'w')
-        self.TrackFile = TFile(str(self.Proteus.OutFilePath))
         self.RawFile = uproot.open(self.Proteus.OutFilePath)
 
         self.add_tracks()
         self.add_planes()
 
-        add_to_info(start_time, '\nFinished conversion in')
+        add_to_info(start_time, '\nFinished hdf5 conversion in')
 
     def add_tracks(self):
         t0 = info('add track information ...', endl=False)
@@ -124,7 +127,7 @@ class Converter:
         tree = self.RawFile['C0/tracks_clusters_matched']
         self.add_time_stamp(tree)
         self.add_data(tree, g, b)
-        add_to_info(t0)
+        add_to_info(t0, color=GREEN)
 
     def add_time_stamp(self, tree: TTree):
         t = array(tree['evt_timestamp'])
