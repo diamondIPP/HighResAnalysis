@@ -10,6 +10,7 @@ from numpy import array
 from plotting.utils import info, warning, choose
 from utility.utils import print_banner, GREEN, print_elapsed_time
 from subprocess import check_call, CalledProcessError
+from shutil import copytree
 
 
 class Proteus:
@@ -28,8 +29,8 @@ class Proteus:
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
-        self.Out = self.DataDir.joinpath('root', f'tracked-{self.RunNumber:04d}')   # name for proteus
-        self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')        # final file
+        self.Out = self.DataDir.joinpath(f'tracked-{self.RunNumber:04d}')     # name for proteus
+        self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')  # final file
 
         self.N = max_events
         self.S = skip_events
@@ -40,8 +41,13 @@ class Proteus:
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
+    def __create_default_cfg(self):
+        copytree(self.ConfigDir.with_name('default'), self.ConfigDir)
+
     def get_align_steps(self):
-        # toml.load(PurePath('bla'))
+        if not self.ConfigDir.is_dir():
+            warning(f'no proteus config found for {self.ConfigDir.stem}, creating default!')
+            self.__create_default_cfg()
         return list(toml.load(str(self.ConfigDir.joinpath('align.toml')))['align'])
 
     def get_align_files(self):
@@ -69,7 +75,7 @@ class Proteus:
 
     # ----------------------------------------
     # region RUN
-    def run(self, prog, out, cfg=None, geo=None, section=None, f=None, n=None, s=None):
+    def run(self, prog, out: Path, cfg=None, geo=None, section=None, f=None, n=None, s=None):
         old_dir = Path.cwd()
         chdir(self.ConfigDir)  # proteus needs to be in the directory where all the toml files are (for the default args)...
         cfg = '' if cfg is None else f' -c {str(cfg).replace(".toml", "")}.toml'
@@ -89,6 +95,7 @@ class Proteus:
         """ step 1: find noisy pixels. """
         d = Path('mask')
         cfg = toml.load(str(self.ConfigDir.joinpath('noisescan.toml')))['noisescan']
+        self.ConfigDir.joinpath(d).mkdir(exist_ok=True)
         self.make_empty_masks(cfg)
         for section in cfg:
             print_banner(f'Starting noise scan for {section}', color=GREEN)
@@ -98,6 +105,7 @@ class Proteus:
         """ step 2: align the telescope in several steps. """
         t = info('Starting alignment ...')
         d = Path('alignment')
+        self.ConfigDir.joinpath(d).mkdir(exist_ok=True)
         for i in range(len(self.AlignSteps)) if step is None else [step]:
             step = self.AlignSteps[i]
             if not self.toml_name(step).exists() or force:
