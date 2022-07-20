@@ -1,0 +1,45 @@
+#noise scan parameters for the telescope.
+[noisescan.tel]
+sigma_above_avg_max = 2.0   # cut that defines how many sigma above avg a pixel must have to be considered noisy
+rate_max = 0.1              # max hits per pixel per event
+density_bandwidth = 2.0     # Parameter to calculate the expected number of hits in each pixel
+
+#for each sensor, the noise scan will be run in the region defined by col_min, col_max, row_min and row_max
+[[noisescan.tel.sensors]]
+id = 0
+[[noisescan.tel.sensors]]
+id = 1
+[[noisescan.tel.sensors]]
+id = 2
+[[noisescan.tel.sensors]]
+id = 3
+[[noisescan.tel.sensors]]
+id = 4
+[[noisescan.tel.sensors]]
+id = 5
+
+#noise scan parameters for the reference DUT.
+[noisescan.ref]
+sigma_above_avg_max = 8.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
+rate_max = 0.001 # max hits per pixel per event
+density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
+
+[[noisescan.ref.sensors]]
+id = 6
+col_min = 1
+col_max = 50
+row_min = 1
+row_max = 71
+
+#noise scan parameters for the DUT.
+[noisescan.dut]
+sigma_above_avg_max = 30.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
+rate_max = 0.001 # max hits per pixel per event
+density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
+
+[[noisescan.dut.sensors]]
+id = 7
+col_min = 14
+col_max = 36
+row_min = 51
+row_max = 71

@@ -1,0 +1,58 @@
+[beam]
+# in GeV
+energy = 4.0
+slope = [0.0, 0.0]
+divergence = [0.001, 0.001]
+
+
+# from edge of last plane: [0, 129.5, 291, 349, 366, 420, 564.5, 700]
+# distance from edge to mimosa: 12.4
+# in mm
+[[sensors]]
+id = 0
+offset = [0.0, 0.0, 0.0]
+unit_u = [1.0, 0.0, 0.0]
+unit_v = [0.0, 1.0, 0.0]
+
+[[sensors]] 
+id = 1
+offset = [0.0, 0.0, 135.5]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 2
+offset = [0.0, 0.0, 280.0]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 3
+offset = [0.0, 0.0, 409.0]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 4
+offset = [0.0, 0.0, 570.5]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 5
+offset = [0.0, 0.0, 700.0]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 6
+offset = [0.0, 0.0, 363.4]
+unit_u = [1.0, 0.0,   0.0]
+unit_v = [0.0, 1.0,   0.0]
+
+[[sensors]]
+id = 7
+offset = [0.0, 0.0, 346.4]
+unit_u = [-1.0, 0.0,  0.0]
+unit_v = [0.0, 1.0,   0.0]
+
