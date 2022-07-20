@@ -4,7 +4,6 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.converter import Converter
-from utility.utils import *
 from subprocess import check_call
 
 
@@ -21,9 +20,16 @@ class CERNConverter(Converter):
 
         Converter.__init__(self, data_dir, run_number)
         self.Adc2Vcal = self.init_adc2vcal()
-        self.RawFileName = self.DataDir.joinpath('data', f'run{self.Run:04d}.root')
 
-        self.Steps = self.Adc2Vcal.Steps + self.Raw.Steps + [(self.merge_root_files, self.RawFileName)]
+    def proteus_raw_file_path(self):
+        return self.DataDir.joinpath('data', f'run{self.Run:04d}.root')
+
+    def trigger_info_file(self):
+        return self.Adc2Vcal.RawFilePath
+
+    @property
+    def first_steps(self):
+        return self.Adc2Vcal.Steps + self.Raw.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
 
     def init_raw(self):
         from cern.raw import CERNRaw
@@ -35,7 +41,7 @@ class CERNConverter(Converter):
 
     def merge_root_files(self):
         """merge the telescope and DUT root files"""
-        cmd = f'hadd {self.RawFileName} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
+        cmd = f'hadd {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
         info(cmd)
         check_call(cmd, shell=True)
 
@@ -43,6 +49,8 @@ class CERNConverter(Converter):
 if __name__ == '__main__':
 
     from argparse import ArgumentParser
+    import uproot, awkward as aw  # noqa
+    from numpy import *
 
     p = ArgumentParser()
     p.add_argument('run', nargs='?', default=128, type=int)
@@ -54,3 +62,4 @@ if __name__ == '__main__':
     r = z.Raw
     c = z.load_calibration()
     p = z.Proteus
+    draw = c.Draw
