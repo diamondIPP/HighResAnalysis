@@ -32,11 +32,7 @@ class TrackAnalysis(DUTAnalysis):
     # region DATA
     def get_n(self, cut=None):
         """returns: number of tracks in trk-space"""
-        return self.get_data('EvtNtracks', cut=cut, main_grp='Tracks')
-
-    def get_n_ev(self):
-        """returns: number of tracks per event. """
-        return self.get_data('NTracks', cut=False, main_grp='Tracks')
+        return self.get_data('N', cut=cut, main_grp='Tracks')
 
     def get_size(self, cut=None):
         """returns: number of planes per track"""
@@ -79,9 +75,6 @@ class TrackAnalysis(DUTAnalysis):
 
     def draw_n(self, cut=None, **dkw):
         return self.Draw.distribution(self.get_n(cut), **prep_kw(dkw, title='NTracks', x0=-.5, w=1, x_tit='Number of Tracks'))
-
-    def draw_n_ev(self, **dkw):
-        return self.Draw.distribution(self.get_n_ev(), **prep_kw(dkw, title='NTracks', x0=-.5, w=1, rf=1, x_tit='Number of Tracks'))
 
     def draw_map(self, bw=.3, local=True, cut=None, dut_plane=True, trans=True, **dkw):
         binning = bins.get_xy(local, self.Plane if dut_plane else self.Tel.Plane, bw, aspect_ratio=True)
