@@ -3,11 +3,13 @@
        adc converter for CERN DUT data
  created on April 22nd 2022 by M. Reichmann (remichae@phys.ethz.ch)
  --------------------------------------------------------"""
-from src.converter import Converter
-from plotting.utils import info, array
-from utility.utils import PBAR
-import uproot
 import awkward as aw
+import uproot
+from numpy import round
+
+from plotting.utils import info, array
+from src.converter import Converter
+from utility.utils import PBAR
 
 
 class Adc2Vcal:
@@ -21,6 +23,8 @@ class Adc2Vcal:
         self.DataDir = c.DataDir.joinpath('dut')
         self.RawFilePath = self.DataDir.joinpath(f'ljutel_{c.Run:03d}.root')
         self.OutFilePath = self.RawFilePath.with_name(f'dut-run{c.Run:04d}.root')
+
+        self.FlatBranches = ['NHits', 'Timing', 'TriggerCount']
 
         self.Steps = [(self.convert, self.OutFilePath)]
 
@@ -36,10 +40,12 @@ class Adc2Vcal:
                     dir_name = f'Plane{self.NTelPlanes + i}'
                     x, y, adc = f[f'{dir_name}/Hits'].arrays(['PixX', 'PixY', 'Value'], library='np').values()
                     lut = self.Parent.load_calibration(dut_nrs[i]).get_lookup_table()
-                    vcal = [[lut[lx[i], ly[i], int(lz[i])] for i in range(lx.size)] for lx, ly, lz in zip(x, y, adc)]
-                    data = f[f'{dir_name}/Hits'].arrays(filter_name=lambda w: 'NHits' not in w)
-                    data['Value'] = vcal
+                    vcal = [round([lut[lx[i], ly[i], int(lz[i])] for i in range(lx.size)]).astype('i') for lx, ly, lz in zip(x, y, adc)]
+                    data = f[f'{dir_name}/Hits'].arrays(filter_name=lambda w: not any([b in w for b in self.FlatBranches]))
+                    data['Value'] = aw.values_astype(vcal, 'int32')
                     d = g.mkdir(dir_name)
-                    d['Hits'] = {'NHits': array(f[f'{dir_name}/Hits']['NHits']), '': aw.zip({n: data[n] for n in data.fields})}
+                    flat = {n: arr.flatten() for n, arr in f[f'{dir_name}/Hits'].arrays(self.FlatBranches, library='np').items()}
+                    flat['Timing'] = flat['Timing'].astype('i')
+                    d['Hits'] = {**{k: v.flatten() for k, v in flat.items()}, 'TriggerPhase': flat['Timing'].astype('u2'), '': aw.zip({n: data[n] for n in data.fields})}
                     PBAR.update()
         info(f'successfully wrote {self.OutFilePath} ({x.size} ev)')
