@@ -165,7 +165,7 @@ class Converter:
     def add_clusters(self, group, tree: TTree):
         g = group.create_group('Clusters')
         cs = self.add_data(tree, g, array([['clu_size', 'Size', 'u2'], ['evt_nclusters', 'N', 'u2']]).T)['clu_size']
-        b = array([['clu_u', 'U', 'f2'], ['clu_v', 'V', 'f2'], ['clu_col', 'X', 'f2'], ['clu_row', 'Y', 'f2']]).T
+        b = array([['clu_u', 'U', 'f2'], ['clu_v', 'V', 'f2'], ['clu_col', 'X', 'f2'], ['clu_row', 'Y', 'f2'], ['clu_value', 'Charge', 'i']]).T
         self.add_data(tree, g, b, cut=cs > 0)  # filter out the nan events
 
     def trigger_info_file(self):
@@ -238,4 +238,4 @@ if __name__ == '__main__':
     r = z.Raw
     p = z.Proteus
     c = z.load_calibration()
-    run = z.Run
+    rn = z.Run
