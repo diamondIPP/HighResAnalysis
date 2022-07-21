@@ -92,7 +92,7 @@ class DUTCut(Cuts):
         return self.make_cluster_mask(*self.get_config('mask', default=zeros((0, 2))).T)
 
     def get_thresh_mask(self):
-        return where(self.Ana.Calibration.get_thresholds() > self.Ana.Calibration.Trim * 1.5)
+        return where(self.Ana.Calibration.get_thresholds() > self.Ana.Calibration.get_trim() * 1.5)
 
     @save_cut('TMask')
     def make_cal_thresh_mask(self, _redo=False):

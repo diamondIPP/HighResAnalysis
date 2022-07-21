@@ -230,11 +230,12 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=41)
-    parser.add_argument('dut', nargs='?', default=1)
+    parser.add_argument('run', nargs='?', default=11)
+    parser.add_argument('dut', nargs='?', default=0)
     pargs = parser.parse_args()
 
-    z = Converter.from_ana(pargs.run, pargs.dut)
+    z = Converter.from_ana(pargs.run, pargs.dut, single_mode=True)
     r = z.Raw
     p = z.Proteus
     c = z.load_calibration()
+    run = z.Run

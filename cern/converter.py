@@ -64,3 +64,4 @@ if __name__ == '__main__':
     c = z.load_calibration()
     p = z.Proteus
     draw = c.Draw
+    adc = z.Adc2Vcal
