@@ -507,3 +507,15 @@ def eff2u(eff):
 
 def eff2str(eff, u='\\percent', f='.2f'):
     return f'\\SIerr{{{eff[0]:{f}}}}{{{eff[2]:{f}}}}{{{eff[1]:{f}}}}{{{u}}}'
+
+
+def show_hdf5(f: h5py.File, *exclude, ex_str=None):
+    print('.')
+    for i0, (key, grp) in enumerate(f.items()):
+        if not any([key == word for word in exclude]) or ex_str not in key:
+            print(f'├── {key}')
+            for k, g in grp.items():
+                print(f'{"│" if i0 < len(f.keys()) - 1 else " "}   ├── {k}')
+                if hasattr(g, 'keys'):
+                    for i in g.keys():
+                        print(f'│   │   ├── {i}')
