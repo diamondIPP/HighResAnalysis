@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 from src.converter import Converter
 from subprocess import check_call
+from plotting.utils import info as pinfo
 
 
 class CERNConverter(Converter):
@@ -39,10 +40,10 @@ class CERNConverter(Converter):
         from cern.adc import Adc2Vcal
         return Adc2Vcal(self)
 
-    def merge_root_files(self):
+    def merge_root_files(self, force=False):
         """merge the telescope and DUT root files"""
-        cmd = f'hadd {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
-        info(cmd)
+        cmd = f'hadd {"-f" if force else ""} {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
+        pinfo(cmd)
         check_call(cmd, shell=True)
 
 
