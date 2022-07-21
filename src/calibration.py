@@ -17,6 +17,8 @@ from utility.utils import *
 
 class Calibration:
 
+    DefaultTrim = 40
+
     def __init__(self, run: Run, n=None):
 
         # INFO
@@ -50,10 +52,13 @@ class Calibration:
     # ----------------------------------------
     # region INIT
     def get_trim_number(self, n=None):
-        if f'trim{self.DUT.Number}' not in self.Run.Logs:
+        if f'trim' not in self.Run.Logs:
             return None, None
-        trim, number = [int(v) for v in self.Run.Logs[f'trim{self.Run.DUT.Number}'].split('-')]
+        trim, number = [int(v) for v in self.Run.Logs['trim'][self.DUT.Number].split('-')]
         return trim, choose(n, number)
+
+    def get_trim(self):
+        return choose(self.Trim, Calibration.DefaultTrim)
 
     def get_file_name(self):
         trim, n = choose('', self.Trim), '' if self.Number is None else f'-{self.Number}'
