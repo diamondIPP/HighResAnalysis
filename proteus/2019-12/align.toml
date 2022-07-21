@@ -39,42 +39,42 @@ estimate_beam_parameters = true
 #reduced_chi2_max = 10.0 # chi2 cut for track finding
 #estimate_beam_parameters = true
 
-[align.2-tel_fine_res]
-method = "localchi2"
-sensor_ids = [0,1,2,3,4,5]
-align_ids =    [1,2,3,4]        # keep first and last plane fixed
-num_steps = 30                  # number of iterative alignment steps
-search_spatial_sigma_max = 20.0  # distance search window for track finding
-reduced_chi2_max = 5.0         # chi2 cut for track finding
-estimate_beam_parameters = true
+#[align.2-tel_fine_res]
+#method = "localchi2"
+#sensor_ids = [0,1,2,3,4,5]
+#align_ids =    [1,2,3,4]        # keep first and last plane fixed
+#num_steps = 30                  # number of iterative alignment steps
+#search_spatial_sigma_max = 20.0  # distance search window for track finding
+#reduced_chi2_max = 5.0         # chi2 cut for track finding
+#estimate_beam_parameters = true
 
-[align.tel_fine_chi2]
+[align.2-tel_fine_chi2]
 method = "localchi2"
 sensor_ids = [0,1,2,3,4,5]
 align_ids =    [1,2,3,4]  # keep first and last plane fixed
-num_steps = 50
+num_steps = 20
 search_spatial_sigma_max = 4.0
 reduced_chi2_max = 10.0
 
-[align.dut_coarse]
+[align.3-dut_coarse]
 method = "correlations" 
 sensor_ids = [0,1,2,3,4,5,6,7]
 align_ids = [6,7]
 estimate_beam_parameters = false
 
-[align.dut_fine]
+[align.4-dut_fine]
 method = "residuals" # correlations, residuals
 sensor_ids = [0,1,2,3,4,5,6,7]
 align_ids = [6,7]
-num_steps = 20
+num_steps = 10
 search_spatial_sigma_max = 5.0
 reduced_chi2_max = 10.0
 estimate_beam_parameters = false
 
-[align.dut_fine_chi2]
+[align.5-dut_fine_chi2]
 method = "localchi2"
 sensor_ids = [0,1,2,3,4,5]
 align_ids =    [1,2,3,4]  # keep first and last plane fixed
-num_steps = 25
+num_steps = 10
 search_spatial_sigma_max = 5.0
 reduced_chi2_max = 10.0
