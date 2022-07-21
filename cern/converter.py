@@ -26,7 +26,7 @@ class CERNConverter(Converter):
         return self.DataDir.joinpath('data', f'run{self.Run:04d}.root')
 
     def trigger_info_file(self):
-        return self.Adc2Vcal.RawFilePath
+        return self.Adc2Vcal.OutFilePath
 
     @property
     def first_steps(self):

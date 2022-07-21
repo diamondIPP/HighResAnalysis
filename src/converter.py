@@ -99,6 +99,9 @@ class Converter:
 
     def proteus_raw_file_path(self):
         return self.Raw.OutFilePath
+
+    def load_file(self, opt='w'):
+        return h5py.File(self.OutFilePath, opt)
     # endregion INIT
     # ----------------------------------------
 
@@ -109,7 +112,7 @@ class Converter:
         remove_file(self.OutFilePath)  # remove hdf5 file if it exists
         start_time = info('Start root -> hdf5 conversion ...')
 
-        self.F = h5py.File(self.OutFilePath, 'w')
+        self.F = self.load_file()
         self.RawFile = uproot.open(self.Proteus.OutFilePath)
 
         self.add_tracks()
