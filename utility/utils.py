@@ -98,7 +98,7 @@ def ensure_dir(path):
 def remove_file(*file_path, string=None):
     for f in file_path:
         if Path(f).exists():
-            warning(f'removing {choose(string, file_path)}')
+            warning(f'removing {choose(string, f)}')
             remove(f)
 
 
