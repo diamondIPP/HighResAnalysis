@@ -18,7 +18,7 @@ class Currents(Analysis):
         # Settings
         self.Averaging = averaging
         self.TimeZone = timezone('Europe/Zurich')
-        self.DataDir = self.BeamTest.Path.joinpath('hvdata')
+        self.DataDir = self.BeamTest.Path.joinpath('hv')
 
         # Config
         self.Ana = analysis
@@ -27,7 +27,7 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.RunLogs = self.Ana.Run.Logs
         self.Run = self.load_run()
-        self.HVConfig = Config(self.DataDir.joinpath('config.ini'))
+        self.Config = Config(self.DataDir.joinpath('config.ini'), required=True)
         self.Bias = self.load_bias()
 
         # Times
@@ -40,9 +40,10 @@ class Currents(Analysis):
         # HV Device Info
         self.Number = self.get_device_number()
         self.Channel = self.get_device_channel()
-        self.Name = self.HVConfig.get('HV{}'.format(self.Number), 'name')
+        self.Name = self.Config.get(f'HV{self.Number}', 'name')
+        self.Tag = f'{self.Name}_CH{self.Channel}'
         self.Brand = remove_digits(self.Name.split('-')[0])
-        self.Model = self.HVConfig.get('HV{}'.format(self.Number), 'model')
+        self.Model = self.Config.get('HV{}'.format(self.Number), 'model')
         self.Precision = .005 if '237' in self.Name else .05
 
         # data
@@ -58,7 +59,7 @@ class Currents(Analysis):
         data_file = join(self.DataDir, 'data.hdf5')
         if not file_exists(data_file):
             self.convert_data()
-        data = h5py.File(data_file, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+        data = h5py.File(data_file, 'r')[self.Tag]
         data = data[where((data['timestamps'] >= time_stamp(self.Begin, off=True)) & (data['timestamps'] <= time_stamp(self.End, off=True)))]
         if self.IgnoreJumps:  # filter out jumps
             data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
@@ -96,7 +97,7 @@ class Currents(Analysis):
                 self.Collection.select_runs_in_range(begin, end if end is not None else begin) if end or end is None else self.Collection.select_runs_from_runplan(begin)
                 return self.Collection.get_start_time(), self.Collection.get_end_time()
             else:  # actual time strings are provided
-                return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.BeamTest.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
+                return (self.TimeZone.localize(datetime.strptime(f'{self.BeamTest.year}-{t}', '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
         return [self.TimeZone.localize(datetime.fromtimestamp(self.RunLogs[key])) for key in ['start', 'end']]
 
     def get_dut_name(self):
@@ -104,7 +105,7 @@ class Currents(Analysis):
             return self.Ana.DUT.Name
         elif self.Collection.has_selected_runs():
             return self.Collection.get_diamond_names(sel=True)[0]
-        return next(log['dia{}'.format(self.DUTNumber)] for log in self.RunLogs.itervalues() if (log['starttime0']) > self.Begin)
+        return next(log['duts'][self.DUTNumber] for log in self.RunLogs.itervalues() if (log['start']) > self.Begin)
 
     def get_device_str(self):
         if self.Ana is not None:
@@ -113,7 +114,7 @@ class Currents(Analysis):
             run_info = self.RunLogs[str(self.Collection.get_selected_runs()[0])]
         else:
             run_info = next(log for log in self.RunLogs.itervalues() if datetime.timestamp(log['start']) > self.Begin)
-        return str(run_info['hvsupply{}'.format(self.DUTNumber)])
+        return str(run_info['hv supplies'][self.DUTNumber])
 
     def get_device_number(self):
         return self.get_device_str().split('-')[0]
@@ -123,9 +124,9 @@ class Currents(Analysis):
         return words[1] if len(words) > 1 else '0'
 
     def find_data_path(self):
-        data_dir = join(self.Run.TCDir, 'hvdata', '{}_CH{}'.format(self.Name, self.Channel))
+        data_dir = join(self.Run.TCDir, 'hv', f'{self.Name}_CH{self.Channel}')
         if not dir_exists(data_dir):
-            critical('HV data path "{}" does not exist!'.format(data_dir))
+            critical(f'HV data path "{data_dir}" does not exist!')
         return data_dir
 
     def load_time(self, t, t_log):
@@ -162,6 +163,7 @@ class Currents(Analysis):
             for file_name in glob(join(d, '*.log')):
                 if getsize(file_name) == 0:
                     remove_file(file_name)
+                    continue
                 log_date = self.get_log_date(file_name)
                 data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', object), ('voltages', 'f2'), ('currents', 'f4')])
                 data = data[where(invert(isnan(data['voltages'])))[0]]  # remove text entries
