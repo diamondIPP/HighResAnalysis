@@ -33,13 +33,13 @@ class Adc2Vcal:
         with uproot.open(self.RawFilePath) as f:
             with uproot.recreate(self.OutFilePath) as g:
                 g['Event'] = f['Event'].arrays()
-                dut_nrs = array([i for i, dut in enumerate(self.Run.Logs['duts']) if 'FEI4' not in dut])
-                info(f'converting adc to vcal for DUTs {", ".join(self.Run.Logs["duts"][i] for i in dut_nrs)} ...')
-                PBAR.start(dut_nrs.size)
-                for i in range(dut_nrs.size):  # the data file only has no FEI4 plane
+                duts = array(self.Run.Logs['duts'])
+                info(f'converting adc to vcal for DUTs {", ".join(duts)} ...')
+                PBAR.start(duts.size)
+                for i in range(duts.size):  # the data file only has no FEI4 plane
                     dir_name = f'Plane{self.NTelPlanes + i}'
                     x, y, adc = f[f'{dir_name}/Hits'].arrays(['PixX', 'PixY', 'Value'], library='np').values()
-                    lut = self.Parent.load_calibration(dut_nrs[i]).get_lookup_table()
+                    lut = self.Parent.load_calibration(i).get_lookup_table()
                     vcal = [round([lut[lx[i], ly[i], int(lz[i])] for i in range(lx.size)]).astype('i') for lx, ly, lz in zip(x, y, adc)]
                     data = f[f'{dir_name}/Hits'].arrays(filter_name=lambda w: not any([b in w for b in self.FlatBranches]))
                     data['Value'] = aw.values_astype(vcal, 'int32')

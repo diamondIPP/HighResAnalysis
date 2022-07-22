@@ -61,13 +61,14 @@ def make_cern_run_log():
     sheet = client.open_by_key('1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc').worksheet('KARTEL')
     data = sheet.get_all_values()[1:]
     hv_supplies = {'II6-A2': '1-5', 'CMS04': '1-4', 'Si-D7': '1-4'}  # sep 2018
+    exclude = ['FEI4']
     dic = {}
     for row in data:
         run = row[1]
         if not run or not run.isdigit() or not row[30] or not row[31]:
             continue
         dut_data = array(row[3:23]).reshape((4, -1))  # up to four DUTs
-        dut_data = array([[w.strip(' ') for w in lst] for lst in dut_data if lst[0]]).T.tolist()  # remove empty DUTs
+        dut_data = array([[w.strip(' ') for w in lst] for lst in dut_data if lst[0] and not any([w in lst[0] for w in exclude])]).T.tolist()  # remove empty and excluded DUTs
         dut_dict = {name: d for name, d in zip(['duts', 'hv', 'current', 'temp', 'angle'], dut_data)}
         dic[run] = {'telescope run': int(row[0]),
                     'start': make_timestamp(row[29], row[30]),
