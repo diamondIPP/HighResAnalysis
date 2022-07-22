@@ -21,11 +21,11 @@ id = 5
 #noise scan parameters for the reference DUT.
 [noisescan.ref]
 sigma_above_avg_max = 8.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
-rate_max = 0.001 # max hits per pixel per event
+rate_max = 0.05 # max hits per pixel per event
 density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
 
 [[noisescan.ref.sensors]]
-id = 6
+id = 7
 col_min = 1
 col_max = 50
 row_min = 1
@@ -33,12 +33,12 @@ row_max = 71
 
 #noise scan parameters for the DUT.
 [noisescan.dut]
-sigma_above_avg_max = 30.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
-rate_max = 0.001 # max hits per pixel per event
+sigma_above_avg_max = 10.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
+rate_max = 0.05 # max hits per pixel per event
 density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
 
 [[noisescan.dut.sensors]]
-id = 7
+id = 6
 col_min = 14
 col_max = 36
 row_min = 51
