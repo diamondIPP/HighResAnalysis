@@ -95,10 +95,11 @@ def ensure_dir(path):
     return path
 
 
-def remove_file(file_path, string=None):
-    if file_exists(file_path):
-        warning('removing {}'.format(choose(string, file_path)))
-        remove(file_path)
+def remove_file(*file_path, string=None):
+    for f in file_path:
+        if Path(f).exists():
+            warning(f'removing {choose(string, file_path)}')
+            remove(f)
 
 
 def isint(x):
