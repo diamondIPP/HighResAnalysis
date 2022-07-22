@@ -467,8 +467,10 @@ def save_hdf5(*pargs, arr=False, dtype=None, suf_args='[]', field=None, verbose=
                 return array(d) if arr else d
             if not get_kw('_save', kwargs, default=True):
                 return f(ana, *args, **kwargs)
-            remove_file(file_path)
             data = f(ana, *args, **kwargs)
+            if data is None:
+                return
+            remove_file(file_path)
             hf = h5py.File(file_path, 'w')
             hf.create_dataset('data', data=data.astype(choose(dtype, data.dtype)))
             return array(hf['data']) if arr else hf['data']
