@@ -60,7 +60,7 @@ def make_desy_run_log():
 def make_cern_run_log():
     sheet = client.open_by_key('1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc').worksheet('KARTEL')
     data = sheet.get_all_values()[1:]
-    hv_supplies = {'II6-A2': 'HV1 CH5', 'CMS04': 'HV1 CH4'}  # sep 2018
+    hv_supplies = {'II6-A2': 'HV1 CH5', 'CMS04': 'HV1 CH4', 'Si-D7': 'HV1 CH4'}  # sep 2018
     dic = {}
     for row in data:
         run = row[1]
