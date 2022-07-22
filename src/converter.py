@@ -70,6 +70,13 @@ class Converter:
     def steps(self):
         return self.first_steps + self.Proteus.Steps + [(self.root2hdf5, self.OutFilePath)]
 
+    @property
+    def raw_files(self):
+        return [self.Proteus.RawFilePath, self.Proteus.OutFilePath]
+
+    def remove_raw_files(self):
+        remove_file(*self.raw_files)
+
     # ----------------------------------------
     # region INIT
     @classmethod
