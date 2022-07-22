@@ -4,7 +4,7 @@
 # created on August 19th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.dut_analysis import DUTAnalysis
+from src.dut_analysis import DUTAnalysis, Run
 from mod.residuals import ResidualAnalysis
 from mod.ref_cuts import RefCut
 from src.calibration import Calibration
@@ -22,7 +22,7 @@ class RefAnalysis(DUTAnalysis):
         self.N = self.n
         self.MetaSubDir = 'REF'
 
-        self.Run = self.run(parent.Run.Number, self.get_dut_number(), self.BeamTest.Path, self.Config, parent.Run.SingleMode)
+        self.Run = Run(parent.Run.Number, self.get_dut_number(), self.BeamTest.Path, parent.Run.SingleMode)
         self.DUT = self.Run.DUT
         self.Calibration = Calibration(self.Run)
         self.Cut = RefCut(self)
@@ -33,4 +33,4 @@ class RefAnalysis(DUTAnalysis):
         self.Cut.make_additional()
 
     def get_dut_number(self):
-        return self.Plane.Number - self.Parent.Tel.NPlanes
+        return next(i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D'))

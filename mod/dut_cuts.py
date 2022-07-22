@@ -108,8 +108,8 @@ class DUTCut(Cuts):
     @save_cut('TP', cfg='trigger phase')
     def make_trigger_phase(self, _redo=False):
         tp = self.Ana.get_trigger_phase(cut=False)
-        low, high = self.get_config('trigger phase')
-        return (tp >= low) & (tp <= high)
+        low, high = self.get_config('trigger phase', default=(None, None))
+        return None if low is None else (tp >= low) & (tp <= high)
 
     @save_cut('Clu', suf_args='all')
     def make_cluster(self, pl=None, _redo=False):
@@ -202,7 +202,7 @@ class DUTCut(Cuts):
         self.get_res(**prep_kw(dkw, show=True))
 
     def get_track_events(self):
-        return array(self.Ana.F['Tracks']['EvtFrame'])
+        return array(self.Ana.F['Tracks']['Events'])
 
     def make_ev(self, ev, n=None):
         c = zeros(choose(n, self.Ana.NEvents), '?')

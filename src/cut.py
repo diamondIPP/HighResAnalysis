@@ -6,7 +6,7 @@
 from typing import Any
 from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil, ndarray
 
-from utility.utils import print_table, warning, join, make_list, choose, Dir, is_iter, critical
+from utility.utils import print_table, warning, make_list, choose, Dir, is_iter, critical
 from plotting.utils import Config
 
 
