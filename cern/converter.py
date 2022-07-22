@@ -3,9 +3,11 @@
 #       adds clustering and charge to trees created with pXar
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.converter import Converter
 from subprocess import check_call
+import uproot
+
 from plotting.utils import info as pinfo
+from src.converter import Converter, TTree
 
 
 class CERNConverter(Converter):
@@ -50,11 +52,14 @@ class CERNConverter(Converter):
         pinfo(cmd)
         check_call(cmd, shell=True)
 
+    def get_time_stamp(self, tree: TTree):
+        return (array(uproot.open(self.Adc2Vcal.RawFilePath)['Event']['TimeStamp']) / 1000).astype('d')
+
 
 if __name__ == '__main__':
 
     from argparse import ArgumentParser
-    import uproot, awkward as aw  # noqa
+    import awkward as aw  # noqa
     from numpy import *
 
     p = ArgumentParser()

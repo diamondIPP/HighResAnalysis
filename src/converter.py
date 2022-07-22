@@ -139,9 +139,13 @@ class Converter:
         self.add_data(tree, g, b)
         add_to_info(t0, color=GREEN)
 
-    def add_time_stamp(self, tree: TTree):
+    @staticmethod
+    def get_time_stamp(tree: TTree):
         t = array(tree['evt_timestamp'])
-        self.F['Tracks'].create_dataset('Time', data=((t - t[0]) / 1e9).astype('f4'))  # time stamp is just a number counting up
+        return ((t - t[0]) / 1e9).astype('f4')  # time stamp is just a number counting up
+
+    def add_time_stamp(self, tree: TTree):
+        self.F.create_group('Event').create_dataset('Time', data=self.get_time_stamp(tree))
 
     def add_planes(self):
         n = self.NTelPlanes + self.NDUTPlanes
