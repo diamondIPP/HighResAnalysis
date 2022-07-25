@@ -7,7 +7,7 @@ from subprocess import check_call
 import h5py
 from numpy import all, array
 
-from plotting.draw import critical, Draw, info, remove_file, Path, choose, prep_kw
+from plotting.draw import Draw, info, remove_file, Path, choose, prep_kw
 from plotting.fit import Gauss
 from src.converter import Converter
 from utility.affine_transformations import transform
@@ -73,8 +73,8 @@ class Raw:
 
     def convert(self):
         """ convert binary raw file to root file with eudaq"""
-        if self.RawFilePath is None:
-            critical(f'raw file does not exist for run: {self.Run}')
+        if not self.RawFilePath.exists():
+            Converter.download_raw_file(self.RawFilePath)
         self.OutFilePath.parent.mkdir(exist_ok=True)
         cmd = f'{self.soft} -i {self.RawFilePath} -o {self.OutFilePath} {self.options}'
         info(f'Convert {self.RawFilePath.name} to {self.OutFilePath.name} using {self.soft.name}\n')

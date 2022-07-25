@@ -15,6 +15,7 @@ from src.calibration import Calibration
 from src.proteus import Proteus
 from src.run import Run, Analysis
 from utility.utils import *
+from plotting.utils import download_file
 
 
 class Converter:
@@ -76,6 +77,13 @@ class Converter:
 
     def remove_raw_files(self):
         remove_file(*self.raw_files)
+
+    @staticmethod
+    def download_raw_file(f: Path, out=True):
+        server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
+        info(f'downloading DUT raw file from {server}:{loc}')
+        f.parent.mkdir(exist_ok=True)
+        download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
 
     # ----------------------------------------
     # region INIT

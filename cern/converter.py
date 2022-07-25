@@ -63,8 +63,8 @@ if __name__ == '__main__':
     from numpy import *
 
     p = ArgumentParser()
-    p.add_argument('run', nargs='?', default=128, type=int)
-    p.add_argument('dut', nargs='?', default=1, type=int)
+    p.add_argument('run', nargs='?', default=231, type=int)
+    p.add_argument('dut', nargs='?', default=0, type=int)
     args = p.parse_args()
 
     z = CERNConverter.from_ana(args.run, args.dut, single_mode=True)
