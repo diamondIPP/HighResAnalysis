@@ -1,6 +1,6 @@
 [beam]
 # in GeV
-energy = 120
+energy = 120.0
 slope = [0.0, 0.0]
 divergence = [0.001, 0.001]
 
