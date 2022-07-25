@@ -48,6 +48,7 @@ class CERNConverter(Converter):
 
     def merge_root_files(self, force=False):
         """merge the telescope and DUT root files"""
+        self.OutFilePath.parent.mkdir(exist_ok=True)
         cmd = f'hadd {"-f" if force else ""} {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
         pinfo(cmd)
         check_call(cmd, shell=True)
