@@ -28,12 +28,18 @@ class Adc2Vcal:
 
         self.Steps = [(self.convert, self.OutFilePath)]
 
+    def check_calibrations(self, n):
+        return all([self.Parent.load_calibration(i).get_file_name().exists() for i in range(n)])
+
     def convert(self):
         """read the DUT raw file and convert the adc values to vcal"""
+        if not self.RawFilePath.exists():
+            Converter.download_raw_file(self.RawFilePath)
+        duts = array(self.Run.Logs['duts'])
+        self.check_calibrations(duts.size)
         with uproot.open(self.RawFilePath) as f:
             with uproot.recreate(self.OutFilePath) as g:
                 g['Event'] = f['Event'].arrays()
-                duts = array(self.Run.Logs['duts'])
                 info(f'converting adc to vcal for DUTs {", ".join(duts)} ...')
                 PBAR.start(duts.size)
                 for i in range(duts.size):  # the data file only has no FEI4 plane
