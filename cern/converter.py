@@ -6,7 +6,7 @@
 from subprocess import check_call
 import uproot
 
-from plotting.utils import info as pinfo
+from plotting.utils import array, info as pinfo
 from src.converter import Converter, TTree
 
 
