@@ -166,6 +166,9 @@ class Currents(Analysis):
                     continue
                 log_date = self.get_log_date(file_name)
                 data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', object), ('voltages', 'f2'), ('currents', 'f4')])
+                if not data.shape:
+                    remove_file(file_name)
+                    continue
                 data = data[where(invert(isnan(data['voltages'])))[0]]  # remove text entries
                 date_times = array(log_date.strftime('%Y-%m-%d ') + char.array(data['timestamps'].astype('U'))).astype(datetime64).astype(datetime)
                 data['timestamps'] = (array([time_stamp(dt, log_date.utcoffset().seconds) for dt in date_times]).astype('u4'))
