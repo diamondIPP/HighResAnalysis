@@ -29,8 +29,9 @@ class Proteus:
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
-        self.Out = self.DataDir.joinpath(f'tracked-{self.RunNumber:04d}')     # name for proteus
-        self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')  # final file
+        self.Out = self.DataDir.joinpath(f'tracked-{self.RunNumber:04d}')           # name for proteus
+        self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')        # final file
+        self.TrackName = self.DataDir.joinpath(f'clustered-{self.RunNumber:04d}')   # tracking file for alignment
 
         self.N = max_events
         self.S = skip_events
@@ -118,6 +119,11 @@ class Proteus:
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
         self.run('pt-recon', out=self.Out, cfg=cfg, geo=None if geo is None else self.toml_name(self.AlignSteps[geo]))
+
+    def track(self):
+        """ tracking and clustering for the event alignment. """
+        self.Out.parent.mkdir(exist_ok=True)
+        self.run('pt-track', out=self.TrackName)
     # endregion RUN
     # ----------------------------------------
 
