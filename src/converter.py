@@ -7,7 +7,7 @@
 from dataclasses import field
 
 import uproot
-from numpy import all, ones, count_nonzero
+from numpy import all, ones, count_nonzero  # noqa
 from uproot import ReadOnlyDirectory
 from uproot.models import TTree
 
@@ -250,14 +250,25 @@ class Converter:
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
+    from cern.converter import CERNConverter
+    from src.analysis import Analysis
+    import awkward as aw  # noqa
+    from numpy import *
 
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=11)
-    parser.add_argument('dut', nargs='?', default=0)
+    parser.add_argument('run', nargs='?', default=232)
+    parser.add_argument('dut', nargs='?', default=1)
+    parser.add_argument('-tc', nargs='?', default=None)
     pargs = parser.parse_args()
 
-    z = Converter.from_ana(pargs.run, pargs.dut, single_mode=True)
+    ana_ = Analysis(pargs.tc)
+    tc = ana_.BeamTest
+
+    z = (Converter if tc.Location == 'DESY' else CERNConverter).from_ana(pargs.run, pargs.dut, ana_, single_mode=True)
     r = z.Raw
     p = z.Proteus
     c = z.load_calibration()
     rn = z.Run
+    draw = c.Draw
+    if hasattr(z, 'Adc2Vcal'):
+        adc = z.Adc2Vcal
