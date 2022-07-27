@@ -43,6 +43,7 @@ class Converter:
         # PRE-CONVERTER
         self.Raw = self.init_raw()
         self.Proteus = self.init_proteus()
+        self.EventAlignment = self.init_event_alignment()
 
         # FILES
         self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
@@ -108,6 +109,10 @@ class Converter:
     def init_raw(self):
         from src.raw import Raw
         return Raw(self)
+
+    def init_event_alignment(self):
+        from src.event_alignment import EventAlignment
+        return EventAlignment(self.Proteus)
 
     def load_calibration(self, dut_nr=None):
         return Calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
@@ -270,5 +275,6 @@ if __name__ == '__main__':
     c = z.load_calibration()
     rn = z.Run
     draw = c.Draw
+    e = z.EventAlignment
     if hasattr(z, 'Adc2Vcal'):
         adc = z.Adc2Vcal
