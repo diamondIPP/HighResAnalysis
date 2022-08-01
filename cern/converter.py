@@ -22,6 +22,7 @@ class CERNConverter(Converter):
     def __init__(self, data_dir, run_number):
 
         Converter.__init__(self, data_dir, run_number)
+        self.EventAlignment = self.init_event_alignment()
         self.Adc2Vcal = self.init_adc2vcal()
 
     def proteus_raw_file_path(self):
@@ -41,6 +42,10 @@ class CERNConverter(Converter):
     def init_raw(self):
         from cern.raw import CERNRaw
         return CERNRaw(self)
+
+    def init_event_alignment(self):
+        from cern.event_alignment import EventAlignment
+        return EventAlignment(self.Raw)
 
     def init_adc2vcal(self):
         from cern.adc import Adc2Vcal

@@ -25,6 +25,7 @@ class EventAlignment:
         return f'{self.__class__.__name__} of {self.Raw.Run!r}'
 
     def run(self):
+        self.load_data()
         if not self.is_good and len(self.OffEvents) == 0:
             self.find_events()
             if not self.validated:
