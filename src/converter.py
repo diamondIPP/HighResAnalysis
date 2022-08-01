@@ -73,7 +73,7 @@ class Converter:
 
     @property
     def raw_files(self):
-        return [self.Proteus.RawFilePath, self.Proteus.OutFilePath]
+        return [self.Proteus.RawFilePath, self.Proteus.OutFilePath, self.Proteus.HistFilePath]
 
     def remove_raw_files(self):
         remove_file(*self.raw_files)

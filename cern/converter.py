@@ -33,7 +33,7 @@ class CERNConverter(Converter):
 
     @property
     def first_steps(self):
-        return self.Adc2Vcal.Steps + self.Raw.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
+        return self.Raw.Steps + self.Adc2Vcal.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
 
     @property
     def raw_files(self):
