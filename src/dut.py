@@ -54,7 +54,7 @@ class DUT:
 
 class Plane:
     """ Class with all information about a single pixel plane. """
-    def __init__(self, n, typ='DUT'):
+    def __init__(self, n, typ='DUT', rotated=False):
 
         config = Analysis.Config(typ)
         self.IsDUT = 'DUT' in config.Section
@@ -67,6 +67,7 @@ class Plane:
         self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
         self.W, self.H = self.PX * self.NCols, self.PY * self.NRows
+        self.Rotated = rotated
 
     def __str__(self):
         return f'Plane{self.Number}'
