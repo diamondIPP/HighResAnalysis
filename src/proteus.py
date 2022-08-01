@@ -7,7 +7,7 @@ from pathlib import Path
 from os import chdir
 import toml
 from numpy import array
-from plotting.utils import info, warning, choose
+from plotting.utils import info, warning, choose, remove_file
 from utility.utils import print_banner, GREEN, print_elapsed_time
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
@@ -31,6 +31,7 @@ class Proteus:
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
         self.Out = self.DataDir.joinpath(f'tracked-{self.RunNumber:04d}')           # name for proteus
         self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')        # final file
+        self.HistFilePath = self.Out.with_name(f'{self.Out.name}-hists.root')       # file with histograms
         self.TrackName = self.DataDir.joinpath(f'clustered-{self.RunNumber:04d}')   # tracking file for alignment
 
         self.N = max_events
@@ -71,6 +72,18 @@ class Proteus:
             m = self.toml_name(section, d='mask', typ='mask')
             if not m.exists():
                 m.write_text('[[sensors]]\nid = 0\nmasked_pixels = []\n')
+
+    def remove_root_files(self):
+        for f in self.ConfigDir.rglob('*.root'):
+            remove_file(f)
+
+    def remove_alignment(self):
+        for f in self.ConfigDir.joinpath('alignment').glob('*.toml'):
+            remove_file(f)
+
+    def remove_mask(self):
+        for f in self.ConfigDir.joinpath('mask').glob('*.toml'):
+            remove_file(f)
     # endregion MISC
     # ----------------------------------------
 
