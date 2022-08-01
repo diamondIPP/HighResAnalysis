@@ -6,7 +6,7 @@
 from plotting.utils import info, choose, critical
 from cern.raw import Raw
 import uproot
-from numpy import array, roll, where, diff, abs, delete
+from numpy import array, roll, where, diff, abs, delete, ones
 
 
 class EventAlignment:
@@ -25,11 +25,17 @@ class EventAlignment:
         return f'{self.__class__.__name__} of {self.Raw.Run!r}'
 
     def run(self):
-        if not self.is_good:
+        if not self.is_good and len(self.OffEvents) == 0:
             self.find_events()
             if not self.validated:
                 critical(f'{self!r} failed!')
-        return self.OffEvents
+
+    @property
+    def cut(self):
+        self.run()
+        c = ones(self.X.size + 1, '?')
+        c[self.OffEvents] = False
+        return c
 
     @property
     def is_good(self):
