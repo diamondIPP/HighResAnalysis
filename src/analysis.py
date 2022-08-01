@@ -124,6 +124,14 @@ class Analysis:
             tc = f' OF {self.BeamTest}' if tc else ''
             print_banner('STARTING {} ANALYSIS{}{}'.format(ana_name.upper(), run, tc), symbol='~', color=GREEN)
 
+    def create_run_config(self):
+        if self.BeamTest.Location == 'CERN':
+            from src.spreadsheet import make_cern_run_log
+            make_cern_run_log(self.BeamTest.Path.stem)
+        elif self.BeamTest.Location == 'DESY':
+            from src.spreadsheet import make_desy_run_log
+            make_desy_run_log()
+
 
 if __name__ == '__main__':
     z = Analysis()
