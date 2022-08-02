@@ -16,7 +16,7 @@ class RefAnalysis(DUTAnalysis):
 
         self.IsRef = True
         self.Parent = parent
-        self.REF = self.Parent  # make DUTAna ref
+        self.REF = self.Parent  # make DUTAna ref of the reference
         self.__dict__.update(parent.__dict__)
         self.Plane = self.Planes[self.Config.getint('DUT', 'reference plane')]
         self.N = self.n
@@ -33,4 +33,5 @@ class RefAnalysis(DUTAnalysis):
         self.Cut.make_additional()
 
     def get_dut_number(self):
-        return next(i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D'))
+        default = next(i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut != self.Parent.DUT.Name)
+        return next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D')), default)
