@@ -29,11 +29,14 @@ class DUTAnalysis(Analysis):
         # data
         self.Run = Run.from_ana(run_number, dut_number, self, single_mode)
         self.DUT = self.Run.DUT
+        self.Converter = self.converter.from_run(self.Run)
+        self.Proteus = self.Converter.Proteus
         self.Planes = self.init_planes()
-        self.Plane = self.DUT.Plane
+        self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
 
         # DATA
         self.Converter = self.converter.from_run(self.Run)
+        self.Proteus = self.Converter.Proteus
         if test:
             return
 
@@ -75,7 +78,7 @@ class DUTAnalysis(Analysis):
 
     def init_planes(self):
         n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
-        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT') for i in range(n_tel + n_dut)]
+        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT', rotated=abs(self.alignment(i)['unit_u'][1]) > .5) for i in range(n_tel + n_dut)]
 
     def init_residuals(self):
         from mod.residuals import ResidualAnalysis
@@ -101,6 +104,9 @@ class DUTAnalysis(Analysis):
         from mod.resolution import Resolution
         return Resolution(self.REF)
 
+    def remove_file(self):
+        remove_file(self.Run.FileName)
+
     def load_file(self, test=False):
         if not test:
             self.Converter.run()
@@ -110,7 +116,8 @@ class DUTAnalysis(Analysis):
                 _ = f[str(self.Plane)]  # check if data is complete
                 return f
             except (KeyError, OSError) as err:
-                critical(f'error loading data file {self.Run.FileName}\n{err}')
+                self.remove_file()
+                critical(f'error loading data file, deleting {self.Run.FileName}\n{err}')
 
     def reload_data(self):
         self.F = self.load_file()
@@ -141,11 +148,11 @@ class DUTAnalysis(Analysis):
         m, s = mean_sigma(values)
         return ufloat(m, s / sqrt(values.size))
 
-    def get_x(self, cut=None, pl=None):
-        return self.get_data('Clusters', 'X', cut, pl)
+    def get_x(self, cut=None, pl=None, force=False):
+        return self.get_data('Clusters', 'X', cut, pl) if not self.plane(pl).Rotated or force else self.get_y(cut, pl, force=True)
 
-    def get_y(self, cut=None, pl=None):
-        return self.get_data('Clusters', 'Y', cut, pl)
+    def get_y(self, cut=None, pl=None, force=False):
+        return self.get_data('Clusters', 'Y', cut, pl) if not self.plane(pl).Rotated or force else self.get_x(cut, pl, force=True)
 
     def get_tx(self, cut=None, pl=None):
         return self.get_data('Tracks', 'X', cut, pl)
@@ -182,7 +189,7 @@ class DUTAnalysis(Analysis):
         return self.get_data('Mask', cut=False)
 
     def get_trigger_phase(self, cut=None, pl=None):
-        return self.get_data('TriggerPhase', cut=cut, pl=pl)
+        return self.get_data('Trigger', 'Phase', cut=cut, pl=pl)
 
     def get_cluster_size(self, cut=None, pl=None):
         return self.get_data('Clusters', 'Size', cut, pl)
@@ -195,6 +202,9 @@ class DUTAnalysis(Analysis):
 
     def get_slope_y(self, cut=None):
         return self.get_data('SlopeY', cut=cut, main_grp='Tracks')
+
+    def alignment(self, pl):
+        return self.Proteus.get_alignment()['sensors'][pl]
     # endregion DATA
     # ----------------------------------------
 
@@ -294,10 +304,13 @@ class DUTAnalysis(Analysis):
         h = self.Draw.distribution(self.get_trigger_phase(cut), bins.TP, **prep_kw(dkw, title='Trigger Phase', x_tit='Trigger Phase'))
         format_histo(h, y_range=[0, 1.1 * h.GetMaximum()])
 
-    def draw_time(self, **dkw):
-        t = self.get_time()
-        g = self.Draw.profile(arange(t.size), t, bins.make(0, t.size, sqrt(t.size)), 'Time', **prep_kw(dkw, markersize=.6, x_tit='Event Number', y_tit='Time [hh:mm]', draw_opt='aplx', graph=True))
+    def draw_time(self, cut=None, **dkw):
+        t = self.get_time(cut)
+        g = self.Draw.profile(arange(t.size), t, title='Time', **prep_kw(dkw, markersize=.6, x_tit='Event Number', y_tit='Time [hh:mm]', draw_opt='aplx', graph=True))
         set_time_axis(g, axis='Y')
+
+    def draw_time_dist(self, cut=None, **dkw):
+        self.Draw.distribution(self.get_time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
         self.Draw.grid(*self.get_segments(nx, ny, width), w)
