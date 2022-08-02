@@ -354,9 +354,13 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region SIGNAL
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, **dkw):
+        return self.Draw.distribution(self.get_phs(e, cut), **prep_kw(dkw, title='PH', x_tit=self.ph_tit, leg=self.draw_trim(e, draw_thresh)))
+
+    def draw_trim(self, e, thresh=False):
+        if self.Calibration.Trim is None:
+            return
         trim = self.Calibration.Trim * (self.DUT.VcalToEl if e else 1)
-        legs = [self.Draw.vertical_line(trim, 0, 1e5, w=2, show=False), self.Draw.tlatex(.2, .5, f'Threshold = {trim:.0f} vcal', ndc=True, angle=90, size=.04, show=False)] if draw_thresh else None
-        return self.Draw.distribution(self.get_phs(e, cut), **prep_kw(dkw, title='PH', x_tit=self.ph_tit, leg=legs))
+        return [self.Draw.vertical_line(trim, 0, 1e5, w=2, show=False), self.Draw.tlatex(.2, .5, f'Threshold = {trim:.0f} vcal', ndc=True, angle=90, size=.04, show=False)] if thresh else None
 
     def draw_charge_distribution(self, cut=None, draw_thresh=False, **dkw):
         return self.draw_signal_distribution(cut, draw_thresh, e=True, **dkw)
