@@ -24,7 +24,7 @@ class RefAnalysis(DUTAnalysis):
 
         self.Run = Run(parent.Run.Number, self.get_dut_number(), self.BeamTest.Path, parent.Run.SingleMode)
         self.DUT = self.Run.DUT
-        self.Calibration = Calibration(self.Run)
+        self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
         self.Cut = RefCut(self)
 
         self.Residuals = ResidualAnalysis(self)

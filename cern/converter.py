@@ -60,3 +60,8 @@ class CERNConverter(Converter):
 
     def get_time_stamp(self, tree: TTree):
         return (array(uproot.open(self.Adc2Vcal.OutFilePath)['Event']['TimeStamp']) / 1000).astype('d')
+
+    @property
+    def calibration(self):
+        from cern.calibration import CERNCalibration
+        return CERNCalibration

@@ -61,9 +61,8 @@ class Calibration:
         return choose(self.Trim, Calibration.DefaultTrim)
 
     def get_file_name(self):
-        trim, n = choose(self.Trim, ''), '' if self.Number is None else f'-{self.Number}'
-        f = list(self.Dir.glob(f'phCalibration{trim}_*{n}.dat'))
-        return f[0] if f else critical(f'Pulse height calibration file {"" if trim is None else f"{trim}-{n} "}does not exist in {self.Dir} ...')
+        f = list(self.Dir.glob(f'phCalibration{self.Trim}_*{self.Number}.dat'))
+        return f[0] if f else critical(f'Pulse height calibration file "{self.Trim}-{self.Number}" does not exist in {self.Dir} ...')
 
     def get_fit_file(self):
         f = list(self.Dir.glob(f'phCalibrationFitErr{self.Trim}*-{self.Number}.dat'))

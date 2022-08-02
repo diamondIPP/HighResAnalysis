@@ -11,7 +11,6 @@ from numpy import all, ones, count_nonzero  # noqa
 from uproot import ReadOnlyDirectory
 from uproot.models import TTree
 
-from src.calibration import Calibration
 from src.proteus import Proteus
 from src.run import Run, Analysis
 from utility.utils import *
@@ -112,8 +111,13 @@ class Converter:
     def init_event_alignment(self):
         return None
 
+    @property
+    def calibration(self):
+        from src.calibration import Calibration
+        return Calibration
+
     def load_calibration(self, dut_nr=None):
-        return Calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
+        return self.calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
 
     def proteus_raw_file_path(self):
         return self.Raw.OutFilePath

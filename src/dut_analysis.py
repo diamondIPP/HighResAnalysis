@@ -11,7 +11,6 @@ import src.converter
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
 from src.analysis import *
-from src.calibration import Calibration
 from src.currents import Currents
 from src.run import Run
 from src.dut import Plane
@@ -53,7 +52,7 @@ class DUTAnalysis(Analysis):
         self.Surface = False
 
         # SUBCLASSES
-        self.Calibration = Calibration(self.Run)
+        self.Calibration = self.Converter.load_calibration()
         self.Cut = DUTCut(self)
         self.Residuals = self.init_residuals()
 
