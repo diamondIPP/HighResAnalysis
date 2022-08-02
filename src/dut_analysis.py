@@ -42,7 +42,7 @@ class DUTAnalysis(Analysis):
 
         # INFO
         self.N = self.n
-        self.NEvents = self.F['Tracks']['N'].size
+        self.NEvents = self.F['Event']['Time'].size
         self.NTracks = self.F['Tracks']['Size'].size
         self.StartTime = self.get_start_time()
         self.EndTime = self.get_end_time()

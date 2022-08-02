@@ -59,4 +59,4 @@ class CERNConverter(Converter):
         check_call(cmd, shell=True)
 
     def get_time_stamp(self, tree: TTree):
-        return (array(uproot.open(self.Adc2Vcal.RawFilePath)['Event']['TimeStamp']) / 1000).astype('d')
+        return (array(uproot.open(self.Adc2Vcal.OutFilePath)['Event']['TimeStamp']) / 1000).astype('d')
