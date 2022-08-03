@@ -44,7 +44,7 @@ class TrackAnalysis(DUTAnalysis):
     def get_off_y(self, cut=None):
         return self.get_data('Y', cut=cut, main_grp='Tracks')
 
-    def get_xy(self, local=True, cut=None, pl=None, centre=False, trans=True):
+    def get_xy(self, local=True, cut=None, pl=None, centre=False, trans=False):  # TODO: trans not working for CERN data
         return self.get_txy(local, cut, pl, centre, trans)
     # endregion DATA
     # ----------------------------------------
@@ -55,7 +55,8 @@ class TrackAnalysis(DUTAnalysis):
         return uarr2n(self.Residuals.get_means(local=True, _redo=redo)).reshape(-1, 1)
 
     def get_z(self, raw=False):
-        return self.Converter.get_z_positions(raw)[:self.Tel.NPlanes]
+        """returns: z-pos of the telescope planes in [cm]"""
+        return self.Proteus.get_z_positions(raw)[:self.Tel.NPlanes] / 10
     # endregion MISC
     # ----------------------------------------
 
@@ -64,13 +65,13 @@ class TrackAnalysis(DUTAnalysis):
     def draw_x(self, trk=0, **dkw):
         """draw track in x-z plane."""
         trk = where(self.Tel.Cut.make_all_cluster())[0][trk]
-        x, y = self.get_z() / 10, self.Tel.get_us(self.Cut.make_trk(trk)).reshape(-1)
+        x, y = self.get_z(), self.Tel.get_us(self.Cut.make_trk(trk)).reshape(-1)
         self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Z Position [cm]', y_tit='X Position [mm]'))
 
     def draw_y(self, trk=0, **dkw):
         """draw track in y-z plane."""
         trk = where(self.Tel.Cut.make_all_cluster())[0][trk]
-        x, y = self.get_z() / 10, self.Tel.get_vs(self.Cut.make_trk(trk)).reshape(-1)
+        x, y = self.get_z(), self.Tel.get_vs(self.Cut.make_trk(trk)).reshape(-1)
         self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Z Position [cm]', y_tit='Y Position [mm]'))
 
     def draw_n(self, cut=None, **dkw):

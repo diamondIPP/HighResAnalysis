@@ -373,7 +373,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_xy, self.get_phs]]
-        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits()))
+        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits()))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
