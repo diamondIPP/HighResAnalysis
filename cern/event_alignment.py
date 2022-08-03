@@ -4,7 +4,7 @@
 # created on July 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from plotting.utils import info, choose, critical
-from cern.raw import Raw
+from cern.raw import Raw, Converter
 import uproot
 from numpy import array, roll, where, diff, abs, delete, ones
 
@@ -44,6 +44,8 @@ class EventAlignment:
 
     def load_data(self, reload=False):
         if not self.X.size or reload:
+            if not self.RefPath.exists():
+                Converter.download_raw_file(self.RefPath)
             with uproot.open(self.RefPath) as f:
                 a = array(f['Event']['TimeStamp'], 'i8')
             with uproot.open(self.Raw.OutFilePath) as f:
