@@ -84,8 +84,9 @@ class DUTAnalysis(Analysis):
         return ResidualAnalysis(self)
 
     def init_ref(self):
-        from mod.reference import RefAnalysis
-        return RefAnalysis(self)
+        if self.Run.NDUTs > 1:
+            from mod.reference import RefAnalysis
+            return RefAnalysis(self)
 
     def init_tracks(self):
         from mod.tracks import TrackAnalysis
@@ -100,8 +101,9 @@ class DUTAnalysis(Analysis):
         return TelescopeAnalysis(self)
 
     def init_resolution(self):
-        from mod.resolution import Resolution
-        return Resolution(self.REF)
+        if self.REF is not None:
+            from mod.resolution import Resolution
+            return Resolution(self.REF)
 
     def remove_file(self):
         remove_file(self.Run.FileName)

@@ -264,7 +264,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=232)
-    parser.add_argument('dut', nargs='?', default=1)
+    parser.add_argument('dut', nargs='?', default=0)
     parser.add_argument('-tc', nargs='?', default=None)
     pargs = parser.parse_args()
 

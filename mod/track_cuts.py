@@ -23,7 +23,8 @@ class TrackCut(DUTCut):
 
     def make(self, redo=False):
         self.register('tp', self.make_trigger_phase(_redo=redo), 10, 'trigger phase')
-        self.register('res', self.Ana.REF.Cut.make_trk_residual(redo), 20, 'tracks with a small residual in the REF')
+        if self.Ana.REF is not None:
+            self.register('res', self.Ana.REF.Cut.make_trk_residual(redo), 20, 'tracks with a small residual in the REF')
         if not hasattr(self.Ana, 'IsRef'):
             self.register('fid', self.make_fiducial(redo=redo), 30, 'tracks in fiducial area')
         self.register('mask', self.make_mask(_redo=redo), 31, 'masked pixels for tracks')

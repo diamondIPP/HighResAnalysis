@@ -65,7 +65,8 @@ class DUTCut(Cuts):
         self.register('charge', self.Ana.get_phs(cut=False) != 0, 30, 'events with non-zero charge')
 
     def make_additional(self, redo=False):
-        self.register('res', self.make_ref_residual(redo=redo), 60, 'small residuals to REF plane')
+        if self.Ana.REF is not None:
+            self.register('res', self.make_ref_residual(redo=redo), 60, 'small residuals to REF plane')
         self.register('tp', self.make_trigger_phase(_redo=redo), 40, 'trigger phase')
         self.register('tstart', self.make_start_time(_redo=redo), 35, 'exclude first events')
         self.register('chi2', self.make_chi2(_redo=redo), 50, f'small chi2 < q({self.get_config("chi2 quantile", dtype=float)})')

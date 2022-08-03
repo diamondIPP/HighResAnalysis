@@ -25,6 +25,7 @@ class Run:
 
         # Info
         self.Logs = self.load_logs()
+        self.NDUTs = len(self.Logs['duts'])
         self.DUT = DUT(dut_number, self.Logs)
 
         # Times  TODO: Fix later with real timestamps from the data
