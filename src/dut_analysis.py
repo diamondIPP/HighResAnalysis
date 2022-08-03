@@ -149,11 +149,11 @@ class DUTAnalysis(Analysis):
         m, s = mean_sigma(values)
         return ufloat(m, s / sqrt(values.size))
 
-    def get_x(self, cut=None, pl=None, force=False):
-        return self.get_data('Clusters', 'X', cut, pl) if not self.plane(pl).Rotated or force else self.get_y(cut, pl, force=True)
+    def get_x(self, cut=None, pl=None, rot=False):
+        return self.get_y(cut, pl) if self.plane(pl).Rotated and rot else self.get_data('Clusters', 'X', cut, pl)
 
-    def get_y(self, cut=None, pl=None, force=False):
-        return self.get_data('Clusters', 'Y', cut, pl) if not self.plane(pl).Rotated or force else self.get_x(cut, pl, force=True)
+    def get_y(self, cut=None, pl=None, rot=False):
+        return self.get_x(cut, pl) if self.plane(pl).Rotated and rot else self.get_data('Clusters', 'Y', cut, pl)
 
     def get_tx(self, cut=None, pl=None):
         return self.get_data('Tracks', 'X', cut, pl)
@@ -328,11 +328,13 @@ class DUTAnalysis(Analysis):
     # region CORRELATION
     def draw_x_correlation(self, pl=2, pl1=None, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
-        return self.Draw.histo_2d(self.get_x(c, pl), self.get_x(c, pl1), **prep_kw(dkw, title='XCorr', x_tit=f'Column Plane {pl}', y_tit=f'Column Plane {choose(pl1, self.Plane.Number)}'))
+        x = [self.get_x(c, p, rot=True) for p in [pl, pl1]]
+        return self.Draw.histo_2d(*x, **prep_kw(dkw, title='XCorr', x_tit=f'Column Plane {pl}', y_tit=f'Column Plane {choose(pl1, self.Plane.Number)}'))
 
     def draw_y_correlation(self, pl=2, pl1=None, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
-        return self.Draw.histo_2d(self.get_y(c, pl), self.get_y(c, pl1), **prep_kw(dkw, title='YCorr', x_tit=f'Row Plane {pl}', y_tit=f'Row Plane {choose(pl1, self.Plane.Number)}'))
+        y = [self.get_y(c, p, rot=True) for p in [pl, pl1]]
+        return self.Draw.histo_2d(*y, **prep_kw(dkw, title='YCorr', x_tit=f'Row Plane {pl}', y_tit=f'Row Plane {choose(pl1, self.Plane.Number)}'))
 
     def draw_correlation_trend(self, pl=0, pl1=None, thresh=.2, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
