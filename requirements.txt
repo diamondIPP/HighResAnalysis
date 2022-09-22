@@ -1,9 +1,12 @@
+ipython
+termcolor
 numpy
 uncertainties
 h5py
 toml
 pytz
 uproot
+gtts
 gspread
 oauth2client
 awkward

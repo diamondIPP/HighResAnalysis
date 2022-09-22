@@ -20,12 +20,12 @@ prepare-dev:
 	sudo apt-get -y install python3 python3-pip virtualenv
 	make venv
 
-venv: $(VENV_ACTIVATE) requirements.txt
+venv: $(VENV_ACTIVATE)
+$(VENV_ACTIVATE): requirements.txt
 	test -d $(VENV_NAME) || virtualenv -p python3 $(VENV_NAME)
 	${PYTHON} -m pip install -U pip
+	. $(VENV_ACTIVATE); pip install -Ur requirements.txt
 	touch $(VENV_ACTIVATE)
-	pip install -r requirements.txt
 
 clean:
-	rm -r *.egg-info
-	rm -r $(VENV_NAME)
+	test -r $(VENV_NAME) && rm -r $(VENV_NAME)
