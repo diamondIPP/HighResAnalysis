@@ -6,6 +6,8 @@
 !*.ini
 !config/dia_info.json
 !*.toml
+!requirements.txt
+!Makefile
 
 config/main.ini
 venv/

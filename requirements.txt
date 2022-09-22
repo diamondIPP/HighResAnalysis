@@ -1,0 +1,12 @@
+numpy
+uncertainties
+h5py
+toml
+pytz
+uproot
+gspread
+oauth2client
+awkward
+progressbar
+scipy
+screeninfo
