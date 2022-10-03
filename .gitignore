@@ -8,6 +8,7 @@
 !*.toml
 !requirements.txt
 !Makefile
+!*.dat
 
 config/main.ini
 venv/

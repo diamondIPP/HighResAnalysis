@@ -14,8 +14,8 @@ class CERNConverter(Converter):
     """
     Converts the raw data taken at CERN in several steps to hdf5 files.
     The raw data consists of one root file for the DUTs saved with pXar and a binary file from the KARTEL telescope.
-    STEP -2: adc -> vcal for DUTs         (python)
-    STEP -1: raw -> root for tel          (judith)
+    STEP -2: raw -> root for tel          (judith)
+    STEP -1: adc -> vcal for DUTs         (python)
     STEP  0: merge tel and dut root files (python)\n"""
     __doc__ += '\n'.join(Converter.__doc__.split('\n')[3:])
 
