@@ -19,6 +19,8 @@ client = gspread.authorize(creds)
 # Find a workbook by name and open the first sheet -> make sure to use the right name
 # share the spreadsheet with the credential email (beamtest2@beamtest-219608.iam.gserviceaccount.com)
 
+file_name = 'runlog.json'
+
 
 def colnum_string(n):
     string = ""
@@ -52,9 +54,8 @@ def make_desy_run_log():
                     'batch': row[20],
                     'comment': row[21]
                     }
-    with open('runlog.json', 'w') as f:
+    with open(file_name, 'w') as f:
         dump(dic, f, indent=2)
-    print('successfully extracted data from spreadsheet and saved it as "runlog.json"')
 
 
 info = {'2018-09': {'key': '1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc',
@@ -92,11 +93,31 @@ def make_cern_run_log(tc='2018-10'):
                     'batch': row[r1],
                     'comment': row[r1 + 8],
                     }
-    with open('runlog.json', 'w') as f:
+    with open(file_name, 'w') as f:
         dump(dic, f, indent=2)
-    print('successfully extracted data from spreadsheet and saved it as "runlog.json"')
 
 
 if __name__ == '__main__':
-    pass
-    # make_desy_run_log()
+
+    from argparse import ArgumentParser
+    from analysis import Analysis, critical, info, remove_file
+
+    p = ArgumentParser()
+    p.add_argument('bt', help='Beam test <YYYYMM>')
+    args = p.parse_args()
+
+    b = Analysis(args.bt).BeamTest
+    if b.Location == 'DESY':
+        make_desy_run_log()
+    elif b.Location == 'CERN':
+        make_cern_run_log(b.Tag)
+    else:
+        critical(f'unknown beam test "{b.Tag}" (format: YYYYMM)')
+
+    from shutil import move
+
+    bf = b.Path.joinpath(file_name)
+    if bf.exists():
+        remove_file(bf)
+    move(file_name, b.Path)
+    info(f'created "{file_name} in {b.Path}')
