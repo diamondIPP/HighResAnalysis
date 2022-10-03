@@ -27,7 +27,7 @@ class Calibration:
         self.Plane = run.DUT.Plane
         self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
         self.Draw = Draw(config=Analysis.Config)
-        self.Dir = self.Run.TCDir.joinpath('calibrations', str(self.Run.DUT))
+        self.Dir = Dir.joinpath('calibration', run.TCDir.stem, str(self.Run.DUT))
 
         # Calibration
         self.HighRangeFactor = 7
