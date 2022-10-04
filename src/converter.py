@@ -59,7 +59,7 @@ class Converter:
                     print_banner(f'Start converter step {i}: {s.__doc__}')
                     s()
                 else:
-                    info(f'found out file of step {i}, continue with next step ({f})')
+                    info(f'found outfile of step {i}, continue with next step ({f})')
             add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
 
     @property
@@ -141,6 +141,7 @@ class Converter:
         self.add_planes()
 
         add_to_info(start_time, '\nFinished hdf5 conversion in')
+        self.F.close()
 
     def add_tracks(self):
         t0 = info('add track information ...', endl=False)
