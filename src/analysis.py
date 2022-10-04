@@ -34,7 +34,7 @@ class Analysis:
     """ The analysis class provides default behaviour objects in the analysis framework and is the parent of all other analysis objects. """
 
     Config = load_config()
-    Locations = Config.get_list('data', 'locations')
+    Locations = Config.get_value('data', 'beam tests', type)
 
     DataDir = Path(Config.get('data', 'dir')).expanduser()
     ResultsDir = Dir.joinpath('results')
@@ -59,11 +59,21 @@ class Analysis:
     # ----------------------------------------
     # region INIT
     @staticmethod
+    def init_locations():
+        for loc, beam_tests in Analysis.Locations.items():
+            p = Analysis.DataDir.joinpath(loc.lower())
+            p.mkdir(exist_ok=True)
+            for bt in beam_tests:
+                bt = str(bt)
+                p.joinpath(f'{bt[:4]}-{bt[4:]}').mkdir(exist_ok=True)
+
+    @staticmethod
     def load_test_campaign(beamtest=None):
         bt = choose(beamtest, Analysis.Config.get('data', 'default test campaign'))
+        Analysis.init_locations()
         ps = [p for loc in Analysis.Locations for p in Path(Analysis.DataDir, loc.lower()).glob('*')]
         p = next((p for p in ps if bt == p.stem.replace('-', '')), None)
-        return critical(f'The beamtest "{bt}" does not exist!') if p is None else BeamTest(p)
+        return BeamTest(p)
 
     @staticmethod
     def find_testcampaign():
