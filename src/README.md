@@ -28,14 +28,14 @@ There are three beam tests with high resolution data:
 ### CERN
  - subclasses [converter.py](converter.py) in [cern/converter.py](../cern/converter.py)
  - requires three raw files:
-   - RawDUT: ROOT file from the DUT: ljutel_<cms-run>.root
-   - RawTEL: binary file from the telescope: acq<tel-run>.bin
-   - RawREF: ROOT file from the reference plane (for alignment): anchor<tel-run>.root
+   - RawDUT: ROOT file from the DUT: ```ljutel_<cms-run>.root```
+   - RawTEL: binary file from the telescope: ```acq<tel-run>.bin```
+   - RawREF: ROOT file from the reference plane (for alignment): ```anchor<tel-run>.root```
  - step -2: convert the RawTEL file to ROOT (with judith)
  - step -1: convert _adc_ to _vcal_ in the RawDUT file (see [ADC Calibration](#adc-calibration)))
  - step  0: merge the two ROOT files for TEL and DUT
 ### DESY
- - only one raw file: run<nr>_<date>.raw
+ - only one raw file: ```run<nr>_<date>.raw```
  - step 0: convert binary file to ROOT file
 ### Conversion
  - ROOT files after step 0 are identical for CERN & DESY
