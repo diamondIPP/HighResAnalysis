@@ -97,20 +97,13 @@ def make_cern_run_log(tc='2018-10'):
         dump(dic, f, indent=2)
 
 
-if __name__ == '__main__':
-
-    from argparse import ArgumentParser
-    from analysis import Analysis, critical, info, remove_file
-
-    p = ArgumentParser()
-    p.add_argument('bt', help='Beam test <YYYYMM>')
-    args = p.parse_args()
-
-    b = Analysis(args.bt).BeamTest
+def make(bt):
+    from .analysis import Analysis, critical, info, remove_file
+    b = Analysis(bt).BeamTest
     if b.Location == 'DESY':
         make_desy_run_log()
     elif b.Location == 'CERN':
-        make_cern_run_log(b.Tag)
+        make_cern_run_log(b.Path.stem)
     else:
         critical(f'unknown beam test "{b.Tag}" (format: YYYYMM)')
 

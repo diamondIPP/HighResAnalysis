@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from utility.utils import print_table, datetime
-from plotting.utils import load_json
+from plotting.utils import load_json, warning
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
 
@@ -42,7 +42,12 @@ class Run:
         return f'{self.Number:{format_spec}}'
 
     def load_logs(self) -> dict:
-        data = load_json(self.TCDir.joinpath(Analysis.Config.get('data', 'runlog file')))
+        f = self.TCDir.joinpath(Analysis.Config.get('data', 'runlog file'))
+        if not f.exists():
+            warning('runlog file does not exist! -> creating new one!')
+            from src.spreadsheet import make
+            make(self.TCDir.stem.replace('-', ''))
+        data = load_json(f)
         if self.SingleMode:
             return data[str(self.Number)]
         return {}
