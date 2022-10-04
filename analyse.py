@@ -21,25 +21,33 @@ aparser.add_argument('--verbose', '-v', action='store_false')
 aparser.add_argument('--single_mode', '-s', action='store_false')
 aparser.add_argument('--test', '-t', action='store_true')
 aparser.add_argument('--remove_meta', '-rm', action='store_true')
-aparser.add_argument('--re_convert', '-rc', action='store_true')
+aparser.add_argument('--convert', '-c', action='store_true', help='removes current analysis files and reconverts from the raw files')
+aparser.add_argument('--runplan', '-rp', nargs='?', default=None, help='create new runplan.json for beam test <YYYYMM>')
 args = aparser.parse_args()
+
+
+if args.runplan is not None:
+    from src.spreadsheet import make
+    make(args.runplan)
+    exit(2)
+
 
 if args.remove_meta:
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=False, test=True)
     z.remove_metadata()
 
-if args.re_convert:
+if args.convert:
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=False, test=True)
     z.remove_file()
     z.Converter.remove_raw_files()
 
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 
-if not args.test and z.REF is not None and not z.has_alignment():
-    z.Residuals.align(_save=True)
-    z.REF.Residuals.align(_save=True)
-    z.remove_metadata()
-    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
+# if not args.test and z.REF is not None and not z.has_alignment():
+#     z.Residuals.align(_save=True)
+#     z.REF.Residuals.align(_save=True)
+#     z.remove_metadata()
+#     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 
 z.add_info(t_start, 'Init time:', prnt=True)
 

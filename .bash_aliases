@@ -5,4 +5,4 @@ HRDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $HRDIR/venv/bin/activate
 alias analyse='ipython -i $HRDIR/analyse.py -- $@'
 alias converter='ipython -i $HRDIR/src/converter.py -- $@'
-alias make_runlog='python $HRDIR/src/spreadsheet.py'
+alias make_runlog='python $HRDIR/analyse.py -rp '
