@@ -222,7 +222,7 @@ class Currents(Analysis):
             m, s = mean_sigma(*get_hist_vecs(h, err=False))
             fit = h.Fit('gaus', 'sq0', '', m - 2 * s, m + 2 * s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
-            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
+            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean
                 current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
