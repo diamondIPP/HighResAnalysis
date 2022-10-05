@@ -20,14 +20,17 @@ class Currents(Analysis):
         self.TimeZone = timezone('Europe/Zurich')
         self.DataDir = self.BeamTest.Path.joinpath('hv')
 
-        # Config
+        # Info
         self.Ana = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
         self.Collection = None
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.RunLogs = self.Ana.Run.Logs
         self.Run = self.load_run()
-        self.Config = Config(self.DataDir.joinpath('config.ini'), required=True)
+
+        # Config
+        self.FileName = self.DataDir.joinpath('data.hdf5')
+        self.Config = self.init_config()
         self.Bias = self.load_bias()
 
         # Times
@@ -55,11 +58,27 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region INIT
-    def load_data(self):
-        data_file = join(self.DataDir, 'data.hdf5')
-        if not file_exists(data_file):
+    def init_config(self):
+        fname = self.DataDir.joinpath('config.ini')
+        if not fname.exists():
+            server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
+            fname.parent.mkdir(exist_ok=True)
+            download_file(server, Path(loc).joinpath(*fname.parts[-4:]), fname, out=True)
+        return Config(self.DataDir.joinpath('config.ini'))
+
+    def find_data(self):
+        if self.FileName.exists():
+            return True
+        if self.DataDir.joinpath(self.Tag).is_dir():  # convert raw current data if it exists
             self.convert_data()
-        data = h5py.File(data_file, 'r')[self.Tag]
+            return True
+        server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
+        return download_file(server, Path(loc).joinpath(*self.FileName.parts[-4:]), self.FileName.parent, out=True) == 0
+
+    def load_data(self):
+        if not self.find_data():
+            critical('could not find current data ...')
+        data = h5py.File(self.FileName, 'r')[self.Tag]
         data = data[where((data['timestamps'] >= time_stamp(self.Begin, off=True)) & (data['timestamps'] <= time_stamp(self.End, off=True)))]
         if self.IgnoreJumps:  # filter out jumps
             data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
