@@ -28,9 +28,15 @@ There are three beam tests with high resolution data:
 ### CERN
  - subclasses [converter.py](converter.py) in [cern/converter.py](../cern/converter.py)
  - requires three raw files:
-   - RawDUT: ROOT file from the DUT: ```ljutel_<cms-run>.root```
+   - RawDUT: ROOT file from the DUT: ```ljutel_<cms-run>.root``` 
+     - Location at CERN ( `/eos/experiment/rd42/data/RD42-TestBeams/cern/2018-10/cms-data/` )
+     - Location at ETH ( `/scratch2/cern/2018-10/dut/` )
    - RawTEL: binary file from the telescope: ```acq<tel-run>.bin```
+     - Location at CERN (`/eos/experiment/rd42/data/RD42-TestBeams/cern/2018-10/tel-data/` )
+     - Location at ETH ( `/scratch2/cern/2018-10/dut/tel/` )
    - RawREF: ROOT file from the reference plane (for alignment): ```anchor<tel-run>.root```
+     - Location at CERN ( `/eos/experiment/rd42/data/RD42-TestBeams/cern/2018-10/conv_fei4/` )
+     - Location at ETH ( `/scratch2/cern/2018-10/dut/tel/` )
  - step -2: convert the RawTEL file to ROOT (with judith)
  - step -1: convert _adc_ to _vcal_ in the RawDUT file (see [ADC Calibration](#adc-calibration)))
  - step  0: merge the two ROOT files for TEL and DUT
