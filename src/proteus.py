@@ -20,7 +20,7 @@ class Proteus:
         STEP 3: tracking
         STEP 4: track-matching  """
 
-    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None):
+    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, suf=None):
 
         # DIRECTORIES
         self.SoftDir = Path(soft_dir)
@@ -37,28 +37,33 @@ class Proteus:
         self.N = max_events
         self.S = skip_events
 
-        self.AlignSteps = self.get_align_steps()
+        self.AlignSteps = self.align_steps()
         self.Steps = [(self.noise_scan, self.toml_name('tel', 'mask', 'mask')), (self.align, self.toml_name()), (self.recon, self.OutFilePath)]
 
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
+    # ----------------------------------------
+    # region INIT
     def __create_default_cfg(self):
         copytree(self.ConfigDir.with_name('default'), self.ConfigDir)
 
-    def get_align_steps(self):
+    # endregion INIT
+    # ----------------------------------------
+
+    def align_steps(self):
         if not self.ConfigDir.is_dir():
             warning(f'no proteus config found for {self.ConfigDir.stem}, creating default!')
             self.__create_default_cfg()
         return list(toml.load(str(self.ConfigDir.joinpath('align.toml')))['align'])
 
-    def get_align_files(self):
+    def align_files(self):
         return [self.ConfigDir.joinpath(name) for name in [self.toml_name('all', 'mask', 'mask'), self.toml_name()]]
 
-    def get_alignment(self, step=-1):
+    def alignment(self, step=-1):
         return toml.load(str(self.ConfigDir.joinpath(self.toml_name(self.AlignSteps[step]))))
 
-    def get_z_positions(self, raw=False):
+    def z_positions(self, raw=False):
         d = toml.load(str(self.ConfigDir.joinpath('geometry.toml' if raw else self.toml_name())))
         return array([s['offset'][-1] for s in d['sensors']])
 
@@ -94,7 +99,7 @@ class Proteus:
         chdir(self.ConfigDir)  # proteus needs to be in the directory where all the toml files are (for the default args)...
         cfg = '' if cfg is None else f' -c {str(cfg).replace(".toml", "")}.toml'
         section = '' if section is None else f' -u {section}'
-        geo = '' if geo is None else f' -g {geo}'
+        geo = f' -g {choose(geo, self.Geo)}'
         n = f' -n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
         s = f' -s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
         cmd = f'{self.SoftDir.joinpath("bin", prog)} {choose(f, self.RawFilePath)} {out}{cfg}{geo}{section}{n}{s}'

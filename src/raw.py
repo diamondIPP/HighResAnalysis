@@ -91,11 +91,11 @@ class Raw:
         return array(self.F[f'Plane{p}'][g][k])
 
     def z(self):
-        return self.Parent.Proteus.get_z_positions(raw=True)[:self.NT]
+        return self.Parent.Proteus.z_positions(raw=True)[:self.NT]
 
     def l2g(self, x, y, p, step=None):
         p = self.Planes[p]
-        a = self.Parent.Proteus.get_alignment(choose(step, self.AtStep))['sensors'][p.Number]
+        a = self.Parent.Proteus.alignment(choose(step, self.AtStep))['sensors'][p.Number]
         ox, oy = array(a['offset'][:2])
         rx, ry = array(a['unit_u']), a['unit_v']
         return transform(x, y, sx=p.PX, sy=p.PY, ox=ox, oy=oy, rx=rx, ry=ry, order='trs')

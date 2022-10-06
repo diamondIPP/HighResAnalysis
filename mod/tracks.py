@@ -56,7 +56,7 @@ class TrackAnalysis(DUTAnalysis):
 
     def get_z(self, raw=False):
         """returns: z-pos of the telescope planes in [cm]"""
-        return self.Proteus.get_z_positions(raw)[:self.Tel.NPlanes] / 10
+        return self.Proteus.z_positions(raw)[:self.Tel.NPlanes] / 10
     # endregion MISC
     # ----------------------------------------
 
