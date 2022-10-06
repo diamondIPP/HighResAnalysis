@@ -10,6 +10,7 @@ from datetime import datetime
 from json import dump
 from time import mktime
 from utility.utils import Dir, array
+from numpy import where
 
 # use credentials to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds']
@@ -67,9 +68,13 @@ info = {'2018-09': {'key': '1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc',
         }
 
 
-def make_cern_run_log(tc='2018-10'):
+def load_cern_sheet(tc='2018-10'):
     sheet = client.open_by_key(info[tc]['key']).worksheet('KARTEL')
-    data = sheet.get_all_values()[1:]
+    return sheet.get_all_values()[1:]
+
+
+def make_cern_run_log(tc='2018-10'):
+    data = load_cern_sheet(tc)
     hv = info[tc]['hv']
     exclude = ['FEI4', '1x5']
     dic = {}
@@ -78,8 +83,9 @@ def make_cern_run_log(tc='2018-10'):
         r0, ndut, nrow, r1 = info[tc]['n']
         if not run or not run.isdigit() or not row[r1 + 1] or not row[r1 + 2] or not row[0].isdigit():
             continue
-        dut_data = array(row[r0:r0 + ndut * nrow]).reshape((ndut, -1))  # up to four DUTs
-        dut_data = array([[w.strip(' ') for w in lst] for lst in dut_data if lst[0] and not any([w in lst[0] for w in exclude])]).T.tolist()  # remove empty and excluded DUTs
+        raw_dut_data = array(row[r0:r0 + ndut * nrow]).reshape((ndut, -1))  # up to four DUTs
+        raw_dut_data = raw_dut_data[[i for i in range(ndut) if not any([w in raw_dut_data[i][0] for w in exclude])]]  # exclude 5x1
+        dut_data = array([[w.strip(' ') for w in lst] for lst in raw_dut_data if lst[0]]).T.tolist()  # remove empty DUTs
         dut_dict = {name: d for name, d in zip(['duts', 'hv', 'current', 'temp', 'angle'], dut_data)}
         if not dut_dict:
             continue
@@ -87,6 +93,7 @@ def make_cern_run_log(tc='2018-10'):
                     'start': make_timestamp(row[r1 + 1], row[r1 + 2]),
                     'end': make_timestamp(row[r1 + 1], row[r1 + 3]),
                     'events': int(row[r1 + 6]) if row[r1 + 6] else 0,
+                    'dut position': where(raw_dut_data[:, 0])[0].tolist(),
                     **dut_dict,
                     'hv supplies': [hv[dut] if dut in hv else '' for dut in dut_dict['duts']],
                     'status': row[r1 + 5],
