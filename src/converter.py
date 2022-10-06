@@ -37,7 +37,7 @@ class Converter:
         self.SoftDir = Path(Analysis.Config.get('SOFTWARE', 'dir')).expanduser()
 
         self.NTelPlanes = Analysis.Config.getint('TELESCOPE', 'planes')
-        self.NDUTPlanes = Analysis.Config.getint('DUT', 'planes')
+        self.NDUTPlanes = self.Run.NDUTs
 
         # PRE-CONVERTER
         self.Raw = self.init_raw()
@@ -164,7 +164,7 @@ class Converter:
         self.F.create_group('Event').create_dataset('Time', data=self.get_time_stamp(tree))
 
     def add_planes(self):
-        n = self.NTelPlanes + self.NDUTPlanes
+        n = len(self.RawFile.keys(recursive=False))  # noqa (raises stupid warning)
         info(f'add {n} planes ... ')
         PBAR.start(n * 2)
         for pl in range(n):

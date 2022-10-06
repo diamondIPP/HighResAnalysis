@@ -76,7 +76,7 @@ class DUTAnalysis(Analysis):
         return cern.converter.CERNConverter if self.BeamTest.Location == 'CERN' else src.converter.Converter
 
     def init_planes(self):
-        n_tel, n_dut = [self.Config.get_value(section, 'planes', dtype=int) for section in ['TELESCOPE', 'DUT']]
+        n_tel, n_dut = self.Converter.NTelPlanes, self.Converter.NDUTPlanes
         return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT', rotated=abs(self.alignment(i)['unit_u'][1]) > .5) for i in range(n_tel + n_dut)]
 
     def init_residuals(self):
