@@ -25,7 +25,8 @@ class Run:
 
         # Info
         self.Logs = self.load_logs()
-        self.NDUTs = len(self.Logs['duts'])
+        self.DUTs = self.Logs['duts']
+        self.NDUTs = len(self.DUTs)
         self.Positions = self.Logs['dut position']  # which of the DUT slots are occupied
         self.DUT = DUT(dut_number, self.Logs)
 
