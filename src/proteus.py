@@ -8,9 +8,26 @@ from os import chdir
 import toml
 from numpy import array
 from plotting.utils import info, warning, choose, remove_file
-from utility.utils import print_banner, GREEN, print_elapsed_time
+from utility.utils import print_banner, GREEN, print_elapsed_time, wraps
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
+
+
+def init_toml(name):
+    def inner(func):
+        @wraps(func)
+        def wrapper(self, arg=None):
+            default = self.ConfigDir.joinpath(f'{name}.toml')
+            if arg is None:
+                return default
+            d = toml.load(default)
+            func(self, arg, d)
+            tmp = self.ConfigDir.joinpath(f'tmp-{name[:3]}.toml')
+            with open(tmp, 'w') as f:
+                toml.dump(d, f)
+            return tmp
+        return wrapper
+    return inner
 
 
 class Proteus:
@@ -20,12 +37,21 @@ class Proteus:
         STEP 3: tracking
         STEP 4: track-matching  """
 
-    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, suf=None):
+    Si_Detectors = ['D8']
+
+    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, dut_pos=None, duts=None):
 
         # DIRECTORIES
         self.SoftDir = Path(soft_dir)
         self.DataDir = Path(data_dir)
         self.ConfigDir = Path(cfg_dir)
+
+        # CONFIG
+        self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
+        self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes  # default geo has all sensors
+        self.Geo = self.init_geo(dut_pos)
+        self.Device = self.init_device(duts)
+        self.Ana = self.init_ana(duts)
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
@@ -43,10 +69,32 @@ class Proteus:
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
+    def __del__(self):
+        remove_file(self.ConfigDir.joinpath('tmp-geo.toml'), prnt=False)
+        remove_file(self.ConfigDir.joinpath('tmp-dev.toml'), prnt=False)
+
     # ----------------------------------------
     # region INIT
     def __create_default_cfg(self):
         copytree(self.ConfigDir.with_name('default'), self.ConfigDir)
+
+    @init_toml('geometry')
+    def init_geo(self, dut_pos, data=None):
+        for i in range(self.MaxDUTs):  # remove non-existing DUTs
+            if i not in dut_pos:
+                data['sensors'].pop(i - self.MaxDUTs)
+        for i, dic in enumerate(data['sensors']):  # fix ids
+            dic['id'] = i
+
+    @init_toml('device')
+    def init_device(self, duts, data=None):
+        s = [dic for dic in data['sensors'] if dic['name'].startswith('M')]  # only select TEL planes
+        s += [{'type': 'CMSPixel-Si' if dut in Proteus.Si_Detectors else 'CMSPixel-Dia', 'name': f'C{i}'} for i, dut in enumerate(duts)]  # add all given DUTs
+        data['sensors'] = s
+
+    @init_toml('analysis')
+    def init_ana(self, duts, data=None):
+        data['recon']['extrapolation_ids'] = list(range(self.NTelPlanes + len(duts)))
 
     # endregion INIT
     # ----------------------------------------
@@ -94,15 +142,16 @@ class Proteus:
 
     # ----------------------------------------
     # region RUN
-    def run(self, prog, out: Path, cfg=None, geo=None, section=None, f=None, n=None, s=None):
+    def run(self, prog, out: Path, cfg=None, geo=None, dev=None, section=None, f=None, n=None, s=None):
         old_dir = Path.cwd()
         chdir(self.ConfigDir)  # proteus needs to be in the directory where all the toml files are (for the default args)...
         cfg = '' if cfg is None else f' -c {str(cfg).replace(".toml", "")}.toml'
         section = '' if section is None else f' -u {section}'
         geo = f' -g {choose(geo, self.Geo)}'
+        dev = f' -d {choose(dev, self.Device)}'
         n = f' -n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
         s = f' -s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
-        cmd = f'{self.SoftDir.joinpath("bin", prog)} {choose(f, self.RawFilePath)} {out}{cfg}{geo}{section}{n}{s}'
+        cmd = f'{self.SoftDir.joinpath("bin", prog)} {choose(f, self.RawFilePath)} {out}{cfg}{dev}{geo}{section}{n}{s}'
         info(cmd)
         try:
             check_call(cmd, shell=True)
@@ -136,7 +185,7 @@ class Proteus:
     def recon(self, cfg=None, geo=-1):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=cfg, geo=None if geo is None else self.toml_name(self.AlignSteps[geo]))
+        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=None if geo is None else self.toml_name(self.AlignSteps[geo]))
 
     def track(self):
         """ tracking and clustering for the event alignment. """

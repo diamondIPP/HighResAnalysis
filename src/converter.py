@@ -102,7 +102,7 @@ class Converter:
         data_dir = self.DataDir.joinpath('proteus')
         conf_dir = Dir.joinpath('proteus', self.DataDir.stem)
         me, se = [Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']]
-        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se)
+        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se, dut_pos=self.Run.Positions, duts=self.Run.DUTs)
 
     def init_raw(self):
         from src.raw import Raw
