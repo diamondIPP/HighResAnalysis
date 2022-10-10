@@ -36,8 +36,12 @@ class CERNConverter(Converter):
         return self.Raw.Steps + self.Adc2Vcal.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
 
     @property
+    def aux_files(self):
+        return [self.Raw.OutFilePath, self.Adc2Vcal.OutFilePath] + super().aux_files
+
+    @property
     def raw_files(self):
-        return [self.Raw.OutFilePath, self.Adc2Vcal.OutFilePath] + super().raw_files
+        return [self.EventAlignment.RefPath, self.Adc2Vcal.RawFilePath] + super().raw_files
 
     def init_raw(self):
         from cern.raw import CERNRaw

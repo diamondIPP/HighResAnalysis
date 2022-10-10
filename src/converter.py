@@ -60,6 +60,7 @@ class Converter:
                     s()
                 else:
                     info(f'found outfile of step {i}, continue with next step ({f})')
+            self.remove_aux_files()
             add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
 
     @property
@@ -71,11 +72,15 @@ class Converter:
         return self.first_steps + self.Proteus.Steps + [(self.root2hdf5, self.OutFilePath)]
 
     @property
-    def raw_files(self):
+    def aux_files(self):
         return [self.Proteus.RawFilePath, self.Proteus.OutFilePath, self.Proteus.HistFilePath]
 
-    def remove_raw_files(self):
-        remove_file(*self.raw_files)
+    @property
+    def raw_files(self):
+        return [self.Raw.RawFilePath]
+
+    def remove_aux_files(self):
+        remove_file(*self.aux_files)
 
     @staticmethod
     def download_raw_file(f: Path, out=True):

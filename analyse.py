@@ -39,7 +39,7 @@ if args.remove_meta:
 if args.convert:
     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=False, test=True)
     z.remove_file()
-    z.Converter.remove_raw_files()
+    z.Converter.remove_aux_files()
 
 z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
 
