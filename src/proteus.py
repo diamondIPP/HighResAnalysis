@@ -24,6 +24,7 @@ def init_toml(name):
             func(self, arg, d)
             tmp = self.ConfigDir.joinpath(f'tmp-{name[:3]}.toml')
             with open(tmp, 'w') as f:
+                self.Tmp.append(tmp)
                 toml.dump(d, f)
             return tmp
         return wrapper
@@ -45,10 +46,13 @@ class Proteus:
         self.SoftDir = Path(soft_dir)
         self.DataDir = Path(data_dir)
         self.ConfigDir = Path(cfg_dir)
+        self.MaskDir = Path('mask')
 
         # CONFIG
         self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
         self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes  # default geo has all sensors
+        self.Tmp = []
+        self.DUTs = duts
         self.Geo = self.init_geo(dut_pos)
         self.Device = self.init_device(duts)
         self.Ana = self.init_ana(duts)
@@ -64,14 +68,14 @@ class Proteus:
         self.S = skip_events
 
         self.AlignSteps = self.align_steps()
-        self.Steps = [(self.noise_scan, self.toml_name('tel', 'mask', 'mask')), (self.align, self.toml_name()), (self.recon, self.OutFilePath)]
+        self.Steps = [(self.noise_scan, self.toml_name(self.dut_names[-1], 'mask', 'mask')), (self.align, self.toml_name()), (self.recon, self.OutFilePath)]
 
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
     def __del__(self):
-        remove_file(self.ConfigDir.joinpath('tmp-geo.toml'), prnt=False)
-        remove_file(self.ConfigDir.joinpath('tmp-dev.toml'), prnt=False)
+        for tmp in self.Tmp:
+            remove_file(tmp, prnt=False)
 
     # ----------------------------------------
     # region INIT
@@ -91,11 +95,19 @@ class Proteus:
         s = [dic for dic in data['sensors'] if dic['name'].startswith('M')]  # only select TEL planes
         s += [{'type': 'CMSPixel-Si' if dut in Proteus.Si_Detectors else 'CMSPixel-Dia', 'name': f'C{i}'} for i, dut in enumerate(duts)]  # add all given DUTs
         data['sensors'] = s
+        data['pixel_masks'] = [str(self.MaskDir.joinpath(f'{n}-mask.toml')) for n in ['tel'] + self.dut_names]
 
     @init_toml('analysis')
     def init_ana(self, duts, data=None):
         data['recon']['extrapolation_ids'] = list(range(self.NTelPlanes + len(duts)))
 
+    @init_toml('noisescan')
+    def init_noise(self, duts, data=None):  # noqa
+        new = {'tel': data['noisescan']['tel']}  # only select the telescope settings
+        for i, key in enumerate(self.dut_names):  # add only existing DUTs
+            data['noisescan'][key]['sensors'][0]['id'] = self.NTelPlanes + i
+            new[key] = data['noisescan'][key]
+        data['noisescan'] = new
     # endregion INIT
     # ----------------------------------------
 
@@ -114,6 +126,10 @@ class Proteus:
     def z_positions(self, raw=False):
         d = toml.load(str(self.ConfigDir.joinpath('geometry.toml' if raw else self.toml_name())))
         return array([s['offset'][-1] for s in d['sensors']])
+
+    @property
+    def dut_names(self):
+        return ['ref', 'dut'] if self.DUTs is None else self.DUTs
 
     # ----------------------------------------
     # region MISC
@@ -162,12 +178,13 @@ class Proteus:
     def noise_scan(self):
         """ step 1: find noisy pixels. """
         d = Path('mask')
-        cfg = toml.load(str(self.ConfigDir.joinpath('noisescan.toml')))['noisescan']
+        f_cfg = self.init_noise(self.DUTs)
+        cfg = toml.load(str(f_cfg))['noisescan']
         self.ConfigDir.joinpath(d).mkdir(exist_ok=True)
         self.make_empty_masks(cfg)
         for section in cfg:
             print_banner(f'Starting noise scan for {section}', color=GREEN)
-            self.run('pt-noisescan', out=d.joinpath(section), cfg='noisescan', section=section)
+            self.run('pt-noisescan', out=d.joinpath(section), cfg=f_cfg.stem, section=section)
 
     def align(self, step=None, force=False):
         """ step 2: align the telescope in several steps. """
