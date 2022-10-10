@@ -28,3 +28,7 @@ class CERNRaw(Raw):
     @property
     def options(self):
         return f'-c convert -m {self.SoftDir.joinpath("configs", "readout", "CERN.cfg")}'
+
+    def convert(self):
+        """convert binary raw file (from KARTEL telescope) to root file with judith."""
+        super().convert()
