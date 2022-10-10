@@ -72,6 +72,10 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region INIT
     @property
+    def server_save_dir(self):
+        return Path('duts', str(self.DUT), self.BeamTest.Tag, str(self.Run))
+
+    @property
     def converter(self):
         return cern.converter.CERNConverter if self.BeamTest.Location == 'CERN' else src.converter.Converter
 
@@ -361,7 +365,7 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region SIGNAL
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, **dkw):
-        return self.Draw.distribution(self.get_phs(e, cut), **prep_kw(dkw, title='PH', x_tit=self.ph_tit, leg=self.draw_trim(e, draw_thresh)))
+        return self.Draw.distribution(self.get_phs(e, cut), **prep_kw(dkw, title='PH', x_tit=self.ph_tit, leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
 
     def draw_trim(self, e, thresh=False):
         if self.Calibration.Trim is None:

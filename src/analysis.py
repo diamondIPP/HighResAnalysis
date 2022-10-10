@@ -1,7 +1,7 @@
 from os import getcwd
 from shutil import copyfile
 
-from plotting.draw import *
+from plotting.save import *
 from utility.utils import PBar, Dir, print_banner, byte2str
 
 
@@ -48,7 +48,7 @@ class Analysis:
         self.MetaSubDir = meta_sub_dir
 
         self.PBar = PBar()
-        self.Draw = Draw(Analysis.Config.FilePath, self.Verbose)
+        self.Draw = SaveDraw(self, results_dir=self.BeamTest.Tag)
 
     def __str__(self):
         return f'{self.__class__.__name__.replace("Analysis", "").upper()} ANALYSIS'
@@ -58,6 +58,10 @@ class Analysis:
 
     # ----------------------------------------
     # region INIT
+    @property
+    def server_save_dir(self):
+        return
+
     @staticmethod
     def init_locations():
         for loc, beam_tests in Analysis.Locations.items():
