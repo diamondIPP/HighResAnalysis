@@ -89,7 +89,7 @@ class ResidualAnalysis(DUTAnalysis):
         self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]'))
 
     def draw(self, bw=10, pl=None, **dkw):
-        self.Draw.distribution(self(cut=False, pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
+        self.Draw.distribution(self(cut=..., pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
 
     def draw_x_map(self, res=.3, cut=None, fid=False, pl=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid), pl=pl) for f in [self.txy, self.dx]]  # noqa

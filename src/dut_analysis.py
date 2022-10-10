@@ -128,6 +128,10 @@ class DUTAnalysis(Analysis):
 
     def has_alignment(self, imax=20):
         return all([file_exists(self.make_pickle_path('AM', imax, 'alignment', run='', dut=i)) for i in [self.DUT.Number, self.REF.DUT.Number]])
+
+    def verify_alignment(self, cut=100):
+        """checks if the residuals are centred around 0 for a given cut [um]"""
+        return sqrt(mean(self.Residuals.du(cut=...)) ** 2 + mean(self.Residuals.dy(cut=...)) ** 2) < cut
     # endregion INIT
     # ----------------------------------------
 
