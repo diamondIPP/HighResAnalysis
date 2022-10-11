@@ -6,8 +6,8 @@
 from typing import Any
 from numpy import array, all, invert, ones, log10, count_nonzero, cumsum, ceil, ndarray
 
-from utility.utils import print_table, warning, make_list, choose, Dir, is_iter, critical
-from plotting.utils import Config
+from utility.utils import print_table, make_list, choose, Dir, is_iter, critical
+from plotting.utils import Config, warning
 
 
 class Cuts:
