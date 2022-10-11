@@ -14,7 +14,7 @@ from utility.utils import *  # noqa
 
 t_start = time()
 aparser = ArgumentParser()
-aparser.add_argument('run', nargs='?', default=232, type=int)
+aparser.add_argument('run', nargs='?', default=Analysis.Config.get_value('data', 'default run'), type=int)
 aparser.add_argument('dut', nargs='?', default=0, type=int)
 aparser.add_argument('--testcampaign', '-tc', nargs='?', default=Analysis.find_testcampaign())
 aparser.add_argument('--verbose', '-v', action='store_false')
