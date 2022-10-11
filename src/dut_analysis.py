@@ -114,7 +114,8 @@ class DUTAnalysis(Analysis):
 
     def load_file(self, test=False):
         if not test:
-            self.Converter.run()
+            if self.Converter.run():
+                self.remove_metadata()
             try:
                 f = h5py.File(self.Run.FileName, 'r')
                 _ = f['Tracks']         # check if data is complete

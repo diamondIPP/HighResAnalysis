@@ -63,6 +63,8 @@ class Converter:
             if rm:
                 self.remove_aux_files()
             add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
+            return True
+        return False
 
     def realign(self):
         self.run(steps=self.first_steps, force=True, rm=False)
