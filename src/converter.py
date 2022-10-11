@@ -14,7 +14,7 @@ from uproot.models import TTree
 from src.proteus import Proteus
 from src.run import Run, Analysis
 from utility.utils import *
-from plotting.utils import download_file
+from plotting.utils import download_file, remove_file
 
 
 class Converter:
@@ -51,17 +51,23 @@ class Converter:
     def __repr__(self):
         return f'{self.__class__.__name__} of {self.Run!r}'
 
-    def run(self, force=False):
+    def run(self, force=False, steps=None, rm=True):
         if force or not self.OutFilePath.exists():
             t0 = info(f'Starting {self!r}\n')
-            for i, (s, f) in enumerate(self.steps):
+            for i, (s, f) in enumerate(choose(steps, self.steps)):
                 if not f.exists():
                     print_banner(f'Start converter step {i}: {s.__doc__}')
                     s()
                 else:
                     info(f'found outfile of step {i}, continue with next step ({f})')
-            self.remove_aux_files()
+            if rm:
+                self.remove_aux_files()
             add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
+
+    def realign(self):
+        self.run(steps=self.first_steps, force=True, rm=False)
+        self.Proteus.align(force=True)
+        self.remove_aux_files()
 
     @property
     def first_steps(self):
