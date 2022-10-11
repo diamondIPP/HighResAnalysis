@@ -6,9 +6,9 @@
 from pathlib import Path
 from os import chdir
 import toml
-from numpy import array
+from numpy import array, arange
 from plotting.utils import info, warning, choose, remove_file
-from utility.utils import print_banner, GREEN, print_elapsed_time, wraps
+from utility.utils import print_banner, GREEN, print_elapsed_time, wraps, remove_letters
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
 
@@ -64,18 +64,19 @@ class Proteus:
         self.HistFilePath = self.Out.with_name(f'{self.Out.name}-hists.root')       # file with histograms
         self.TrackName = self.DataDir.joinpath(f'clustered-{self.RunNumber:04d}')   # tracking file for alignment
 
+        # ALIGNMENT
         self.N = max_events
         self.S = skip_events
-
+        self.AlignDir = Path('alignment')
         self.AlignSteps = self.align_steps()
-        self.Steps = [(self.noise_scan, self.toml_name(self.dut_names[-1], 'mask', 'mask')), (self.align, self.toml_name()), (self.recon, self.OutFilePath)]
+
+        self.Steps = [(self.noise_scan, self.toml_name(self.dut_names[-1], 'mask', 'mask')), (self.align, self.align_file), (self.recon, self.OutFilePath)]
 
     def __repr__(self):
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
     def __del__(self):
-        for tmp in self.Tmp:
-            remove_file(tmp, prnt=False)
+        remove_file(*self.Tmp, warn=False)
 
     # ----------------------------------------
     # region INIT
@@ -108,6 +109,13 @@ class Proteus:
             data['noisescan'][key]['sensors'][0]['id'] = self.NTelPlanes + i
             new[key] = data['noisescan'][key]
         data['noisescan'] = new
+
+    @init_toml('align')
+    def init_align(self, duts=None, data=None):
+        for step in self.AlignSteps:
+            if 'dut' in step:
+                data['align'][step]['sensor_ids'] = list(range(self.NTelPlanes + len(duts)))
+                data['align'][step]['align_ids'] = (arange(len(duts)) + self.NTelPlanes).tolist()
     # endregion INIT
     # ----------------------------------------
 
@@ -117,14 +125,16 @@ class Proteus:
             self.__create_default_cfg()
         return list(toml.load(str(self.ConfigDir.joinpath('align.toml')))['align'])
 
-    def align_files(self):
-        return [self.ConfigDir.joinpath(name) for name in [self.toml_name('all', 'mask', 'mask'), self.toml_name()]]
+    @property
+    def align_file(self):
+        files = sorted([f for f in self.ConfigDir.joinpath(self.AlignDir).glob('*.toml') if self.RunNumber >= int(remove_letters(f.stem))], reverse=True)
+        return files[0] if len(files) else Path('None')
 
-    def alignment(self, step=-1):
-        return toml.load(str(self.ConfigDir.joinpath(self.toml_name(self.AlignSteps[step]))))
+    def alignment(self):
+        return toml.load(str(self.align_file))
 
     def z_positions(self, raw=False):
-        d = toml.load(str(self.ConfigDir.joinpath('geometry.toml' if raw else self.toml_name())))
+        d = toml.load(str(self.Geo if raw else self.align_file))
         return array([s['offset'][-1] for s in d['sensors']])
 
     @property
@@ -147,8 +157,7 @@ class Proteus:
             remove_file(f)
 
     def remove_alignment(self):
-        for f in self.ConfigDir.joinpath('alignment').glob('*.toml'):
-            remove_file(f)
+        remove_file(self.align_file)
 
     def remove_mask(self):
         for f in self.ConfigDir.joinpath('mask').glob('*.toml'):
@@ -186,23 +195,28 @@ class Proteus:
             print_banner(f'Starting noise scan for {section}', color=GREEN)
             self.run('pt-noisescan', out=d.joinpath(section), cfg=f_cfg.stem, section=section)
 
-    def align(self, step=None, force=False):
+    def align(self, step=None, force=False, n=100000):
         """ step 2: align the telescope in several steps. """
         t = info('Starting alignment ...')
-        d = Path('alignment')
-        self.ConfigDir.joinpath(d).mkdir(exist_ok=True)
+        self.ConfigDir.joinpath(self.AlignDir).mkdir(exist_ok=True)
+        cfg = self.init_align(self.DUTs).stem
         for i in range(len(self.AlignSteps)) if step is None else [step]:
-            step = self.AlignSteps[i]
-            if not self.toml_name(step).exists() or force:
-                self.run('pt-align', out=d.joinpath(step), geo=self.toml_name(self.AlignSteps[i - 1]) if i else None, section=step, cfg='align')
+            s = self.AlignSteps[i]
+            if not self.toml_name(s).exists() or force:
+                self.run('pt-align', out=self.AlignDir.joinpath(s), geo=self.toml_name(self.AlignSteps[i - 1]) if i else None, section=s, cfg=cfg, n=n)
             else:
-                warning('geo file already exists!')
+                warning(f'geo file "{s}" already exists!')
+        if step is None:
+            final_file = self.toml_name()
+            final_file.rename(final_file.with_name(f'{self.RunNumber:03d}-geo.toml'))  # rename the final alignment file
+            remove_file(*[self.toml_name(s) for s in self.AlignSteps])  # remove auxiliary geo files
+            remove_file(*self.ConfigDir.joinpath(self.AlignDir).glob('*.root'))  # remove hist files
         print_elapsed_time(t)
 
-    def recon(self, cfg=None, geo=-1):
+    def recon(self, cfg=None):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=None if geo is None else self.toml_name(self.AlignSteps[geo]))
+        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file)
 
     def track(self):
         """ tracking and clustering for the event alignment. """
