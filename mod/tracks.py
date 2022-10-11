@@ -52,7 +52,7 @@ class TrackAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region MISC
     def get_offsets(self, redo=False):
-        return uarr2n(self.Residuals.get_means(local=True, _redo=redo)).reshape(-1, 1)
+        return uarr2n(self.Residuals.means(local=True, _redo=redo)).reshape(-1, 1)
 
     def get_z(self, raw=False):
         """returns: z-pos of the telescope planes in [cm]"""

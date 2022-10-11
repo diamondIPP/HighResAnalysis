@@ -66,8 +66,11 @@ class Converter:
             return True
         return False
 
+    def raw2root(self):
+        self.run(force=True, steps=self.first_steps, rm=False)
+
     def realign(self):
-        self.run(steps=self.first_steps, force=True, rm=False)
+        self.raw2root()
         self.Proteus.align(force=True)
         self.remove_aux_files()
 

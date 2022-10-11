@@ -65,6 +65,8 @@ class DUTAnalysis(Analysis):
         self.Efficiency = self.init_eff()
         self.Resolution = self.init_resolution()
 
+        self.verify_alignment()
+
     def __repr__(self):
         ev_str = f' ({ev2str(self.NEvents)} ev)' if hasattr(self, 'NEvents') else ''
         return f'{super().__repr__()} {ev_str}'
@@ -136,7 +138,9 @@ class DUTAnalysis(Analysis):
 
     def verify_alignment(self, cut=100):
         """checks if the residuals are centred around 0 for a given cut [um]"""
-        return sqrt(mean(self.Residuals.du(cut=...)) ** 2 + mean(self.Residuals.dy(cut=...)) ** 2) < cut
+        mx, my = self.Residuals.means() * 1e3  # mm -> um
+        if not sqrt(mx.n ** 2 + my.n ** 2) < cut:
+            self.Converter.realign()
     # endregion INIT
     # ----------------------------------------
 
@@ -295,10 +299,10 @@ class DUTAnalysis(Analysis):
     def draw_occupancy(self, local=True, bw=1, cut=None, fid=False, pl=None, **dkw):
         x, y = self.get_xy(local, self.Cut.get_nofid(cut, fid), pl)
         pl = self.Plane if local else self.Planes[0]
-        return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local)))
+        return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local), file_name='Occupancy'))
 
     def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, trans=True, **dkw):
-        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap'))
+        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(cut, pl)

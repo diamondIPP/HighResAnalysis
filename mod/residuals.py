@@ -65,7 +65,7 @@ class ResidualAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region GET
     @save_pickle('RM', suf_args='all')
-    def get_means(self, local=False, cut=None, pl=None, _redo=False):
+    def means(self, local=False, cut=None, pl=None, _redo=False):
         return array([Gauss(f(show=False, cut=cut, pl=pl), thresh=.05).fit()[1] for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])]) / (1 if local else 1e3)
     # endregion DATA
     # ----------------------------------------
@@ -73,10 +73,10 @@ class ResidualAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw_u(self, cut=None, pl=None, **dkw):
-        return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]'))
+        return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]', file_name='ResX'))
 
     def draw_v(self, cut=None, pl=None, **dkw):
-        return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]'))
+        return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]', file_name='ResY'))
 
     def draw_x(self, cut=None, pl=None, **dkw):
         return self.Draw.distribution(self.dx(cut, pl), **prep_kw(dkw, title='X Residuals', x_tit='Residual [Columns]'))

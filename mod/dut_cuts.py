@@ -131,7 +131,7 @@ class DUTCut(Cuts):
 
     @save_cut('Res', suf_args='all', cfg='residuals')
     def make_residual(self, v=None, _redo=False):
-        x, y, (mx, my) = self.Ana.Residuals.du(cut=0), self.Ana.Residuals.dv(cut=0), self.Ana.Residuals.get_means(cut=0)
+        x, y, (mx, my) = self.Ana.Residuals.du(cut=0), self.Ana.Residuals.dv(cut=0), self.Ana.Residuals.means(cut=0)
         return sqrt((x - mx.n) ** 2 + (y - my.n) ** 2) < choose(v, self.get_config('residuals', dtype=float))
 
     def make_trk_residual(self, redo=False):
@@ -196,7 +196,7 @@ class DUTCut(Cuts):
     # ----------------------------------------
 
     def get_res(self, **dkw):
-        r, mx, my = append(self.get_config('residuals', dtype=float), uarr2n(self.Ana.Residuals.get_means(cut=0))) * 1e3
+        r, mx, my = append(self.get_config('residuals', dtype=float), uarr2n(self.Ana.Residuals.means(cut=0))) * 1e3
         return Draw.circle(r, mx, my, **prep_kw(dkw, show=False))
 
     def draw_res(self, **dkw):
