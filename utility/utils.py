@@ -6,7 +6,7 @@ import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT overwriting the help settings...
 
 from os.path import isfile, exists, isdir, dirname, realpath, join, basename
-from os import makedirs, environ, remove, devnull
+from os import makedirs, environ, devnull
 from subprocess import call
 from ROOT import TFile
 from json import loads
@@ -19,7 +19,7 @@ import pickle
 from copy import deepcopy
 from inspect import signature
 from functools import wraps
-from plotting.utils import info, warning, critical, add_to_info, get_kw, time
+from plotting.utils import info, critical, add_to_info, get_kw, time, remove_file
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
 from hashlib import md5
@@ -61,7 +61,7 @@ def time_stamp(dt, off=None):
     return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
 
 
-def print_elapsed_time(start, what='This', show=True, color=None):
+def print_elapsed_time(start, what='This', show=True, color=WHITE):
     string = f'Elapsed time for {what}: {get_elapsed_time(start)}'
     print_banner(string, color=color) if show else do_nothing()
     return string
@@ -290,7 +290,6 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
 def print_table(rows, header=None, footer=None, prnt=True):
     head, foot = [choose([v], zeros((0, len(rows[0]))), v) for v in [header, footer]]
     t = concatenate([head, rows, foot]).astype('str')
-    # t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
     col_width = [len(max(t[:, i], key=len)) for i in range(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
     hline = '{}'.format('~' * total_width)
