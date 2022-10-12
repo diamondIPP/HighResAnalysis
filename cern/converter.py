@@ -24,6 +24,7 @@ class CERNConverter(Converter):
         Converter.__init__(self, data_dir, run_number)
         self.EventAlignment = self.init_event_alignment()
         self.Adc2Vcal = self.init_adc2vcal()
+        self.Ref = self.init_ref()
 
     def proteus_raw_file_path(self):
         return self.DataDir.joinpath('data', f'run{self.Run:04d}.root')
@@ -33,7 +34,7 @@ class CERNConverter(Converter):
 
     @property
     def first_steps(self):
-        return self.Raw.Steps + self.Adc2Vcal.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
+        return self.Raw.Steps + self.Adc2Vcal.Steps + self.Ref.Steps + [(self.merge_root_files, self.proteus_raw_file_path())]
 
     @property
     def aux_files(self):
@@ -55,10 +56,14 @@ class CERNConverter(Converter):
         from cern.adc import Adc2Vcal
         return Adc2Vcal(self)
 
+    def init_ref(self):
+        from cern.ref import RefConverter
+        return RefConverter(self)
+
     def merge_root_files(self, force=False):
         """merge the telescope and DUT root files"""
         self.OutFilePath.parent.mkdir(exist_ok=True)
-        cmd = f'hadd {"-f" if force else ""} {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Adc2Vcal.OutFilePath}'
+        cmd = f'hadd {"-f" if force else ""} {self.proteus_raw_file_path()} {self.Raw.OutFilePath} {self.Ref.OutFilePath} {self.Adc2Vcal.OutFilePath}'
         pinfo(cmd)
         check_call(cmd, shell=True)
 
