@@ -130,6 +130,10 @@ class Proteus:
         files = sorted([f for f in self.ConfigDir.joinpath(self.AlignDir).glob('*.toml') if self.RunNumber >= int(remove_letters(f.stem))], reverse=True)
         return files[0] if len(files) else Path('None')
 
+    @property
+    def has_alignment(self):
+        return self.align_file.exists()
+
     def alignment(self):
         return toml.load(str(self.align_file))
 

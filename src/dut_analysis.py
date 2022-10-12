@@ -30,9 +30,8 @@ class DUTAnalysis(Analysis):
         self.DUT = self.Run.DUT
         self.Converter = self.converter.from_run(self.Run)
         self.Proteus = self.Converter.Proteus
-        if self.Proteus.align_file.exists():
-            self.Planes = self.init_planes()
-            self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
+        self.Planes = self.init_planes()
+        self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
 
         if test:
             return
@@ -81,7 +80,8 @@ class DUTAnalysis(Analysis):
 
     def init_planes(self):
         n_tel, n_dut = self.Converter.NTelPlanes, self.Converter.NDUTPlanes
-        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT', rotated=abs(self.alignment(i)['unit_u'][1]) > .5) for i in range(n_tel + n_dut)]
+        rot = [abs(self.alignment(pl)['unit_u'][1]) > .5 if self.Proteus.has_alignment else False for pl in range(n_tel + n_dut)]
+        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT', rotated=rot[i]) for i in range(n_tel + n_dut)]
 
     def init_residuals(self):
         from mod.residuals import ResidualAnalysis
