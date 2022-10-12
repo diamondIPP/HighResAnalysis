@@ -43,14 +43,14 @@ class Adc2Vcal:
                 g['Event'] = f['Event'].arrays()[cut]
                 info(f'converting adc to vcal for DUTs {", ".join(duts)} ...')
                 PBAR.start(duts.size)
-                for i in range(duts.size):  # the data file only has no FEI4 plane
+                for i in range(duts.size):
                     dir_name = f'Plane{self.NTelPlanes + i}'
                     x, y, adc = f[f'{dir_name}/Hits'].arrays(['PixX', 'PixY', 'Value'], library='np').values()
                     lut = self.Parent.load_calibration(i).get_lookup_table()
                     vcal = [round([lut[lx[i], ly[i], int(lz[i])] for i in range(lx.size)]).astype('i') for lx, ly, lz in zip(x, y, adc)]
                     data = f[f'{dir_name}/Hits'].arrays(filter_name=lambda w: not any([b in w for b in self.FlatBranches]))
                     data['Value'] = aw.values_astype(vcal, 'int32')
-                    d = g.mkdir(dir_name)
+                    d = g.mkdir(f'Plane{self.NTelPlanes + i + 1}')  # first plane after TEL is REF
                     flat = {n: arr.flatten()[cut] for n, arr in f[f'{dir_name}/Hits'].arrays(self.FlatBranches, library='np').items()}
                     flat['Timing'] = flat['Timing'].astype('i')
                     d['Hits'] = {**{k: v.flatten() for k, v in flat.items()}, 'TriggerPhase': flat['Timing'].astype('u2'), '': aw.zip({n: data[n][cut] for n in data.fields})}
