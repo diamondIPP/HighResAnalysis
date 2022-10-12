@@ -306,7 +306,7 @@ class DUTAnalysis(Analysis):
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(cut, pl)
-        self.Draw.distribution(v, **prep_kw(dkw, title='Cluster Size', w=1, x0=-.5, q=1e-3, x_tit='Cluster Size'))
+        self.Draw.distribution(v, **prep_kw(dkw, title='Cluster Size', w=1, x0=-.5, q=1e-3, x_tit='Cluster Size', file_name='ClusterSize'))
 
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         cut = self.Cut.get_nofid(cut, fid)
@@ -314,9 +314,8 @@ class DUTAnalysis(Analysis):
         self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Cluster Size', **self.ax_tits(local)))
 
     def draw_trigger_phase(self, cut=None, **dkw):
-        cut = -1 if type(cut) is bool else self.Cut.exclude('tp', cut)
-        h = self.Draw.distribution(self.get_trigger_phase(cut), bins.TP, **prep_kw(dkw, title='Trigger Phase', x_tit='Trigger Phase'))
-        format_histo(h, y_range=[0, 1.1 * h.GetMaximum()])
+        h = self.Draw.distribution(self.get_trigger_phase(self.Cut.exclude('tp', cut)), bins.TP, **prep_kw(dkw, title='Trigger Phase', x_tit='Trigger Phase'))
+        self.Draw(h, **prep_kw(dkw, y_range=[0, 1.1 * h.GetMaximum()], file_name='TriggerPhase'))
 
     def draw_time(self, cut=None, **dkw):
         t = self.get_time(cut)
@@ -386,7 +385,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_xy, self.get_phs]]
-        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits()))
+        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]

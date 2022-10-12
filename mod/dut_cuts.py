@@ -181,7 +181,7 @@ class DUTCut(Cuts):
 
     def get_fid(self, surface=False, name=None, **dkw):
         x, y = self.get_fid_config(surface, name)
-        return None if x is None else Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, name=choose(name, f'fid{surface:d}')))
+        return None if x is None else Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, fillstyle=0, name=choose(name, f'fid{surface:d}')))
 
     def get_full_fid(self):
         return self.get_fid(name='full size')
