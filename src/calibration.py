@@ -4,14 +4,13 @@
 # created on July 2nd 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TGraph
 from numpy import genfromtxt, all, delete, round, argmax, savetxt
 
-from plotting.draw import Draw, FitRes
-from plotting.fit import Erf
-from src.run import Run
-from src.analysis import Analysis
 import src.bins as bins
+from plotting.save import Draw, SaveDraw, FitRes, warning
+from plotting.fit import Erf
+from src.analysis import Analysis
+from src.run import Run
 from utility.utils import *
 
 
@@ -26,7 +25,7 @@ class Calibration:
         self.DUT = run.DUT
         self.Plane = run.DUT.Plane
         self.NX, self.NY, self.NPix = self.Plane.NCols, self.Plane.NRows, self.Plane.NPixels
-        self.Draw = Draw(config=Analysis.Config)
+        self.Config = Analysis.Config
         self.Dir = Dir.joinpath('calibration', run.TCDir.stem, str(self.Run.DUT))
 
         # Calibration
@@ -36,11 +35,12 @@ class Calibration:
         self.Points = None
         self.Fits = None
 
+        self.RawFileName = self.load_raw_filename()
         self.FileName = join(self.Dir, f'{self.Trim}-{self.Number}.h5py')
         self.FitFileName = self.Dir.joinpath(f'fitpars-{self.Trim}.txt')
         self.CalPath = self.Dir.parent.joinpath('fitpars-.txt')  # enter trim and DUT in eudaq
 
-        self.PBar = PBar()
+        self.Draw = SaveDraw(self, results_dir=str(self.DUT))
         self.correct_file()
 
     def __call__(self, x, y, adc):
@@ -48,6 +48,10 @@ class Calibration:
 
     def __repr__(self):
         return f'ADC Calibration of {self.Run.DUT}'
+
+    @property
+    def server_save_dir(self):
+        return Path('duts', str(self.DUT), 'calibration', self.RawFileName.stem)
 
     # ----------------------------------------
     # region INIT
@@ -60,7 +64,7 @@ class Calibration:
     def get_trim(self):
         return choose(self.Trim, Calibration.DefaultTrim)
 
-    def get_file_name(self):
+    def load_raw_filename(self):
         f = list(self.Dir.glob(f'phCalibration{self.Trim}_*{self.Number}.dat'))
         return f[0] if f else critical(f'Pulse height calibration file "{self.Trim}-{self.Number}" does not exist in {self.Dir} ...')
 
@@ -70,7 +74,7 @@ class Calibration:
 
     def correct_file(self):
         """ correct corrupted files from pxar if there are more than 100 points... """
-        data = genfromtxt(self.get_file_name(), skip_header=3, max_rows=1, dtype=object)[:-3].astype('u2')
+        data = genfromtxt(self.RawFileName, skip_header=3, max_rows=1, dtype=object)[:-3].astype('u2')
         if data.size < 100:
             return True
         hr_size = self.get_vcals()['high range'].size
@@ -80,7 +84,7 @@ class Calibration:
             lines = []
             data = self.get_all_points()
             i_corr = arange(100, 100 + hr_size)  # indices of the corrupted data
-            with open(self.get_file_name(), 'r+') as f:
+            with open(self.RawFileName, 'r+') as f:
                 for line in f.readlines():
                     if line.startswith('Low'):
                         line = 'Low range: {} \n'.format(' '.join(delete(low_range, i_corr).astype(str)))
@@ -107,7 +111,7 @@ class Calibration:
 
     @save_hdf5('Points', arr=True)
     def get_all_points(self):
-        return genfromtxt(self.get_file_name(), skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
+        return genfromtxt(self.RawFileName, skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
 
     def get_thresholds(self):
         return self.vcals[argmax(self.get_all_points() > 0, axis=2)]
@@ -123,7 +127,7 @@ class Calibration:
 
     def get_vcals(self):
         """ :returns: the vcal dacs used for the calibration, which are saved in the header of the files. """
-        f = self.get_file_name()
+        f = self.RawFileName
         return {'low range': genfromtxt(f, 'u2', skip_header=1, max_rows=1)[2:], 'high range': genfromtxt(f, 'u2', skip_header=2, max_rows=1)[2:]}
 
     @property
@@ -140,7 +144,7 @@ class Calibration:
         if x.size < 5:
             return None
         self.Fit.SetParameters(255 / 2, 255 / 2, 400, 500)
-        TGraph(x.size, x.astype('d'), y.astype('d')).Fit(self.Fit, 'q0', '', 0, 255 * 7)
+        Draw.make_tgraph(x, y).Fit(self.Fit, 'q0', '', 0, 255 * 7)
         return FitRes(self.Fit)
 
     def fit_all(self):
@@ -198,9 +202,9 @@ class Calibration:
         return self.Draw.prof2d(self.get_thresholds(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Threshold [vcal]'))
 
     def draw_chi2_map(self, **dkw):
-        return self.Draw.prof2d(self.get_chi2s(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='#chi^{2}'))
+        return self.Draw.prof2d(self.get_chi2s(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='#chi^{2}', file_name='Chi2Map'))
 
     def draw_chi2(self, **dkw):
-        return self.Draw.distribution(self.get_chi2s().flatten(), **prep_kw(dkw, rf=1, x0=0, x_tit='#chi^{2}'))
+        return self.Draw.distribution(self.get_chi2s().flatten(), **prep_kw(dkw, rf=1, x0=0, x_tit='#chi^{2}', file_name='Chi2'))
     # endregion DRAW
     # ----------------------------------------

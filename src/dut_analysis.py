@@ -33,9 +33,6 @@ class DUTAnalysis(Analysis):
         self.Planes = self.init_planes()
         self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
 
-        # DATA
-        self.Converter = self.converter.from_run(self.Run)
-        self.Proteus = self.Converter.Proteus
         if test:
             return
 

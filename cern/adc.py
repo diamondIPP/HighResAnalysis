@@ -29,7 +29,7 @@ class Adc2Vcal:
         self.Steps = [(self.convert, self.OutFilePath)]
 
     def check_calibrations(self, n):
-        return all([self.Parent.load_calibration(i).get_file_name().exists() for i in range(n)])
+        return all([self.Parent.load_calibration(i).RawFileName.exists() for i in range(n)])
 
     def convert(self):
         """read the DUT raw file and convert the adc values to vcal"""
