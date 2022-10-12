@@ -57,3 +57,15 @@ col_min = 14
 col_max = 36
 row_min = 51
 row_max = 71
+
+[noisescan.CMS04]
+sigma_above_avg_max = 8.0
+rate_max            = 0.05
+density_bandwidth   = 3.0
+
+[[noisescan.CMS04.sensors]]
+id      = 6
+col_min = 1
+col_max = 50
+row_min = 1
+row_max = 71
