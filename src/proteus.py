@@ -24,7 +24,6 @@ def init_toml(name):
             func(self, arg, d)
             tmp = self.ConfigDir.joinpath(f'tmp-{name[:3]}.toml')
             with open(tmp, 'w') as f:
-                self.Tmp.append(tmp)
                 toml.dump(d, f)
             return tmp
         return wrapper
@@ -51,7 +50,6 @@ class Proteus:
         # CONFIG
         self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
         self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes  # default geo has all sensors
-        self.Tmp = []
         self.DUTs = duts
         self.Geo = self.init_geo(dut_pos)
         self.Device = self.init_device(duts)
@@ -76,7 +74,7 @@ class Proteus:
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
     def __del__(self):
-        remove_file(*self.Tmp, warn=False)
+        remove_file(*self.ConfigDir.glob('tmp-*.toml'), warn=False)  # remove tmp files
 
     # ----------------------------------------
     # region INIT
