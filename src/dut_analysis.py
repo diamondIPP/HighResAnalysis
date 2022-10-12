@@ -30,8 +30,9 @@ class DUTAnalysis(Analysis):
         self.DUT = self.Run.DUT
         self.Converter = self.converter.from_run(self.Run)
         self.Proteus = self.Converter.Proteus
-        self.Planes = self.init_planes()
-        self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
+        if self.Proteus.align_file.exists():
+            self.Planes = self.init_planes()
+            self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
 
         if test:
             return
