@@ -7,7 +7,7 @@ from pathlib import Path
 from os import chdir
 import toml
 from numpy import array, arange
-from plotting.utils import info, warning, choose, remove_file
+from plotting.utils import info, warning, choose, remove_file, critical
 from utility.utils import print_banner, GREEN, print_elapsed_time, wraps, remove_letters
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
@@ -106,6 +106,8 @@ class Proteus:
     def init_noise(self, duts, data=None):  # noqa
         new = {'tel': data['noisescan']['tel']}  # only select the telescope settings
         for i, key in enumerate(self.dut_names):  # add only existing DUTs
+            if key not in data['noisescan']:
+                critical(f'There is not entry for the DUT "{key}" in {self.ConfigDir.joinpath("noisescan.toml")}')
             data['noisescan'][key]['sensors'][0]['id'] = self.NTelPlanes + i
             new[key] = data['noisescan'][key]
         data['noisescan'] = new
