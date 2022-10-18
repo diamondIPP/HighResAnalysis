@@ -11,6 +11,7 @@ from plotting.utils import info, warning, choose, remove_file, critical
 from utility.utils import print_banner, GREEN, print_elapsed_time, wraps, remove_letters
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
+from copy import deepcopy
 
 
 def init_toml(name):
@@ -49,7 +50,8 @@ class Proteus:
 
         # CONFIG
         self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
-        self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes  # default geo has all sensors
+        self.NRefPlanes = sum(['REF' in d['type'] for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
+        self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes - 1  # default geo has all sensors (tel, ref and dut)
         self.DUTs = duts
         self.Geo = self.init_geo(dut_pos)
         self.Device = self.init_device(duts)
@@ -91,31 +93,39 @@ class Proteus:
 
     @init_toml('device')
     def init_device(self, duts, data=None):
-        s = [dic for dic in data['sensors'] if dic['name'].startswith('M')]  # only select TEL planes
+        s = [dic for dic in data['sensors'] if dic['name'].startswith('M') or 'REF' in dic['type']]  # only select TEL & REF planes
         s += [{'type': 'CMSPixel-Si' if dut in Proteus.Si_Detectors else 'CMSPixel-Dia', 'name': f'C{i}'} for i, dut in enumerate(duts)]  # add all given DUTs
         data['sensors'] = s
-        data['pixel_masks'] = [str(self.MaskDir.joinpath(f'{n}-mask.toml')) for n in ['tel'] + self.dut_names]
+        data['pixel_masks'] = [str(self.MaskDir.joinpath(f'{n}-mask.toml')) for n in ['tel'] + self.dut_names + (['ref'] if self.NRefPlanes else [])]
 
     @init_toml('analysis')
     def init_ana(self, duts, data=None):
-        data['recon']['extrapolation_ids'] = list(range(self.NTelPlanes + len(duts)))
+        data['recon']['extrapolation_ids'] = list(range(self.NTelPlanes + self.NRefPlanes + len(duts)))
 
     @init_toml('noisescan')
     def init_noise(self, duts, data=None):  # noqa
-        new = {'tel': data['noisescan']['tel']}  # only select the telescope settings
+        new = {'tel': data['noisescan']['tel'], 'ref': data['noisescan']['ref']}  # only select the telescope & ref settings
         for i, key in enumerate(self.dut_names):  # add only existing DUTs
             if key not in data['noisescan']:
                 critical(f'There is not entry for the DUT "{key}" in {self.ConfigDir.joinpath("noisescan.toml")}')
-            data['noisescan'][key]['sensors'][0]['id'] = self.NTelPlanes + i
+            data['noisescan'][key]['sensors'][0]['id'] = self.NTelPlanes + self.NRefPlanes + i
             new[key] = data['noisescan'][key]
         data['noisescan'] = new
 
     @init_toml('align')
     def init_align(self, duts=None, data=None):
+        dut_fine = next(dic for step, dic in data['align'].items() if 'dut_fine' in step)
         for step in self.AlignSteps:
-            if 'dut' in step:
-                data['align'][step]['sensor_ids'] = list(range(self.NTelPlanes + len(duts)))
-                data['align'][step]['align_ids'] = (arange(len(duts)) + self.NTelPlanes).tolist()
+            t, r, d = self.NTelPlanes, self.NRefPlanes, len(duts)
+            if 'dut_coarse' in step:
+                data['align'][step]['sensor_ids'] = list(range(t + r + d))
+                data['align'][step]['align_ids'] = (arange(d + r) + t).tolist()
+            elif 'dut_fine' in step:
+                for i in range(len(duts)):  # align each DUT individually
+                    step = f'{int(remove_letters(step)) + i}-dut_fine'
+                    data['align'].update({step: deepcopy(dut_fine)})
+                    data['align'][step]['sensor_ids'] = list(range(t)) + [t + r + i]
+                    data['align'][step]['align_ids'] = [t + r + i]
     # endregion INIT
     # ----------------------------------------
 
