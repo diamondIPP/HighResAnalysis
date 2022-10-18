@@ -20,18 +20,27 @@ reduced_chi2_max = 5.0         # chi2 cut for track finding
 estimate_beam_parameters = true
 
 [align.3-dut_coarse]
-method = "correlations" 
-sensor_ids = [0,1,2,3,4,5,6,7,8]
-align_ids = [6,7,8]
+method = "correlations"
+sensor_ids = [0,1,2,3,4,5,6,7,8,9]
+align_ids = [6,7,8,9]
 estimate_beam_parameters = false
 
-[align.4-dut_fine]
+[align.4-ref_fine]
 method = "residuals" # correlations, residuals
-sensor_ids = [0,1,2,3,4,5,6,7,8]
-align_ids = [6,7,8]
+sensor_ids = [0,1,2,3,4,5,6]
+align_ids = [6]
 num_steps = 10
-search_spatial_sigma_max = 5.0
-reduced_chi2_max = 10.0
+search_spatial_sigma_max = 10.0
+reduced_chi2_max = 40.0
+estimate_beam_parameters = false
+
+[align.5-dut_fine]
+method = "residuals" # correlations, residuals
+sensor_ids = [0,1,2,3,4,5,7]
+align_ids = [7]
+num_steps = 10
+search_spatial_sigma_max = 10.0
+reduced_chi2_max = 20.0
 estimate_beam_parameters = false
 
 #[align.5-dut_fine_chi2]
