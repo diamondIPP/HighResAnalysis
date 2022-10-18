@@ -277,7 +277,6 @@ if __name__ == '__main__':
     from cern.converter import CERNConverter
     from src.analysis import Analysis
     import awkward as aw  # noqa
-    from numpy import *
 
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=232)
