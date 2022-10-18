@@ -198,7 +198,7 @@ class Converter:
         tree = self.RawFile[f'{key}/tracks_clusters_matched']
         self.add_plane_tracks(g, tree)
         self.add_clusters(g, tree)
-        if i >= self.NTelPlanes:
+        if i >= self.NTelPlanes + self.Proteus.NRefPlanes:
             self.add_trigger_info(g)
 
     @update_pbar
