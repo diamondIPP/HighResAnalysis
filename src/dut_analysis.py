@@ -62,7 +62,7 @@ class DUTAnalysis(Analysis):
         self.Efficiency = self.init_eff()
         self.Resolution = self.init_resolution()
 
-        self.verify_alignment()
+        # self.verify_alignment()
 
     def __repr__(self):
         ev_str = f' ({ev2str(self.NEvents)} ev)' if hasattr(self, 'NEvents') else ''
@@ -80,8 +80,13 @@ class DUTAnalysis(Analysis):
 
     def init_planes(self):
         n_tel, n_dut = self.Converter.NTelPlanes, self.Converter.NDUTPlanes
-        rot = [abs(self.alignment(pl)['unit_u'][1]) > .5 if self.Proteus.has_alignment else False for pl in range(n_tel + n_dut)]
-        return [Plane(i, typ='TELESCOPE' if i < n_tel else 'DUT', rotated=rot[i]) for i in range(n_tel + n_dut)]
+        rot = [abs(s['unit_u'][1]) > .5 for s in self.Proteus.alignment()['sensors']] if self.Proteus.has_alignment else [False] * (n_tel + n_dut + 1)
+        if len(rot) != n_tel + n_dut + ('REF' in Analysis.Config):
+            warning(f'Number of sensors in alignment ({len(rot)}) does not agree with found sensors ({n_tel + n_dut + ("REF" in Analysis.Config)})')
+            return [Plane(i) for i in range(10)]
+        pl = [Plane(i, typ='TELESCOPE', rotated=rot[i]) for i in range(n_tel)]
+        pl += [Plane(n_tel, typ='REF', rotated=rot[n_tel])] if 'REF' in Analysis.Config else []
+        return pl + [Plane(len(pl) + i, typ='DUT', rotated=rot[len(pl) + i]) for i in range(n_dut)]
 
     def init_residuals(self):
         from mod.residuals import ResidualAnalysis
@@ -331,6 +336,15 @@ class DUTAnalysis(Analysis):
         self.Draw.histo_2d(x, y, bins.get_pixel(self.Plane, res, cell=cell), 'Hit Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
         self.Draw.box(0, 0, 1, 1)
         update_canvas()
+
+    def draw_geo(self, top=True):
+        x, y = self.Proteus.z_positions(raw=True), [pl.W if top else pl.H for pl in self.Planes]
+        planes = [self.Draw.vertical_line(x, *array([-.5, .5]) * y, show=False) for x, y in zip(x, y)]
+        tits = {'y_tit': 'y [mm]' if top else 'x [mm]', 'file_name': f'Geo{"Top" if top else "Side"}'}
+        return self.Draw.graph([-.05 * max(x), max(x)], array([-.6, .6]) * max(y), x_tit='z [mm]', **tits, markersize=0, leg=planes)
+
+    def draw_geo_side(self):
+        return self.draw_geo(top=False)
     # endregion DRAW
     # ----------------------------------------
 
