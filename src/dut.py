@@ -16,7 +16,7 @@ class DUT:
         self.Name = run_log['duts'][self.Number]
         self.Bias = int(run_log[f'hv'][self.Number])
         self.Position = int(run_log[f'dut position'][self.Number])
-        self.Plane = Plane(Analysis.Config.getint('TELESCOPE', 'planes') + number, typ='DUT')
+        self.Plane = Plane(Analysis.Config.getint('TELESCOPE', 'planes') + number + 1, typ='DUT')
 
         # Specs
         self.Info = self.load_specs()
