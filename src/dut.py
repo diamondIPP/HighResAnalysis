@@ -7,16 +7,38 @@ from plotting.draw import Draw, arange, prep_kw, add_perr, Config
 from src.analysis import Analysis
 
 
-class DUT:
+class Device:
+    """ parent class with information about a single device. """
+    def __init__(self, number=1, name='Name', typ=None):
+        self.Number = number
+        self.Name = name
+        self.Type = typ
+        self.Plane = self.init_plane()
+
+    def __str__(self):
+        return self.Name
+
+    def __repr__(self):
+        return f'{self.Type} {self.Number}, {self}'
+
+    def init_plane(self):
+        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + self.Number, self.Type)
+
+
+class REF(Device):
+    """ Class with information about the reference plane. """
+    def __init__(self, number=0, name='REF'):
+        super().__init__(number, name, typ='REF')
+
+
+class DUT(Device):
     """ Class with all information about a single DUT. """
     def __init__(self, number=1, run_log: dict = None):
 
         # Info
-        self.Number = number
-        self.Name = run_log['duts'][self.Number]
+        super().__init__(number, run_log['duts'][number], typ='DUT')
         self.Bias = int(run_log[f'hv'][self.Number])
         self.Position = int(run_log[f'dut position'][self.Number])
-        self.Plane = Plane(Analysis.Config.getint('TELESCOPE', 'planes') + number + 1, typ='DUT')
 
         # Specs
         self.Info = self.load_specs()
@@ -32,11 +54,11 @@ class DUT:
             self.PX, self.PY = self.PXY
         self.VcalToEl = Analysis.Config.get_float('DUT', 'vcal to electrons')
 
-    def __str__(self):
-        return self.Name
-
     def __repr__(self):
-        return f'DUT {self.Number}, {self}, Bias: {self.Bias:1.0f}V'
+        return f'{super().__repr__()}, Bias: {self.Bias:1.0f}V'
+
+    def init_plane(self):
+        return super(DUT, self).init_plane() + int('REF' in Analysis.Config)
 
     def load_specs(self):
         f = Dir.joinpath('config', 'dia_info.json')
@@ -75,6 +97,10 @@ class Plane:
 
     def __repr__(self):
         return f'{self}, {self.Type.upper()}: {self.NCols}x{self.NRows} pixels ({self.PX * 1e3:1.1f}x{self.PY * 1e3:1.1f}μm)'
+
+    def __add__(self, other):
+        self.Number += other
+        return self
 
     def get_max_width(self):
         return max(self.get_x_width(), self.get_y_width())
