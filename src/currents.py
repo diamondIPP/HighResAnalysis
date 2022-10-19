@@ -175,7 +175,7 @@ class Currents(Analysis):
 
     def convert_data(self):
         info('converting hv text files to hdf5 ...')
-        self.PBar.start(len(glob(join(self.DataDir, '*', '*.log'))))
+        PBAR.start(len(glob(join(self.DataDir, '*', '*.log'))))
         f = h5py.File(join(self.DataDir, 'data.hdf5'), 'w')
         for d in glob(join(self.DataDir, '*_*')):
             arrays = []
@@ -193,7 +193,7 @@ class Currents(Analysis):
                 data['timestamps'] = (array([time_stamp(dt, log_date.utcoffset().seconds) for dt in date_times]).astype('u4'))
                 data = data.astype([('timestamps', 'u4'), ('voltages', 'f2'), ('currents', 'f4')])
                 arrays.append(data)
-                self.PBar.update()
+                PBAR.update()
             if len(arrays):
                 f.create_dataset(basename(d), data=concatenate(arrays))
 

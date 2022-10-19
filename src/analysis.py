@@ -47,7 +47,6 @@ class Analysis:
         self.BeamTest = self.load_test_campaign(beamtest)
         self.MetaSubDir = meta_sub_dir
 
-        self.PBar = PBar()
         self.Draw = SaveDraw(self, results_dir=self.BeamTest.Tag)
 
     def __str__(self):

@@ -6,6 +6,7 @@
 
 from src.dut_analysis import DUTAnalysis, bins, update_pbar, linspace, ufloat, tile, save_pickle, array
 from plotting.draw import mean_sigma, prep_kw, set_statbox
+from utility.utils import PBAR
 from uncertainties.umath import sqrt as usqrt  # noqa
 from mod.reso_cuts import ResCut
 from mod.residuals import ResidualAnalysis
@@ -61,17 +62,17 @@ class Resolution(DUTAnalysis):
 
     def draw_x_vs_chi2(self, n=20):
         x = linspace(1 / n, 1, n)
-        self.PBar.start(n)
+        PBAR.start(n)
         self.Draw.graph(x, [self.x(i) for i in x])
 
     def draw_x_vs_slope(self, n=20):
         x = linspace(0, .5 - .5 / n, n)
-        self.PBar.start(n)
+        PBAR.start(n)
         self.Draw.graph(x, [self.x(slope=i) for i in x])
 
     def draw_x_vs_pars(self, n=10):
         x, y = linspace(.5 / n, .5, n), linspace(.1, .4, n)
-        self.PBar.start(n ** 2)
+        PBAR.start(n ** 2)
         d = array([[self.x(i, j) for j in y] for i in x])
         self.Draw.prof2d(x.repeat(10), tile(y, 10), d.flatten(), bins.from_p(x) + bins.from_p(y))
         return d

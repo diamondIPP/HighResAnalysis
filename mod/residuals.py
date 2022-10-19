@@ -8,6 +8,7 @@ from numpy import arctan, sqrt, array, quantile, mean, polyfit, identity, arange
 from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle
 from plotting.fit import Gauss
 from plotting.draw import np_profile, choose
+from utility.utils import PBAR
 from utility.affine_transformations import transform, m_transform, matrix, scale_matrix, inv
 
 
@@ -130,7 +131,7 @@ class ResidualAnalysis(DUTAnalysis):
     @save_pickle('AM', sub_dir='alignment', run='', suf_args='[6]')
     def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False, _save=False):
         if d is None:
-            self.PBar.start(imax)
+            PBAR.start(imax)
         sx, sy = self.plane(pl).PX, self.plane(pl).PY
         cut = self.Cut(cut) & self.Cut['res']
         x, y = transform(*self.get_xy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[:2]  # convert to mm
@@ -140,7 +141,7 @@ class ResidualAnalysis(DUTAnalysis):
         self.Rot.append(d[4])
         self.Trans.append(t)
         m = choose(m, identity(3)) @ matrix(1, 1, *t, rx=d[4], order='str')
-        self.PBar.update()
+        PBAR.update()
         if i < imax - 1:
             return self.align([x, y, tx, ty], m, p=p, i=i + 1, imax=imax, _redo=_redo, _save=_save)
         s = scale_matrix(sx, sy)
