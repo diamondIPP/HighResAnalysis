@@ -5,9 +5,9 @@
 # --------------------------------------------------------
 
 from src.dut_analysis import DUTAnalysis, Run
+from src.dut import REF
 from mod.residuals import ResidualAnalysis
 from mod.ref_cuts import RefCut
-from src.calibration import Calibration
 
 
 class RefAnalysis(DUTAnalysis):
@@ -22,8 +22,8 @@ class RefAnalysis(DUTAnalysis):
         self.N = self.n
         self.MetaSubDir = 'REF'
 
-        self.Run = Run(parent.Run.Number, self.get_dut_number(), self.BeamTest.Path, parent.Run.SingleMode)
-        self.DUT = self.Run.DUT
+        self.Run = Run(parent.Run.Number, self.dut_nr, self.BeamTest.Path, parent.Run.SingleMode)
+        self.DUT = REF(self.dut_nr) if self.Parent.Proteus.NRefPlanes else self.Run.DUT
         self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
         self.Cut = RefCut(self)
 
@@ -32,6 +32,7 @@ class RefAnalysis(DUTAnalysis):
         self.Efficiency = self.init_eff()
         self.Cut.make_additional()
 
-    def get_dut_number(self):
-        default = next(i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut != self.Parent.DUT.Name)
+    @property
+    def dut_nr(self):
+        default = next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut != self.Parent.DUT.Name), 0)
         return next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D')), default)
