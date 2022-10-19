@@ -81,7 +81,7 @@ class DUTAnalysis(Analysis):
     def init_planes(self):
         n_tel, n_dut = self.Converter.NTelPlanes, self.Converter.NDUTPlanes
         rot = [abs(s['unit_u'][1]) > .5 for s in self.Proteus.alignment()['sensors']] if self.Proteus.has_alignment else [False] * (n_tel + n_dut + 1)
-        if len(rot) != n_tel + n_dut + ('REF' in Analysis.Config):
+        if len(rot) != n_tel + n_dut + self.Proteus.NRefPlanes:
             warning(f'Number of sensors in alignment ({len(rot)}) does not agree with found sensors ({n_tel + n_dut + ("REF" in Analysis.Config)})')
             return [Plane(i) for i in range(10)]
         pl = [Plane(i, typ='TELESCOPE', rotated=rot[i]) for i in range(n_tel)]
@@ -93,7 +93,7 @@ class DUTAnalysis(Analysis):
         return ResidualAnalysis(self)
 
     def init_ref(self):
-        if self.Run.NDUTs > 1:
+        if self.Run.NDUTs > 1 or self.Proteus.NRefPlanes:
             from mod.reference import RefAnalysis
             return RefAnalysis(self)
 
