@@ -25,7 +25,7 @@ class Currents(Analysis):
         self.IsCollection = hasattr(analysis, 'Runs')
         self.Collection = None
         self.RunPlan = self.load_run_plan()  # required for plotting
-        self.RunLogs = self.Ana.Run.Logs
+        self.RunLogs = self.Ana.Run.Info
         self.Run = self.load_run()
 
         # Config

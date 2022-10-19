@@ -35,7 +35,7 @@ class Adc2Vcal:
         """read the DUT raw file and convert the adc values to vcal"""
         if not self.RawFilePath.exists():
             CERNConverter.download_raw_file(self.RawFilePath)
-        duts = array(self.Run.Logs['duts'])
+        duts = array(self.Run.Info['duts'])
         self.check_calibrations(duts.size)
         cut = self.Parent.EventAlignment.cut  # additional events in the DUT data ...
         with uproot.open(self.RawFilePath) as f:

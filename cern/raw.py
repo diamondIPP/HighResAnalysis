@@ -13,7 +13,7 @@ class CERNRaw(Raw):
         super().__init__(c, load_file, step)
 
     def load_raw_file_path(self):
-        return self.DataDir.joinpath('tel', f'acq{self.Run.Logs["telescope run"]:03d}.bin')
+        return self.DataDir.joinpath('tel', f'acq{self.Run.Info["telescope run"]:03d}.bin')
 
     def load_out_file_path(self):
         return self.RawFilePath.with_name(f'tel-run{self.Run:04d}.root')

@@ -13,7 +13,7 @@ class EventAlignment:
 
     def __init__(self, raw: Raw):
         self.Raw = raw
-        self.RefPath = raw.DataDir.joinpath('ref', f'anchor{raw.Run.Logs["telescope run"]}.root')
+        self.RefPath = raw.DataDir.joinpath('ref', f'anchor{raw.Run.Info["telescope run"]}.root')
 
         self.X = array([])      # ts REF
         self.Y = array([])      # ts TEL

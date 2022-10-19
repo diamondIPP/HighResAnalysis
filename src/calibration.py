@@ -56,9 +56,9 @@ class Calibration:
     # ----------------------------------------
     # region INIT
     def get_trim_number(self, n=None):
-        if f'trim' not in self.Run.Logs:
+        if f'trim' not in self.Run.Info:
             return None, None
-        trim, number = [int(v) for v in self.Run.Logs['trim'][self.DUT.Number].split('-')]
+        trim, number = [int(v) for v in self.Run.Info['trim'][self.DUT.Number].split('-')]
         return trim, choose(n, number)
 
     def get_trim(self):
