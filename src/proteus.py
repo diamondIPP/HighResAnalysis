@@ -190,7 +190,10 @@ class Proteus:
         dev = f' -d {choose(dev, self.Device)}'
         n = f' -n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
         s = f' -s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
-        cmd = f'{self.SoftDir.joinpath("bin", prog)} {choose(f, self.RawFilePath)} {out}{cfg}{dev}{geo}{section}{n}{s}'
+        in_file = choose(f, self.RawFilePath)
+        if not Path(in_file).exists():
+            return warning(f'Could not find {in_file} for proteus to read ... ')
+        cmd = f'{self.SoftDir.joinpath("bin", prog)} {in_file} {out}{cfg}{dev}{geo}{section}{n}{s}'
         info(cmd)
         try:
             check_call(cmd, shell=True)
@@ -198,16 +201,17 @@ class Proteus:
             warning(f'{prog} failed!')
         chdir(old_dir)
 
-    def noise_scan(self):
+    def noise_scan(self, section=None, rm_root=True):
         """ step 1: find noisy pixels. """
-        d = Path('mask')
         f_cfg = self.init_noise(self.DUTs)
         cfg = toml.load(str(f_cfg))['noisescan']
-        self.ConfigDir.joinpath(d).mkdir(exist_ok=True)
+        self.ConfigDir.joinpath(self.MaskDir).mkdir(exist_ok=True)
         self.make_empty_masks(cfg)
-        for section in cfg:
+        for section in cfg if section is None else [section]:
             print_banner(f'Starting noise scan for {section}', color=GREEN)
-            self.run('pt-noisescan', out=d.joinpath(section), cfg=f_cfg.stem, section=section)
+            self.run('pt-noisescan', out=self.MaskDir.joinpath(section), cfg=f_cfg.stem, section=section)
+        if rm_root:
+            remove_file(*self.ConfigDir.joinpath(self.MaskDir).glob('*.root'), warn=False)
 
     def align(self, step=None, force=False, n=100000):
         """ step 2: align the telescope in several steps. """
