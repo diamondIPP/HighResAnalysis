@@ -108,9 +108,11 @@ class DUTCut(Cuts):
 
     @save_cut('TP', cfg='trigger phase')
     def make_trigger_phase(self, _redo=False):
-        tp = self.Ana.get_trigger_phase(cut=False)
         low, high = self.get_config('trigger phase', default=(None, None))
-        return None if low is None else (tp >= low) & (tp <= high)
+        if low is None:
+            return
+        tp = self.Ana.get_trigger_phase(cut=False)
+        return (tp >= low) & (tp <= high)
 
     @save_cut('Clu', suf_args='all')
     def make_cluster(self, pl=None, _redo=False):
