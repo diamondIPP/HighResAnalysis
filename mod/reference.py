@@ -35,4 +35,4 @@ class RefAnalysis(DUTAnalysis):
     @property
     def dut_nr(self):
         default = next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut != self.Parent.DUT.Name), 0)
-        return next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D')), default)
+        return 0 if self.Parent.Proteus.NRefPlanes else next((i for i, dut in enumerate(self.Parent.Run.Logs['duts']) if dut.startswith('Si') or dut.startswith('D')), default)
