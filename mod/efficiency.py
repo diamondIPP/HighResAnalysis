@@ -31,18 +31,18 @@ class Efficiency(DUTAnalysis):
 
     def draw(self, bw=None, **dkw):
         t, e = self.get_time(), self.get_values() / 100
-        return self.Draw.efficiency(t, e, **prep_kw(dkw, w=bw, **self.t_args(), **self.y_args, stats=False))
+        return self.Draw.efficiency(t, e, **prep_kw(dkw, w=bw, **self.t_args(), **self.y_args, stats=False, file_name='EfficiencyTrend'))
 
     def draw_vs_tp(self, **dkw):
         x, y = [f(cut=self.Cut.exclude('tp')) for f in [self.get_trigger_phase, self.get_values]]  # noqa
-        return self.Draw.efficiency(x, y / 100, bins.TP, 'Efficiency vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', **self.y_args))
+        return self.Draw.efficiency(x, y / 100, bins.TP, 'Efficiency vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', **self.y_args, file_name='EffieciencyTP'))
 
     def draw_map(self, res=.5, local=True, eff=True, both=False, fid=False, cut=None, **dkw):
         (x, y), e = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_xy, local=local), self.get_values]]
-        p = self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=bins.get_xy(local, self.Plane, res), **self.ax_tits(local)))
+        self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=bins.get_xy(local, self.Plane, res), **self.ax_tits(local), show=False))
         self.draw_text(self.Surface, cut, eff)
         self.draw_text(not self.Surface, cut, eff and both)
-        return p
+        return self.Draw.save_plots('EfficiencyMap')
 
     def draw_text(self, surface, cut, show=True):
         if show:

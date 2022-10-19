@@ -62,7 +62,7 @@ class DUTAnalysis(Analysis):
         self.Efficiency = self.init_eff()
         self.Resolution = self.init_resolution()
 
-        # self.verify_alignment()
+        self.verify_alignment()
 
     def __repr__(self):
         ev_str = f' ({ev2str(self.NEvents)} ev)' if hasattr(self, 'NEvents') else ''
