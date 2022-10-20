@@ -25,6 +25,7 @@ class Batch:
     def __init__(self, name, dut_nr, data_dir: Path):
         self.Name = name
         self.DataDir = data_dir
+        self.Log = load_runlog(self.DataDir)
         self.Runs = self.load_runs(dut_nr)
         self.Size = len(self.Runs)
         self.DUT = self.Runs[0].DUT
@@ -39,8 +40,8 @@ class Batch:
         return self.Runs[item]
 
     def load_runs(self, dut_nr):
-        d = load_runlog(self.DataDir)
-        return [Run(key, dut_nr, self.DataDir, single_mode=True, log=d) for key, dic in d.items() if dic['batch'] == self.Name and dic['status'] == 'green']
+        is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
+        return [Run(key, dut_nr, self.DataDir, single_mode=True, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
 
     @property
     def n_ev(self):
@@ -87,6 +88,12 @@ class Run:
 
     def __format__(self, format_spec):
         return f'{self.Number:{format_spec}}'
+
+    def __le__(self, other):
+        return self.Number <= (other.Number if isinstance(other, Run) else other)
+
+    def __ge__(self, other):
+        return self.Number >= (other.Number if isinstance(other, Run) else other)
 
     def load_info(self, log=None) -> dict:
         data = load_runlog(self.TCDir) if log is None else log
