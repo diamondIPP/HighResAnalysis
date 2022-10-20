@@ -99,11 +99,10 @@ class Converter:
             server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
             info(f'downloading DUT raw file from {server}:{loc}')
             f.parent.mkdir(exist_ok=True)
-            download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
+            return download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
 
     def copy_raw_files(self, out=True, force=False):
-        for f in self.raw_files:
-            self.download_raw_file(f, out, force)
+        return [self.download_raw_file(f, out, force) for f in self.raw_files]
 
     # ----------------------------------------
     # region INIT
