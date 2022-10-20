@@ -94,11 +94,16 @@ class Converter:
         remove_file(*self.aux_files)
 
     @staticmethod
-    def download_raw_file(f: Path, out=True):
-        server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
-        info(f'downloading DUT raw file from {server}:{loc}')
-        f.parent.mkdir(exist_ok=True)
-        download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
+    def download_raw_file(f: Path, out=True, force=False):
+        if not f.exists() or force:
+            server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
+            info(f'downloading DUT raw file from {server}:{loc}')
+            f.parent.mkdir(exist_ok=True)
+            download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
+
+    def copy_raw_files(self, out=True, force=False):
+        for f in self.raw_files:
+            self.download_raw_file(f, out, force)
 
     # ----------------------------------------
     # region INIT

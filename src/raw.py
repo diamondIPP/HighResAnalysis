@@ -73,8 +73,7 @@ class Raw:
 
     def convert(self):
         """ convert binary raw file to root file with eudaq"""
-        if not self.RawFilePath.exists():
-            Converter.download_raw_file(self.RawFilePath)
+        Converter.download_raw_file(self.RawFilePath)
         self.OutFilePath.parent.mkdir(exist_ok=True)
         cmd = f'{self.soft} -i {self.RawFilePath} -o {self.OutFilePath} {self.options}'
         info(f'Convert {self.RawFilePath.name} to {self.OutFilePath.name} using {self.soft.name}\n')

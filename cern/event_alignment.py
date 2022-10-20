@@ -44,8 +44,7 @@ class EventAlignment:
 
     def load_data(self, reload=False):
         if not self.X.size or reload:
-            if not self.RefPath.exists():
-                Converter.download_raw_file(self.RefPath)
+            Converter.download_raw_file(self.RefPath)
             with uproot.open(self.RefPath) as f:
                 a = array(f['Event']['TimeStamp'], 'i8')
             with uproot.open(self.Raw.OutFilePath) as f:
