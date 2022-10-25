@@ -15,6 +15,8 @@ from multiprocessing import cpu_count, Pool
 
 class AutoConvert:
 
+    Force = False
+
     def __init__(self, first_run=None, last_run=None, batch=None, beamtest=None, verbose=False, force=False):
 
         self.Ana = Analysis(beamtest, verbose=verbose)
@@ -22,7 +24,7 @@ class AutoConvert:
         self.Converter = CERNConverter if self.Ana.BeamTest.Location == 'CERN' else Converter
 
         self.FirstRun, self.LastRun = first_run, last_run
-        self.Force = force
+        AutoConvert.Force = force
 
     def __repr__(self):
         return f'Converter for {self.Batch!r}'
@@ -69,6 +71,7 @@ class AutoConvert:
 
 
 def convert_run(c: Converter):
+    c.run(force=AutoConvert.Force)
     return c
 
 
@@ -78,7 +81,7 @@ parser = ArgumentParser()
 parser.add_argument('-m', action='store_true', help='turn parallel processing ON')
 parser.add_argument('-tc', nargs='?', default=None)
 parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
-parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
+parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]', type=int)
 parser.add_argument('-b', nargs='?', default=None, help='batch number, default [None]')
 parser.add_argument('-v', action='store_false', help='turn verbose OFF')
 parser.add_argument('-t', action='store_true', help='turn test mode ON')
