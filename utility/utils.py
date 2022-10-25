@@ -122,6 +122,10 @@ def colored(string, color):
     return '{}{}{}'.format(color, string, ENDC)
 
 
+def small_banner(msg, symbol='-', color=None):
+    print(colored('\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg), color))
+
+
 def print_banner(msg, symbol='~', new_lines=1, color=WHITE):
     msg = '{} |'.format(msg)
     print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
