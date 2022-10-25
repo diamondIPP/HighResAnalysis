@@ -4,8 +4,6 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from dataclasses import field
-
 import uproot
 from numpy import all, ones, count_nonzero  # noqa
 from uproot import ReadOnlyDirectory
@@ -14,7 +12,7 @@ from uproot.models import TTree
 from src.proteus import Proteus
 from src.run import Run, Analysis
 from utility.utils import *
-from plotting.utils import download_file, remove_file
+from plotting.utils import download_file, remove_file, warning
 
 
 class Converter:
@@ -29,6 +27,8 @@ class Converter:
 
     def __init__(self, data_dir: Path, run_number):
 
+        self.T0 = time()
+        self.T1 = timedelta(seconds=0)
         self.Run = Run(run_number, 0, data_dir, single_mode=True)
 
         # DIRECTORIES
@@ -45,7 +45,7 @@ class Converter:
 
         # FILES
         self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
-        self.RawFile: ReadOnlyDirectory = field(init=False)  # output from proteus
+        self.RawFile: ReadOnlyDirectory = None
         self.F = None
 
     def __repr__(self):
@@ -57,14 +57,24 @@ class Converter:
             for i, (s, f) in enumerate(choose(steps, self.steps)):
                 if not f.exists():
                     print_banner(f'Start converter step {i}: {s.__doc__}')
-                    s()
+                    try:
+                        s()
+                    except Exception as err:
+                        warning(f'converter crashed: {err}')
+                        remove_file(f)
+                        return False
                 else:
                     info(f'found outfile of step {i}, continue with next step ({f})')
             if rm:
                 self.remove_aux_files()
             add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
+            self.T1 = timedelta(seconds=time() - self.T0)
             return True
         return False
+
+    @property
+    def finished(self):
+        return self.T1.total_seconds() > 0
 
     def raw2root(self):
         self.run(force=True, steps=self.first_steps, rm=False)
@@ -90,6 +100,9 @@ class Converter:
     def raw_files(self):
         return [self.Raw.RawFilePath]
 
+    def remove_raw_files(self):
+        remove_file(*self.raw_files)
+
     def remove_aux_files(self):
         remove_file(*self.aux_files)
 
@@ -97,7 +110,7 @@ class Converter:
     def download_raw_file(f: Path, out=True, force=False):
         if not f.exists() or force:
             server, loc = [Analysis.Config.get('data', n) for n in ['server', 'server dir']]
-            info(f'downloading DUT raw file from {server}:{loc}')
+            info(f'downloading DUT raw file from {server}:{loc}', prnt=out)
             f.parent.mkdir(exist_ok=True)
             return download_file(server, Path(loc).expanduser().joinpath(*f.parts[-4:]), f, out)
 
@@ -162,6 +175,7 @@ class Converter:
 
         add_to_info(start_time, '\nFinished hdf5 conversion in')
         self.F.close()
+        self.F = None
 
     def add_tracks(self):
         t0 = info('add track information ...', endl=False)
