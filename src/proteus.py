@@ -23,7 +23,7 @@ def init_toml(name):
                 return default
             d = toml.load(default)
             func(self, arg, d)
-            tmp = self.ConfigDir.joinpath(f'tmp-{name[:3]}.toml')
+            tmp = self.ConfigDir.joinpath(f'tmp-{name[:3]}-{self.RunNumber}.toml')
             with open(tmp, 'w') as f:
                 toml.dump(d, f)
             return tmp
@@ -53,12 +53,13 @@ class Proteus:
         self.NRefPlanes = sum(['REF' in d['type'] for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
         self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes - 1  # default geo has all sensors (tel, ref and dut)
         self.DUTs = duts
+
+        self.RawFilePath = Path(raw_file)
+        self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
         self.Geo = self.init_geo(dut_pos)
         self.Device = self.init_device(duts)
         self.Ana = self.init_ana(duts)
 
-        self.RawFilePath = Path(raw_file)
-        self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
         self.Out = self.DataDir.joinpath(f'tracked-{self.RunNumber:04d}')           # name for proteus
         self.OutFilePath = self.Out.with_name(f'{self.Out.name}-trees.root')        # final file
         self.HistFilePath = self.Out.with_name(f'{self.Out.name}-hists.root')       # file with histograms
