@@ -65,3 +65,15 @@ col_min = 1
 col_max = 50
 row_min = 1
 row_max = 71
+
+[noisescan.Si-D8]
+sigma_above_avg_max = 8.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
+rate_max = 0.05 # max hits per pixel per event
+density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
+
+[[noisescan.Si-D8.sensors]]
+id = 6
+col_min = 1
+col_max = 50
+row_min = 1
+row_max = 71
