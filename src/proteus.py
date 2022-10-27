@@ -40,7 +40,7 @@ class Proteus:
 
     Si_Detectors = ['D8']
 
-    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, dut_pos=None, duts=None):
+    def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, dut_pos=None, duts=None, align_run=None):
 
         # DIRECTORIES
         self.SoftDir = Path(soft_dir)
@@ -56,6 +56,7 @@ class Proteus:
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
+        self.AlignRun = choose(align_run, self.RunNumber)
         self.Geo = self.init_geo(dut_pos)
         self.Device = self.init_device(duts)
         self.Ana = self.init_ana(duts)
@@ -138,7 +139,7 @@ class Proteus:
 
     @property
     def align_file(self):
-        files = sorted([f for f in self.ConfigDir.joinpath(self.AlignDir).glob('*.toml') if self.RunNumber >= int(remove_letters(f.stem))], reverse=True)
+        files = sorted([f for f in self.ConfigDir.joinpath(self.AlignDir).glob('*.toml') if self.AlignRun >= int(remove_letters(f.stem))], reverse=True)
         return files[0] if len(files) else Path('None')
 
     @property
