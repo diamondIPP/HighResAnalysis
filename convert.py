@@ -119,7 +119,7 @@ args = parser.parse_args()
 
 z = AutoConvert(args.s, args.e, args.b, args.tc, args.v, args.f) if args.s is not None else BatchConvert(args.b, args.tc, args.v, args.f)
 a = z.Converter
-cs = z.Converters
+cs = z.Converters if hasattr(z, 'Converters') else None
 
 if not args.t:
     cs = z.converters
