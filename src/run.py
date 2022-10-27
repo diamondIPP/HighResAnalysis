@@ -20,7 +20,7 @@ def load_runlog(p: Path):
 
 
 class Batch:
-    """ class containing the run infos of a signle batch. """
+    """ class containing the run infos of a single batch. """
 
     def __init__(self, name, dut_nr, data_dir: Path):
         self.Name = name
@@ -29,6 +29,8 @@ class Batch:
         self.Runs = self.load_runs(dut_nr)
         self.Size = len(self.Runs)
         self.DUT = self.Runs[0].DUT
+
+        self.FileName = data_dir.joinpath('data', f'batch{self}.hdf5')
 
     def __str__(self):
         return str(self.Name)
