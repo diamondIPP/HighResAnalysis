@@ -29,7 +29,7 @@ class Converter:
 
         self.T0 = time()
         self.T1 = timedelta(seconds=0)
-        self.Run = Run(run_number, 0, data_dir, single_mode=True)
+        self.Run = Run(run_number, 0, data_dir)
 
         # DIRECTORIES
         self.DataDir = data_dir
@@ -126,9 +126,9 @@ class Converter:
         return cal
 
     @classmethod
-    def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
+    def from_ana(cls, run_number, dut=0, ana: Analysis = None):
         ana = choose(ana, Analysis)
-        return cls.from_run(Run.from_ana(run_number, dut, ana, single_mode))
+        return cls.from_run(Run.from_ana(run_number, dut, ana))
 
     def init_proteus(self):
         soft_dir = self.SoftDir.joinpath(Analysis.Config.get('SOFTWARE', 'proteus'))
@@ -150,7 +150,7 @@ class Converter:
         return Calibration
 
     def load_calibration(self, dut_nr=None):
-        return self.calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir, single_mode=True))
+        return self.calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir))
 
     def proteus_raw_file_path(self):
         return self.Raw.OutFilePath
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     ana_ = Analysis(pargs.tc)
     tc = ana_.BeamTest
 
-    z = (Converter if tc.Location == 'DESY' else CERNConverter).from_ana(pargs.run, pargs.dut, ana_, single_mode=True)
+    z = (Converter if tc.Location == 'DESY' else CERNConverter).from_ana(pargs.run, pargs.dut, ana_)
     r = z.Raw
     p = z.Proteus
     c = z.load_calibration()
