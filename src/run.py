@@ -43,7 +43,7 @@ class Batch:
 
     def load_runs(self, dut_nr):
         is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
-        return [Run(key, dut_nr, self.DataDir, single_mode=True, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
+        return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
 
     @property
     def n_ev(self):
@@ -61,12 +61,11 @@ class Batch:
 class Run:
     """ Run class containing all the information for a single run from the tree and the json file. """
 
-    def __init__(self, run_number, dut_number, tc_dir: Path, single_mode=False, log=None):
+    def __init__(self, run_number, dut_number, tc_dir: Path, log=None):
 
         # Main Info
         self.Number = int(run_number)
         self.TCDir = tc_dir
-        self.SingleMode = single_mode
 
         # Files
         self.FileName = self.TCDir.joinpath('data', f'run{self.Number:04d}.hdf5')
@@ -98,19 +97,16 @@ class Run:
         return self.Number >= (other.Number if isinstance(other, Run) else other)
 
     def load_info(self, log=None) -> dict:
-        data = load_runlog(self.TCDir) if log is None else log
-        if self.SingleMode:
-            return data[str(self.Number)]
-        return {}
+        return load_runlog(self.TCDir)[str(self.Number)] if log is None else log
 
     def print_info(self):
         print(f'{self!r}')
         print_table(rows=[[key, str(datetime.fromtimestamp(value) if key in ['start', 'end'] else value)] for key, value in self.Info.items()])
 
     @classmethod
-    def from_ana(cls, run_number, dut=0, ana: Analysis = None, single_mode=False):
+    def from_ana(cls, run_number, dut=0, ana: Analysis = None):
         ana = choose(ana, Analysis)
-        return cls(run_number, dut, ana.BeamTest.Path, single_mode)
+        return cls(run_number, dut, ana.BeamTest.Path)
 
     @property
     def n_ev(self):

@@ -20,13 +20,13 @@ from utility.affine_transformations import transform, m_transform
 
 class DUTAnalysis(Analysis):
 
-    def __init__(self, run_number, dut_number, test_campaign, single_mode=True, verbose=True, test=False):
+    def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
         self.print_start(run_number)
 
         # data
-        self.Run = Run.from_ana(run_number, dut_number, self, single_mode)
+        self.Run = Run.from_ana(run_number, dut_number, self)
         self.DUT = self.Run.DUT
         self.Converter = self.converter.from_run(self.Run)
         self.Proteus = self.Converter.Proteus
