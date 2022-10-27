@@ -22,7 +22,7 @@ class RefAnalysis(DUTAnalysis):
         self.N = self.n
         self.MetaSubDir = 'REF'
 
-        self.Run = Run(parent.Run.Number, self.dut_nr, self.BeamTest.Path, parent.Run.SingleMode)
+        self.Run = Run(parent.Run.Number, self.dut_nr, self.BeamTest.Path)
         self.DUT = REF(self.dut_nr) if self.Parent.Proteus.NRefPlanes else self.Run.DUT
         self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
         self.Cut = RefCut(self)
