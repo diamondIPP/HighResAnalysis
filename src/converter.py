@@ -10,7 +10,7 @@ from uproot import ReadOnlyDirectory
 from uproot.models import TTree
 
 from src.proteus import Proteus
-from src.run import Run, Analysis
+from src.run import Run, Analysis, Batch
 from utility.utils import *
 from plotting.utils import download_file, remove_file, warning
 
@@ -76,8 +76,8 @@ class Converter:
     def finished(self):
         return self.T1.total_seconds() > 0
 
-    def raw2root(self):
-        self.run(force=True, steps=self.first_steps, rm=False)
+    def raw2root(self, force=True):
+        self.run(force=force, steps=self.first_steps, rm=False)
 
     def realign(self):
         self.raw2root()
@@ -135,7 +135,7 @@ class Converter:
         data_dir = self.DataDir.joinpath('proteus')
         conf_dir = Dir.joinpath('proteus', self.DataDir.stem)
         me, se = [Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']]
-        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se, dut_pos=self.Run.Positions, duts=self.Run.DUTs)
+        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se, dut_pos=self.Run.Positions, duts=self.Run.DUTs, align_run=self.Run.Number)
 
     def init_raw(self):
         from src.raw import Raw
@@ -188,6 +188,10 @@ class Converter:
         self.add_time_stamp(tree)
         self.add_data(tree, g, b)
         add_to_info(t0, color=GREEN)
+
+    @property
+    def time_stamp_file(self):
+        return Path()
 
     @staticmethod
     def get_time_stamp(tree: TTree):
@@ -288,6 +292,32 @@ class Converter:
                 remove_file(f)
     # endregion MISC
     # ----------------------------------------
+
+
+def batch_converter(cls: Converter):
+    class BatchConverter(cls):
+
+        def __init__(self, data_dir: Path, batch_name):
+
+            self.Batch = Batch(batch_name, 0, data_dir)
+            super().__init__(data_dir, self.Batch.Runs[0].Number)
+            self.OutFilePath = self.Batch.FileName
+
+        def proteus_raw_file_path(self):
+            return self.Batch.FileName.with_suffix('.root')
+
+        @classmethod
+        def from_batch(cls, b: Batch):
+            return cls(b.DataDir, b.Name)
+
+        def trigger_info_file(self):
+            return super().trigger_info_file().with_stem(f'dut-{self.Batch.FileName.stem}')
+
+        @property
+        def time_stamp_file(self):
+            return self.trigger_info_file()
+
+    return BatchConverter
 
 
 if __name__ == '__main__':

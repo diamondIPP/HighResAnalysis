@@ -67,8 +67,12 @@ class CERNConverter(Converter):
         pinfo(cmd)
         check_call(cmd, shell=True)
 
+    @property
+    def time_stamp_file(self):
+        return self.Adc2Vcal.OutFilePath
+
     def get_time_stamp(self, tree: TTree):
-        return (array(uproot.open(self.Adc2Vcal.OutFilePath)['Event']['TimeStamp']) / 1000).astype('d')
+        return (array(uproot.open(self.time_stamp_file)['Event']['TimeStamp']) / 1000).astype('d')
 
     @property
     def calibration(self):
