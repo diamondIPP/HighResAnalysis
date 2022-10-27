@@ -118,15 +118,15 @@ def is_num(string):
         return False
 
 
-def colored(string, color):
-    return '{}{}{}'.format(color, string, ENDC)
+def colored(string, color=None):
+    return string if color is None else '{}{}{}'.format(color, string, ENDC)
 
 
 def small_banner(msg, symbol='-', color=None):
     print(colored('\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg), color))
 
 
-def print_banner(msg, symbol='~', new_lines=1, color=WHITE):
+def print_banner(msg, symbol='~', new_lines=1, color=None):
     msg = '{} |'.format(msg)
     print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
 
