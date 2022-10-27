@@ -189,8 +189,8 @@ class DUTAnalysis(Analysis):
     def get_tv(self, cut=None, pl=None):
         return self.get_tuv(cut, pl)[1] if self.T else self.get_data('Tracks', 'V', cut, pl)
 
-    def get_xy(self, local=True, cut=None, pl=None, centre=False):
-        return array([self.get_x(cut, pl), self.get_y(cut, pl)]) if local else self.get_uv(cut, pl, centre)
+    def get_xy(self, local=True, cut=None, pl=None, centre=False, rot=False):
+        return array([self.get_x(cut, pl, rot), self.get_y(cut, pl, rot)]) if local else self.get_uv(cut, pl, centre)
 
     def get_uv(self, cut=None, pl=None, centre=False):
         return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if self.T else array([self.get_u(cut, pl), self.get_v(cut, pl)])
@@ -353,18 +353,18 @@ class DUTAnalysis(Analysis):
     def draw_x_correlation(self, pl=2, pl1=None, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
         x = [self.get_x(c, p, rot=True) for p in [pl, pl1]]
-        return self.Draw.histo_2d(*x, **prep_kw(dkw, title='XCorr', x_tit=f'Column Plane {pl}', y_tit=f'Column Plane {choose(pl1, self.Plane.Number)}'))
+        return self.Draw.histo_2d(*x, **prep_kw(dkw, title='XCorr', x_tit=f'Column Plane {pl}', y_tit=f'Column Plane {choose(pl1, self.Plane.Number)}', file_name='XCorr'))
 
     def draw_y_correlation(self, pl=2, pl1=None, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
         y = [self.get_y(c, p, rot=True) for p in [pl, pl1]]
-        return self.Draw.histo_2d(*y, **prep_kw(dkw, title='YCorr', x_tit=f'Row Plane {pl}', y_tit=f'Row Plane {choose(pl1, self.Plane.Number)}'))
+        return self.Draw.histo_2d(*y, **prep_kw(dkw, title='YCorr', x_tit=f'Row Plane {pl}', y_tit=f'Row Plane {choose(pl1, self.Plane.Number)}', file_name='YCorr'))
 
     def draw_correlation_trend(self, pl=0, pl1=None, thresh=.2, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
-        d0, d1, t = self.get_xy(pl=pl, cut=c), self.get_xy(pl=pl1, cut=c), self.get_time(c)
+        d0, d1, t = self.get_xy(pl=pl, cut=c, rot=True), self.get_xy(pl=pl1, cut=c, rot=True), self.get_time(c)
         g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), thresh=thresh), y_tit='Correlation Factor', show=False) for i in range(2)]
-        return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args(), y_range=[-1.05, 1.05]))
+        return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args(), y_range=[-1.05, 1.05], file_name='CorrTrend'))
 
     def draw_alignment(self, pl=2, thresh=.3, **dkw):
         gx, gy = self.draw_correlation_trend(pl, show=False).GetListOfGraphs()
@@ -375,6 +375,7 @@ class DUTAnalysis(Analysis):
         gStyle.SetPalette(3, array([1, 633, 418], 'i'))
         self.Draw.histo_2d(x, y, binning, 'Event Alignment', **prep_kw(dkw, **self.t_args(), y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
+        self.Draw.save_plots('EventAlignment')
     # endregion CORRELATION
     # ----------------------------------------
 
