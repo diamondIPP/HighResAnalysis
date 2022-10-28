@@ -100,12 +100,12 @@ class DUTAnalysis(Analysis):
 
     def init_ref(self):
         if self.Run.NDUTs > 1 or self.Proteus.NRefPlanes:
-            from mod.reference import RefAnalysis
-            return RefAnalysis(self)
+            from mod.reference import ref_analysis
+            return ref_analysis(self.__class__)(self)
 
     def init_tracks(self):
-        from mod.tracks import TrackAnalysis
-        return TrackAnalysis(self)
+        from mod.tracks import track_analysis
+        return track_analysis(self.__class__)(self)
 
     def init_eff(self):
         from mod.efficiency import Efficiency

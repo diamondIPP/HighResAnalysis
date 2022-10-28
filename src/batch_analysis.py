@@ -23,6 +23,10 @@ class BatchAnalysis(DUTAnalysis):
     def ev_str(self):
         return f'{ev2str(self.NEvents if hasattr(self, "NEvents") else self.Batch.n_ev)} ev'
 
+    @property
+    def run_str(self):
+        return f'b-{self.Batch}'
+
     def init_converter(self):
         return self.converter.from_batch(self.Batch)
 
