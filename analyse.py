@@ -10,12 +10,16 @@ from numpy import *
 import src.bins as bins  # noqa
 from plotting.draw import *  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
+from src.batch_analysis import BatchAnalysis
+from src.run import load_nrs
 from utility.utils import *  # noqa
+from functools import partial
 
 t_start = time()
 aparser = ArgumentParser()
-aparser.add_argument('run', nargs='?', default=Analysis.Config.get_value('data', 'default run'), type=int)
+aparser.add_argument('run', nargs='?', default=Analysis.Config.get_value('data', 'default run'))
 aparser.add_argument('dut', nargs='?', default=0, type=int)
+aparser.add_argument('--batch', '-b', nargs='?', default=None, help='batch name')
 aparser.add_argument('--testcampaign', '-tc', nargs='?', default=Analysis.find_testcampaign())
 aparser.add_argument('--verbose', '-v', action='store_false')
 aparser.add_argument('--test', '-t', action='store_true')
@@ -31,16 +35,22 @@ if args.runplan is not None:
     exit(2)
 
 
+ana = Analysis(args.testcampaign)
+runs = load_nrs(ana.BeamTest.Path)
+dut_ana = partial(DUTAnalysis, args.run) if args.run in runs and args.batch is None else partial(BatchAnalysis, choose(args.batch, args.run))
+dut_ana = partial(dut_ana, args.dut, args.testcampaign)
+
+
 if args.remove_meta:
-    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, verbose=False, test=True)
+    z = dut_ana(verbose=False, test=True)
     z.remove_metadata()
 
 if args.convert:
-    z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, verbose=False, test=True)
+    z = dut_ana(verbose=False, test=True)
     z.remove_file()
     z.Converter.remove_aux_files()
 
-z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, verbose=args.verbose, test=args.test)
+z = dut_ana(verbose=args.verbose, test=args.test)
 
 # if not args.test and z.REF is not None and not z.has_alignment():
 #     z.Residuals.align(_save=True)
