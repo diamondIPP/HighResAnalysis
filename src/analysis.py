@@ -2,7 +2,7 @@ from os import getcwd
 from shutil import copyfile
 
 from plotting.save import *
-from utility.utils import PBar, Dir, print_banner, byte2str
+from utility.utils import Dir, print_banner, byte2str
 
 
 class BeamTest:
@@ -50,10 +50,10 @@ class Analysis:
         self.Draw = SaveDraw(self, results_dir=self.BeamTest.Tag)
 
     def __str__(self):
-        return f'{self.__class__.__name__.replace("Analysis", "").upper()} ANALYSIS'
+        return f'{self.__class__.__name__.replace("Analysis", "").upper()} ANALYSIS'.strip(' ')
 
     def __repr__(self):
-        return f'{self} of the {self.BeamTest!r}'
+        return f'{self} ({self.BeamTest})'
 
     # ----------------------------------------
     # region INIT
@@ -130,12 +130,8 @@ class Analysis:
     def make_hdf5_path(self, *args, **kwargs):
         return self.make_pickle_path(*args, **kwargs).with_suffix('.hdf5')
 
-    def print_start(self, run=None, prnt=True, tc=True):
-        if prnt:
-            ana_name = self.__class__.__name__.replace('Analysis', '')
-            run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
-            tc = f' OF {self.BeamTest}' if tc else ''
-            print_banner('STARTING {} ANALYSIS{}{}'.format(ana_name.upper(), run, tc), symbol='~', color=GREEN)
+    def print_start(self):
+        print_banner(f'STARTING {self!r}', symbol='~', color=GREEN)
 
     def create_run_config(self):
         if self.BeamTest.Location == 'CERN':

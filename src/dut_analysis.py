@@ -23,12 +23,12 @@ class DUTAnalysis(Analysis):
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
-        self.print_start(run_number)
+        self.Run = Run.from_ana(run_number, dut_number, self)
+        self.print_start()
 
         # data
-        self.Run = Run.from_ana(run_number, dut_number, self)
         self.DUT = self.Run.DUT
-        self.Converter = self.converter.from_run(self.Run)
+        self.Converter = self.init_converter()
         self.Proteus = self.Converter.Proteus
         self.Planes = self.init_planes()
         self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
@@ -36,7 +36,7 @@ class DUTAnalysis(Analysis):
         if test:
             return
 
-        self.F = self.load_file(test)
+        self.F = self.load_file()
         self.T = False
 
         # INFO
@@ -65,14 +65,20 @@ class DUTAnalysis(Analysis):
         self.verify_alignment()
 
     def __repr__(self):
-        ev_str = f' ({ev2str(self.NEvents)} ev)' if hasattr(self, 'NEvents') else ''
-        return f'{super().__repr__()} {ev_str}'
+        return f'{self} of run {self.Run} ({self.BeamTest}), {self.ev_str}'
+
+    @property
+    def ev_str(self):
+        return f'{ev2str(self.NEvents if hasattr(self, "NEvents") else self.Run.n_ev)} ev'
 
     # ----------------------------------------
     # region INIT
     @property
     def server_save_dir(self):
         return Path('duts', str(self.DUT), self.BeamTest.Tag, str(self.Run))
+
+    def init_converter(self):
+        return self.converter.from_run(self.Run)
 
     @property
     def converter(self):
@@ -114,21 +120,24 @@ class DUTAnalysis(Analysis):
             from mod.resolution import Resolution
             return Resolution(self.REF)
 
-    def remove_file(self):
-        remove_file(self.Run.FileName)
+    @property
+    def file_name(self):
+        return self.Run.FileName
 
-    def load_file(self, test=False):
-        if not test:
-            if self.Converter.run():
-                self.remove_metadata()
-            try:
-                f = h5py.File(self.Run.FileName, 'r')
-                _ = f['Tracks']         # check if data is complete
-                _ = f[str(self.Plane)]  # check if data is complete
-                return f
-            except (KeyError, OSError) as err:
-                self.remove_file()
-                critical(f'error loading data file, deleting {self.Run.FileName}\n{err}')
+    def remove_file(self):
+        remove_file(self.file_name)
+
+    def load_file(self):
+        if self.Converter.run():
+            self.remove_metadata()
+        try:
+            f = h5py.File(self.file_name, 'r')
+            _ = f['Tracks']         # check if data is complete
+            _ = f[str(self.Plane)]  # check if data is complete
+            return f
+        except (KeyError, OSError) as err:
+            self.remove_file()
+            critical(f'error loading data file, deleting {self.file_name}\n{err}')
 
     def reload_data(self):
         self.F = self.load_file()
