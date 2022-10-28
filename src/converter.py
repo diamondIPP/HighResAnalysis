@@ -303,6 +303,9 @@ def batch_converter(cls: Converter):
             super().__init__(data_dir, self.Batch.Runs[0].Number)
             self.OutFilePath = self.Batch.FileName
 
+        def __repr__(self):
+            return f'{self.__class__.__name__} of {self.Batch!r}'
+
         def proteus_raw_file_path(self):
             return self.Batch.FileName.with_suffix('.root')
 
