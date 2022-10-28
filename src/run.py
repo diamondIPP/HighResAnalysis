@@ -19,6 +19,11 @@ def load_runlog(p: Path):
     return load_json(f)
 
 
+def load_nrs(p: Path):
+    log = load_runlog(p)
+    return [key for key, dic in log.items() if dic['status'] == 'green']
+
+
 class Batch:
     """ class containing the run infos of a single batch. """
 
@@ -97,7 +102,7 @@ class Run:
         return self.Number >= (other.Number if isinstance(other, Run) else other)
 
     def load_info(self, log=None) -> dict:
-        return load_runlog(self.TCDir)[str(self.Number)] if log is None else log
+        return (load_runlog(self.TCDir) if log is None else log)[str(self)]
 
     def print_info(self):
         print(f'{self!r}')
