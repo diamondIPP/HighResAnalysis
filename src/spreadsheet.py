@@ -64,7 +64,7 @@ info = {'2018-09': {'key': '1KoDi9OLU0SiqtLvTGgglQGHm51xn5J0ErAs89h6a-Rc',
                     'n': [3, 4, 5, 28]},  # [row0 for dut, n dut, n dut rows, row0 for info]
         '2018-10': {'key': '1t-MXNW0eN9tkGZSakfPdmnd_wcq4cX14Nw0bQ2ma_OQ',
                     'hv': {'II6-A2': '2-1', 'CMS04': '2-3', 'Si-D8': '2-2', 'II6-B6': '2-3'},
-                    'n': [4, 4, 5, 29]}
+                    'n': [9, 3, 5, 29]}
         }
 
 
