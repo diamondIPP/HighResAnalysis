@@ -204,7 +204,7 @@ class DUTAnalysis(Analysis):
     def get_uv(self, cut=None, pl=None, centre=False):
         return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if self.T else array([self.get_u(cut, pl), self.get_v(cut, pl)])
 
-    def get_txy(self, local=True, cut=None, pl=None, centre=False, trans=True):
+    def get_txy(self, local=True, cut=None, pl=None, centre=False, trans=False):
         d = array([self.get_tx(cut, pl), self.get_ty(cut, pl)]) if local else self.get_tuv(cut, pl, centre)
         return m_transform(self.Residuals.m, *d) if trans and local else d
 
@@ -406,7 +406,7 @@ class DUTAnalysis(Analysis):
         self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **dkw)
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
-        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.Tracks.get_xy, self.get_phs]]
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, self.get_phs]]
         self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
