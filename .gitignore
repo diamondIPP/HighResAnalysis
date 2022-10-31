@@ -4,7 +4,8 @@
 !*.py
 !*.md
 !*.ini
-!config/dia_info.json
+!dia_info.json
+!batches.json
 !*.toml
 !requirements.txt
 !Makefile
