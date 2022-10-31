@@ -35,6 +35,10 @@ class AutoConvert:
         return [self.Converter.from_run(r) for r in self.Batch.Runs if (not r.FileName.exists() or self.Force) and self.first_run <= r <= self.last_run]
 
     @property
+    def final_files_exist(self):
+        return all([r.FileName.exists() and self.first_run <= r <= self.last_run for r in self.Batch.Runs])
+
+    @property
     def first_run(self):
         return choose(self.FirstRun, self.Batch.min_run)
 
@@ -103,29 +107,31 @@ class BatchConvert(AutoConvert):
             check_call(cmd, shell=True)
 
 
-from argparse import ArgumentParser
+if __name__ == '__main__':
 
-parser = ArgumentParser()
-parser.add_argument('-m', action='store_true', help='turn parallel processing ON')
-parser.add_argument('-tc', nargs='?', default=None)
-parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
-parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]', type=int)
-parser.add_argument('-b', nargs='?', default='23b', help='batch number, default [None]')
-parser.add_argument('-v', action='store_false', help='turn verbose OFF')
-parser.add_argument('-t', action='store_true', help='turn test mode ON')
-parser.add_argument('-f', action='store_true', help='force conversion')
+    from argparse import ArgumentParser
 
-args = parser.parse_args()
+    parser = ArgumentParser()
+    parser.add_argument('-m', action='store_true', help='turn parallel processing ON')
+    parser.add_argument('-tc', nargs='?', default=None)
+    parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
+    parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]', type=int)
+    parser.add_argument('-b', nargs='?', default='23b', help='batch number, default [None]')
+    parser.add_argument('-v', action='store_false', help='turn verbose OFF')
+    parser.add_argument('-t', action='store_true', help='turn test mode ON')
+    parser.add_argument('-f', action='store_true', help='force conversion')
 
-z = AutoConvert(args.s, args.e, args.b, args.tc, args.v, args.f) if args.s is not None else BatchConvert(args.b, args.tc, args.v, args.f)
-a = z.Converter
-cs = z.Converters if hasattr(z, 'Converters') else None
+    args = parser.parse_args()
 
-if not args.t:
-    cs = z.converters
-    if len(cs):
-        print_banner(f'Start converting runs {cs[0].Run} - {cs[-1].Run}', color=GREEN)
-        z.run()
-        print_banner('Finished Conversion!', color=GREEN)
-    else:
-        info('There is nothing to convert :-)\n', blank_lines=1)
+    z = AutoConvert(args.s, args.e, args.b, args.tc, args.v, args.f) if args.s is not None else BatchConvert(args.b, args.tc, args.v, args.f)
+    a = z.Converter
+    cs = z.Converters if hasattr(z, 'Converters') else None
+
+    if not args.t:
+        cs = z.converters
+        if len(cs):
+            print_banner(f'Start converting runs {cs[0].Run} - {cs[-1].Run}', color=GREEN)
+            z.run()
+            print_banner('Finished Conversion!', color=GREEN)
+        else:
+            info('There is nothing to convert :-)\n', blank_lines=1)
