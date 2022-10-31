@@ -7,6 +7,7 @@
 from argparse import ArgumentParser
 from numpy import *
 
+import convert
 import src.bins as bins  # noqa
 from plotting.draw import *  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
@@ -37,8 +38,15 @@ if args.runplan is not None:
 
 ana = Analysis(args.testcampaign)
 runs = load_nrs(ana.BeamTest.Path)
-dut_ana = partial(DUTAnalysis, args.run) if args.run in runs and args.batch is None else partial(BatchAnalysis, choose(args.batch, args.run))
+is_batch = not (args.run in runs and args.batch is None)
+dut_ana = partial(BatchAnalysis, choose(args.batch, args.run)) if is_batch else partial(DUTAnalysis, args.run)
 dut_ana = partial(dut_ana, args.dut, args.testcampaign)
+
+
+if is_batch:
+    bc = convert.BatchConvert(dut_ana.args[0], dut_ana.args[-1], verbose=False, force=False)
+    if not bc.final_files_exist and not args.test:
+        bc.run()
 
 
 if args.remove_meta:
