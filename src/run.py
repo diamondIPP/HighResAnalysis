@@ -4,8 +4,8 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table, datetime, ev2str
-from plotting.utils import load_json, warning
+from utility.utils import print_table, datetime, ev2str, remove_letters, Dir
+from plotting.utils import load_json, warning, critical
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
 
@@ -31,7 +31,9 @@ class Batch:
         self.Name = name
         self.DataDir = data_dir
         self.Log = load_runlog(self.DataDir)
+        self.LogNames = self.load_log_names()
         self.Runs = self.load_runs(dut_nr)
+        self.RunNrs = [run.Number for run in self.Runs]
         self.Size = len(self.Runs)
         self.DUT = self.Runs[0].DUT
 
@@ -46,9 +48,17 @@ class Batch:
     def __getitem__(self, item):
         return self.Runs[item]
 
+    def load_log_names(self):
+        return sorted(list(set([dic['batch'] for dic in self.Log.values()])), key=lambda x: (int(remove_letters(x)), x))
+
     def load_runs(self, dut_nr):
-        is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
-        return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
+        if self.Name in self.LogNames:
+            is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
+            return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
+        dic = load_json(Dir.joinpath('config', 'batches.json'))
+        if self.Name in dic:
+            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in dic[self.Name] if self.Log[str(nr)]['status'] == 'green']
+        critical('unknown batch name')
 
     @property
     def n_ev(self):
