@@ -4,7 +4,7 @@
 # created on October 27th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.dut_analysis import DUTAnalysis, Analysis, ev2str
+from src.dut_analysis import DUTAnalysis, Analysis, ev2str, Path
 from src.run import Batch
 from src.converter import batch_converter
 
@@ -18,6 +18,10 @@ class BatchAnalysis(DUTAnalysis):
 
     def __repr__(self):
         return f'{self} of batch {self.Batch} ({self.BeamTest}), {self.ev_str}'
+
+    @property
+    def server_save_dir(self):
+        return Path('duts', str(self.DUT), self.BeamTest.Tag, f'b-{self.Batch}')
 
     @property
     def ev_str(self):
