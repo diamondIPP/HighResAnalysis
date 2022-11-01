@@ -55,10 +55,10 @@ class Converter:
         if force or not self.OutFilePath.exists():
             t0 = info(f'Starting {self!r}\n')
             for i, (s, f) in enumerate(choose(steps, self.steps)):
-                if not f.exists():
+                if not f.exists() or force:
                     print_banner(f'Start converter step {i}: {s.__doc__}')
                     try:
-                        s()
+                        s(force=force) if 'force' in signature(s).parameters else s()
                     except Exception as err:
                         warning(f'converter crashed: {err}')
                         remove_file(f)
