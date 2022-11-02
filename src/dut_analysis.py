@@ -275,14 +275,14 @@ class DUTAnalysis(Analysis):
     def get_ph_tit(self, e=False):
         return 'Charge [e]' if e else self.ph_tit
 
-    def get_segments(self, nx, ny, width=False):
+    def segments(self, nx, ny, width=False):
         x0, x1, y0, y1 = self.Cut.get_config('full size')
         if width:
             return arange(x0, x1 + (x1 - x0) // nx, nx, dtype='u2'), arange(y0, y1 + (y1 - y0) // ny, ny, dtype='u2')
         return linspace(x0, x1, nx + 1), linspace(y0, y1, ny + 1)
 
-    def get_segment_centres(self, nx, ny, width=False):
-        x, y = self.get_segments(nx, ny, width)
+    def segment_centres(self, nx, ny, width=False):
+        x, y = self.segments(nx, ny, width)
         return x[:-1] + diff(x) / 2, y[:-1] + diff(y) / 2
 
     def expand_inpixel(self, x, y, e=None, cell=False):
@@ -338,7 +338,7 @@ class DUTAnalysis(Analysis):
         self.Draw.distribution(self.get_time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
-        self.Draw.grid(*self.get_segments(nx, ny, width), w)
+        return self.Draw.grid(*self.segments(nx, ny, width), width=w)
 
     def draw_inpixel_map(self, res=.1, cut=None, cell=False, show=True):
         x, y = self.expand_inpixel(cell=cell, *self.Tracks.get_xy(cut=cut))
