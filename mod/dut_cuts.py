@@ -71,6 +71,7 @@ class DUTCut(Cuts):
         self.register('tstart', self.make_start_time(_redo=redo), 35, 'exclude first events')
         self.register('chi2', self.make_chi2(_redo=redo), 50, f'small chi2 < q({self.get_config("chi2 quantile", dtype=float)})')
         self.register('slope', self.make_slope(_redo=redo), 55, f'straight tracks < q({self.get_config("slope quantile", dtype=float)})')
+        self.register('cs', self.make_cluster_size(_redo=redo), 56, f'cluster size <= {self.get_config("max cluster size")}')
 
     # ----------------------------------------
     # region GENERATE
@@ -154,6 +155,11 @@ class DUTCut(Cuts):
         x, y, q = self.Ana.get_slope_x(cut=False), self.Ana.get_slope_y(cut=False), choose(q, self.get_config('slope quantile', dtype=float))
         (xmin, xmax), (ymin, ymax) = quantile(x, [q, 1 - q]), quantile(y, [q, 1 - q])
         return ones(x.size, '?') if q >= .5 else (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
+
+    @save_cut('CluSize', cfg='max cluster size')
+    def make_cluster_size(self, _redo=False):
+        cut_value = self.get_config('max cluster size', dtype=int)
+        return None if cut_value is None else self.Ana.get_cluster_size(cut=False) <= cut_value
     # endregion GENERATE
     # ----------------------------------------
 
