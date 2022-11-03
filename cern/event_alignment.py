@@ -27,6 +27,7 @@ class EventAlignment:
     def run(self):
         self.load_data()
         if not self.is_good and len(self.OffEvents) == 0:
+            self.find_tel_offset()
             self.find_events()
             if not self.validated:
                 critical(f'{self!r} failed!')
@@ -56,11 +57,11 @@ class EventAlignment:
             self.X, self.Y, self.Cut = a, b, c
 
     def tdiff(self, start, off, x=None):
-        """returns: time difference between two time stamps for a given offset [off] """
+        """:returns time difference between two time stamps for a given offset [off] """
         return abs(roll(choose(x, self.X), -off)[start:self.Y.size] - self.Y[start:])
 
     def off_events(self, start=0, off=0, x=None):
-        """:returns: events with deviating time stamps. """
+        """:returns events with deviating time stamps. """
         d = self.tdiff(start, off, x)
         return where((d > self.Y[start:] * .001) & self.Cut[start:])[0]
 
@@ -71,6 +72,14 @@ class EventAlignment:
             self.OffEvents.append(e + off)
             return self.find_events(e, off + 1)
         info(f'found {len(self.OffEvents)} event offsets')
+
+    def find_tel_offset(self, max_off=1000):
+        tel_off = next(i for i in range(max_off) if self.off_events(i, -i)[0] != 0)
+        if tel_off != 0:
+            info('Found non-zero telescope offset ... restart conversion! ')
+            self.Raw.Offset = tel_off
+            self.Raw.convert()
+            self.load_data(reload=True)
 
     @property
     def validated(self):
