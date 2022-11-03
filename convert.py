@@ -3,7 +3,7 @@
 #       Script to automatically convert several files
 # created on October 19th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-
+import uproot
 
 from src.run import Batch
 from plotting.utils import choose, info, colored, GREEN, RED, check_call
@@ -94,7 +94,9 @@ class BatchConvert(AutoConvert):
     def run(self):
         super().run()  # create root files of the single runs
         self.merge_files()
+        self.fix_event_nrs()
         self.Converter.run(force=self.Force)  # tracking and hdf5 conversion of the single merged file
+        self.remove_aux_files()
 
     def merge_files(self):
         """merge proteus raw files of all batch runs"""
@@ -105,6 +107,15 @@ class BatchConvert(AutoConvert):
             cmd = f'hadd -f {self.Converter.trigger_info_file()} {" ".join(str(c_.trigger_info_file()) for c_ in self.Converters)}'
             info(cmd)
             check_call(cmd, shell=True)
+
+    def fix_event_nrs(self):
+        """removing the Event branch from the raw file for Proteus fixes the wrong event numbers"""
+        with uproot.update(self.Converter.Proteus.RawFilePath) as g:
+            del g['Event']
+
+    def remove_aux_files(self):
+        for conv in self.Converters:
+            conv.remove_aux_files()
 
 
 if __name__ == '__main__':
