@@ -124,7 +124,7 @@ class DUTCut(Cuts):
 
     @save_cut('Time', cfg='start time')
     def make_start_time(self, _redo=False):
-        t = self.Ana.get_time(cut=False)
+        t = self.Ana.time(cut=False)
         return t >= t[0] + self.get_config('start time', dtype=int) * 60
 
     @save_cut('Chi2', suf_args='all', cfg='chi2 quantile')

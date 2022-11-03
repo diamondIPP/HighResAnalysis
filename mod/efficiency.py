@@ -30,7 +30,7 @@ class Efficiency(DUTAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw(self, bw=None, **dkw):
-        t, e = self.get_time(), self.values()
+        t, e = self.time(), self.values()
         return self.Draw.efficiency(t, e, **prep_kw(dkw, w=bw, **self.t_args(), **self.YArgs, stats=False, file_name='EfficiencyTrend'))
 
     def draw_vs_tp(self, **dkw):

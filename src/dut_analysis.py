@@ -3,8 +3,6 @@
 #       class for analysis of a single DUT
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import vstack
-
 import cern.converter
 import src.bins as bins
 import src.converter
@@ -158,7 +156,7 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region DATA
-    def get_time(self, cut=None):
+    def time(self, cut=None):
         return self.get_data('Time', cut=cut, main_grp='Event').astype('f8')
 
     def get_data(self, grp, key=None, cut=None, pl=None, main_grp=None):
@@ -317,11 +315,11 @@ class DUTAnalysis(Analysis):
         return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
-        v = self.get_cluster_size(cut, pl)
+        v = self.get_cluster_size(self.Cut.exclude('cs', cut), pl)
         self.Draw.distribution(v, **prep_kw(dkw, title='Cluster Size', w=1, x0=-.5, q=1e-3, x_tit='Cluster Size', file_name='ClusterSize'))
 
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
-        cut = self.Cut.get_nofid(cut, fid)
+        cut = self.Cut.get_nofid(self.Cut.exclude('cs', cut), fid)
         (x, y), cs = self.Tracks.get_xy(local, cut), self.get_cluster_size(cut)
         self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Cluster Size', **self.ax_tits(local)))
 
@@ -330,12 +328,13 @@ class DUTAnalysis(Analysis):
         self.Draw(h, **prep_kw(dkw, y_range=[0, 1.1 * h.GetMaximum()], file_name='TriggerPhase'))
 
     def draw_time(self, cut=None, **dkw):
-        t = self.get_time(cut)
+        t = self.time(cut)
         g = self.Draw.profile(arange(t.size), t, title='Time', **prep_kw(dkw, markersize=.6, x_tit='Event Number', y_tit='Time [hh:mm]', draw_opt='aplx', graph=True))
         set_time_axis(g, axis='Y')
+        self.Draw.save_plots('Time')
 
     def draw_time_dist(self, cut=None, **dkw):
-        self.Draw.distribution(self.get_time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
+        self.Draw.distribution(self.time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
         return self.Draw.grid(*self.segments(nx, ny, width), width=w)
@@ -371,7 +370,7 @@ class DUTAnalysis(Analysis):
 
     def draw_correlation_trend(self, pl=0, pl1=None, thresh=.2, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
-        d0, d1, t = self.get_xy(pl=pl, cut=c, rot=True), self.get_xy(pl=pl1, cut=c, rot=True), self.get_time(c)
+        d0, d1, t = self.get_xy(pl=pl, cut=c, rot=True), self.get_xy(pl=pl1, cut=c, rot=True), self.time(c)
         g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), thresh=thresh), y_tit='Correlation Factor', show=False) for i in range(2)]
         return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args(), y_range=[-1.05, 1.05], file_name='CorrTrend'))
 
@@ -418,7 +417,7 @@ class DUTAnalysis(Analysis):
         self.Draw.profile(x, y, bins.TP, 'Charge vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', y_tit=self.ph_tit, graph=True))
 
     def draw_signal_trend(self, bw=None, e=False, cut=None, **dkw):
-        x, y = self.get_time(cut), self.get_phs(e=e, cut=cut)
+        x, y = self.time(cut), self.get_phs(e=e, cut=cut)
         g = self.Draw.profile(x, y, find_bins(x, w=bw), **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
         return self.Draw(g, **prep_kw(dkw, y_range=ax_range(get_graph_y(g, err=False), fl=1, fh=2)))
 
