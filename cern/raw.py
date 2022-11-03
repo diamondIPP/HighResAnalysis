@@ -10,6 +10,7 @@ from src.converter import Converter, Analysis
 class CERNRaw(Raw):
 
     def __init__(self, c: Converter, load_file=False, step=-1):
+        self.Offset = 0
         super().__init__(c, load_file, step)
 
     def load_raw_file_path(self):
@@ -27,8 +28,8 @@ class CERNRaw(Raw):
 
     @property
     def options(self):
-        return f'-c convert -m {self.SoftDir.joinpath("configs", "readout", "CERN.cfg")}'
+        return f'-c convert -m {self.SoftDir.joinpath("configs", "readout", "CERN.cfg")}{f" -s {self.Offset}" if self.Offset else ""}'
 
-    def convert(self):
+    def convert(self):  # update doc str
         """convert binary raw file (from KARTEL telescope) to root file with judith."""
         super().convert()
