@@ -282,19 +282,6 @@ class DUTAnalysis(Analysis):
     def segment_centres(self, nx, ny, width=False):
         x, y = self.segments(nx, ny, width)
         return x[:-1] + diff(x) / 2, y[:-1] + diff(y) / 2
-
-    def expand_inpixel(self, x, y, e=None, cell=False):
-        cx, cy = [self.DUT.PXY / 1000. / self.Plane.PX, self.DUT.PXY / 1000. / self.Plane.PY]
-        x, y = [(x % cx) / cx,  (y % cy) / cy] if cell else [x % 1, y % 1]
-        # add edges of the neighbouring pixels
-        xf = concatenate([x, x[x < .5] + 1, x[x >= .5] - 1, x[y < .5], x[y > .5]])
-        yf = concatenate([y, y[x < .5], y[x >= .5], y[y < .5] + 1, y[y >= .5] - 1])
-        ef = concatenate([e, e[x < .5], e[x >= .5], e[y < .5], e[y >= .5]]) if e is not None else None
-        # add corners
-        xf = concatenate([xf, x[(x < .5) & (y < .5)] + 1, x[(x >= .5) & (y >= .5)] - 1, x[(x < .5) & (y >= .5)] + 1, x[(x >= .5) & (y < .5)] - 1])
-        yf = concatenate([yf, y[(x < .5) & (y < .5)] + 1, y[(x >= .5) & (y >= .5)] - 1, y[(x < .5) & (y >= .5)] - 1, y[(x >= .5) & (y < .5)] + 1])
-        ef = concatenate([ef, e[(x < .5) & (y < .5)], e[(x >= .5) & (y >= .5)], e[(x < .5) & (y >= .5)], e[(x >= .5) & (y < .5)]]) if e is not None else None
-        return [xf, yf] if e is None else [xf, yf, ef]
     # endregion MISC
     # ----------------------------------------
 
@@ -311,8 +298,8 @@ class DUTAnalysis(Analysis):
         pl = self.Plane if local else self.Planes[0]
         return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local), file_name='Occupancy'))
 
-    def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, trans=True, **dkw):
-        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=trans, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
+    def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, **dkw):
+        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=self.T, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(self.Cut.exclude('cs', cut), pl)
@@ -338,12 +325,6 @@ class DUTAnalysis(Analysis):
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
         return self.Draw.grid(*self.segments(nx, ny, width), width=w)
-
-    def draw_inpixel_map(self, res=.1, cut=None, cell=False, show=True):
-        x, y = self.expand_inpixel(cell=cell, *self.Tracks.get_xy(cut=cut))
-        self.Draw.histo_2d(x, y, bins.get_pixel(self.Plane, res, cell=cell), 'Hit Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
-        self.Draw.box(0, 0, 1, 1)
-        update_canvas()
 
     def draw_geo(self, top=True):
         x, y = self.Proteus.z_positions(raw=True), [pl.W if top else pl.H for pl in self.Planes]
@@ -426,13 +407,6 @@ class DUTAnalysis(Analysis):
         fit = FitRes(g.Fit('pol0', 'sq'))
         self.Draw(g, **prep_kw(dkw, stats=set_statbox(fit=True), show=False))
         return fit
-
-    def draw_inpixel_charge(self, res=.1, cut=None, show=True, cell=False):
-        (x, y), c = self.Tracks.get_xy(cut=cut), self.get_phs(cut=cut)
-        x, y, c = self.expand_inpixel(x, y, c, cell)
-        self.Draw.prof2d(x, y, c, bins.get_pixel(self.Plane, res, cell=cell), 'Charge Map in {}'.format('3D Cell' if cell else 'Pixel'), show=show, stats=0)
-        self.Draw.box(0, 0, 1, 1)
-        update_canvas()
     # endregion SIGNAL
     # ----------------------------------------
 
@@ -456,42 +430,42 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region IN PIXEL
-    def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None):
-        (x, y), z_ = self.get_txy(cut=cut), (self.get_phs if fz is None else fz)(cut=cut)
-        x, y = (x + .5 + ox) % mx, (y + .5 + oy) % my
-        x, y, z_ = self.expand_mod_vars(x, y, z_, mx, my)
-        return vstack((transform(x, y, sx=self.Plane.PX * 1e3, sy=self.Plane.PY * 1e3), z_))  # convert from pixel to um
+    def contracted_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None, contract=True):
+        (x, y), z_ = self.get_txy(cut=cut), self.get_phs(cut=cut) if fz is None else fz(cut=cut)
+        x, y, z_ = (x + ox / self.Plane.PX / 1e3) % mx, (y + oy / self.Plane.PY / 1e3) % my, z_
+        return array(self.expand_vars(x, y, z_, mx, my) if contract else (x, y, z_)) * [[self.Plane.PX * 1e3], [self.Plane.PY * 1e3], [1]]  # convert from pixel to um
 
     @staticmethod
-    def expand_mod_vars(x, y, e, mx, my):
+    def expand_vars(x, y, z_, mx, my):
+        """copy the vars x, y, z to half a cell of size [mx, my] in each direction"""
         d = array([x, y]).T
-        (x, y), e = concatenate([d + [i, j] for i in [-mx, 0, mx] for j in [-my, 0, my]]).T, tile(e, 9)  # copy arrays in each direction
+        (x, y), e = concatenate([d + [i, j] for i in [-mx, 0, mx] for j in [-my, 0, my]]).T, tile(z_, 9)  # copy arrays in each direction
         cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
         return x[cut], y[cut], e[cut]
 
-    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, zvar=None, **dkw):
-        x, y, z_ = self.get_mod_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, zvar, cut)
+    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, **dkw):
+        x, y, z_ = self.contracted_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, fz, cut)
         n = choose(n, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
         binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
-        h = self.Draw.prof2d(x, y, z_, binning, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
+        h = self.Draw.prof2d(x, y, z_, binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
 
-    def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, zvar=None, tit='PH', **dkw):
-        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, zvar, **prep_kw(dkw, title=f'{tit} in Cell'))
+    def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
+        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Cell', file_name=f'{tit.title()}InCell'))
 
-    def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, zvar=None, tit='PH', **dkw):
-        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, zvar, **prep_kw(dkw, title=f'{tit} in Pixel'))
+    def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
+        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
 
     def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_cell(ox, oy, n, cut, **prep_kw(dkw, pal=53))
 
     def draw_cs_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_cell(ox, oy, n, cut, zvar=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+        return self.draw_in_cell(ox, oy, n, self.Cut.exclude('cs', cut), fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
 
     def draw_cs_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_pixel(ox, oy, n, cut, zvar=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+        return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
 
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
