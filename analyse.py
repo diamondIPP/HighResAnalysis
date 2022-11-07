@@ -45,6 +45,9 @@ dut_ana = partial(dut_ana, args.dut, args.testcampaign)
 
 if is_batch:
     bc = convert.BatchConvert(dut_ana.args[0], dut_ana.args[-1], verbose=False, force=False)
+    if args.convert:
+        remove_file(bc.Batch.FileName)
+        bc.remove_aux_files()
     if not bc.Batch.FileName.exists() and not args.test:
         bc.run()
 
