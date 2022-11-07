@@ -4,7 +4,7 @@
 # created on July 2nd 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import genfromtxt, all, delete, round, argmax, savetxt
+from numpy import genfromtxt, all, delete, round, argmax, savetxt, isnan
 
 import src.bins as bins
 from plotting.save import Draw, SaveDraw, FitRes, warning
@@ -159,7 +159,7 @@ class Calibration:
 
     @save_hdf5('Chi2', arr=True, dtype='f4')
     def get_chi2s(self, _redo=False):
-        return array([[1000 if fit is None else fit.get_chi2() for fit in lst] for lst in self.get_fits()])
+        return array([[None if fit is None else fit.get_chi2() for fit in lst] for lst in self.get_fits()])
 
     @update_pbar
     def get_vcal(self, f, adc):
@@ -205,6 +205,7 @@ class Calibration:
         return self.Draw.prof2d(self.get_chi2s(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='#chi^{2}', file_name='Chi2Map'))
 
     def draw_chi2(self, **dkw):
-        return self.Draw.distribution(self.get_chi2s().flatten(), **prep_kw(dkw, rf=1, x0=0, x_tit='#chi^{2}', file_name='Chi2'))
+        x = self.get_chi2s().flatten()
+        return self.Draw.distribution(x[~isnan(x)], **prep_kw(dkw, rf=1, x0=0, x_tit='#chi^{2}', file_name='Chi2'))
     # endregion DRAW
     # ----------------------------------------
