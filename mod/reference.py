@@ -6,7 +6,7 @@
 
 from src.dut_analysis import Run
 from src.dut import REF
-from mod.residuals import ResidualAnalysis
+from mod.residuals import res_analysis
 from mod.ref_cuts import RefCut
 
 
@@ -28,7 +28,7 @@ def ref_analysis(cls):
             self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
             self.Cut = RefCut(self)
 
-            self.Residuals = ResidualAnalysis(self)
+            self.Residuals = res_analysis(cls)(self)
             self.Tracks = self.init_tracks()
             self.Efficiency = self.init_eff()
             self.Cut.make_additional()

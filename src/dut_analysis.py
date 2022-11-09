@@ -93,8 +93,8 @@ class DUTAnalysis(Analysis):
         return pl + [Plane(len(pl) + i, typ='DUT', rotated=rot[len(pl) + i]) for i in range(n_dut)]
 
     def init_residuals(self):
-        from mod.residuals import ResidualAnalysis
-        return ResidualAnalysis(self)
+        from mod.residuals import res_analysis
+        return res_analysis(self.__class__)(self)
 
     def init_ref(self):
         if self.Run.NDUTs > 1 or self.Proteus.NRefPlanes:
@@ -106,17 +106,17 @@ class DUTAnalysis(Analysis):
         return track_analysis(self.__class__)(self)
 
     def init_eff(self):
-        from mod.efficiency import Efficiency
-        return Efficiency(self)
+        from mod.efficiency import eff_analysis
+        return eff_analysis(self.__class__)(self)
 
     def init_tel(self):
-        from mod.telescope import TelescopeAnalysis
-        return TelescopeAnalysis(self)
+        from mod.telescope import tel_analysis
+        return tel_analysis(self.__class__)(self)
 
     def init_resolution(self):
         if self.REF is not None:
-            from mod.resolution import Resolution
-            return Resolution(self.REF)
+            from mod.resolution import reso_analysis
+            return reso_analysis(self.__class__)(self.REF)
 
     @property
     def file_name(self):
