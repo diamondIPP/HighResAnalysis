@@ -470,6 +470,9 @@ class DUTAnalysis(Analysis):
     def draw_cs_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=1, pal=53, z_tit='Cluster Size'))
 
+    def draw_tp_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_trigger_phase, tit='TP', **prep_kw(dkw, pal=53, z_tit='Trigger Phase'))
+
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
             wx, wy, c, d = self.DUT.PX, self.DUT.PY, get_last_canvas(), self.DUT.ColumnDiameter.n
