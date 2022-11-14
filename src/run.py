@@ -4,7 +4,7 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table, datetime, ev2str, remove_letters, Dir
+from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array
 from plotting.utils import load_json, warning, critical
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
@@ -39,6 +39,9 @@ class Batch:
 
         self.FileName = data_dir.joinpath('data', f'batch{self}.hdf5')
 
+        if not self.verify():
+            critical('the duts of the individual runs do not agree! This is not implemented yet ...')
+
     def __str__(self):
         return str(self.Name)
 
@@ -47,6 +50,10 @@ class Batch:
 
     def __getitem__(self, item):
         return self.Runs[item]
+
+    def verify(self):
+        duts = array([run.DUTs for run in self.Runs])
+        return (duts == duts[0]).all()
 
     def load_log_names(self):
         return sorted(list(set([dic['batch'] for dic in self.Log.values()])), key=lambda x: (int(remove_letters(x)), x))
