@@ -461,11 +461,14 @@ class DUTAnalysis(Analysis):
     def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_cell(ox, oy, n, cut, **prep_kw(dkw, pal=53))
 
+    def draw_ph_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_pixel(ox, oy, n, cut, **prep_kw(dkw, pal=53))
+
     def draw_cs_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_cell(ox, oy, n, self.Cut.exclude('cs', cut), fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+        return self.draw_in_cell(ox, oy, n, self.Cut.exclude('cs', cut), fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=1, pal=53, z_tit='Cluster Size'))
 
     def draw_cs_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=0, pal=53, z_tit='Cluster Size'))
+        return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=1, pal=53, z_tit='Cluster Size'))
 
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
