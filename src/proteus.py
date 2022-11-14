@@ -38,7 +38,7 @@ class Proteus:
         STEP 3: tracking
         STEP 4: track-matching  """
 
-    Si_Detectors = ['D8']
+    Si_Detectors = ['D8', 'Si-D8']
 
     def __init__(self, soft_dir, data_dir, cfg_dir, raw_file, max_events=None, skip_events=None, dut_pos=None, duts=None, align_run=None):
 
