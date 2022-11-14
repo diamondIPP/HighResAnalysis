@@ -6,7 +6,7 @@
 import uproot
 
 from src.run import Batch
-from plotting.utils import choose, info, colored, GREEN, RED, check_call
+from plotting.utils import choose, info, colored, GREEN, RED, check_call, warning
 from utility.utils import print_banner, PBAR, small_banner
 from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
@@ -72,7 +72,8 @@ class AutoConvert:
             small_banner('Summary:')
             for c in conv:
                 speed = f'{c.Run.n_ev}, {c.Run.n_ev / c.T1.total_seconds():1.0f} Events/s' if c.finished else 'NOT CONVERTED!'
-                print(colored(f'{c} --> {c.T1} ({speed})'), GREEN if c.finished else RED)
+                print(colored(f'{c} --> {c.T1} ({speed})', GREEN if c.finished else RED))
+            return all([c.finished for c in conv])
 
 
 class BatchConvert(AutoConvert):
@@ -92,11 +93,13 @@ class BatchConvert(AutoConvert):
         return list(filter(lambda c: not c.proteus_raw_file_path().exists() or not c.trigger_info_file().exists(), self.Converters))
 
     def run(self):
-        super().run()  # create root files of the single runs
-        self.merge_files()
-        self.fix_event_nrs()
-        self.Converter.run(force=self.Force)  # tracking and hdf5 conversion of the single merged file
-        self.remove_aux_files()
+        if super().run():  # create root files of the single runs
+            self.merge_files()
+            self.fix_event_nrs()
+            self.Converter.run(force=self.Force)  # tracking and hdf5 conversion of the single merged file
+            self.remove_aux_files()
+        else:
+            warning('Not all runs were converted ... please re-run')
 
     def merge_files(self):
         """merge proteus raw files of all batch runs"""
