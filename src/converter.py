@@ -79,10 +79,11 @@ class Converter:
     def raw2root(self, force=True):
         self.run(force=force, steps=self.first_steps, rm=False)
 
-    def realign(self):
+    def realign(self, rm=True):
         self.raw2root()
         self.Proteus.align(force=True)
-        self.remove_aux_files()
+        if rm:
+            self.remove_aux_files()
 
     @property
     def first_steps(self):
@@ -100,11 +101,19 @@ class Converter:
     def raw_files(self):
         return [self.Raw.RawFilePath]
 
+    def remove_files(self, all_=False):
+        for s, f in self.steps:
+            if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
+                remove_file(f)
+
     def remove_raw_files(self):
         remove_file(*self.raw_files)
 
     def remove_aux_files(self):
         remove_file(*self.aux_files)
+
+    def clean(self):
+        self.remove_aux_files()
 
     @staticmethod
     def download_raw_file(f: Path, out=True, force=False):
@@ -285,11 +294,6 @@ class Converter:
     def check_root_version():
         v = gROOT.GetVersion()
         return True if v.startswith('6') else critical(f'ROOT 6 required for the conversion! Current version: {v}')
-
-    def remove_files(self, all_=False):
-        for s, f in self.steps:
-            if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
-                remove_file(f)
     # endregion MISC
     # ----------------------------------------
 
