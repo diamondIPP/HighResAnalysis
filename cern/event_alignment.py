@@ -19,6 +19,7 @@ class EventAlignment:
         self.Y = array([])      # ts TEL
         self.Cut = array([])    # invalid events
 
+        self.NStrangeEvents = 0  # single events with strange timestamps
         self.OffEvents = []
 
     def __repr__(self):
@@ -68,6 +69,9 @@ class EventAlignment:
     def find_events(self, start=0, off=0):
         off_events = self.off_events(start, off)
         if off_events.size:
+            while sum(diff(off_events[:3])) != 2:
+                self.NStrangeEvents += 1
+                off_events = off_events[1:]
             e = off_events[0] + 1 + start
             self.OffEvents.append(e + off)
             return self.find_events(e, off + 1)
@@ -83,4 +87,4 @@ class EventAlignment:
 
     @property
     def validated(self):
-        return self.off_events(x=delete(self.X, self.OffEvents)).size == len(self.OffEvents)
+        return self.off_events(x=delete(self.X, self.OffEvents)).size == len(self.OffEvents) + self.NStrangeEvents
