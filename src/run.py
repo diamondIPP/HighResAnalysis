@@ -79,6 +79,18 @@ class Batch:
     def max_run(self):
         return self[-1]
 
+    def show(self):
+        print_table([run.info for run in self.Runs], header=['Nr.', 'Events', 'DUTs', 'Begin', 'End'])
+
+    def show_all(self):
+        data = {n: [] for n in self.LogNames}
+        for run, log in self.Log.items():
+            if log['status'] == 'green':
+                log['run_nr'] = run
+                data[log['batch']].append(log)
+        rows = [[n, f'{logs[0]["run_nr"]:>03}-{logs[-1]["run_nr"]:>03}', ', '.join(logs[0]['duts'])] for n, logs in data.items() if len(logs)]
+        print_table(rows, header=['Batch', 'Runs', 'DUTs'])
+
 
 class Run:
     """ Run class containing all the information for a single run from the tree and the json file. """
@@ -118,6 +130,10 @@ class Run:
     def __ge__(self, other):
         return self.Number >= (other.Number if isinstance(other, Run) else other)
 
+    @property
+    def info(self):
+        return [str(self.Number), ev2str(self.n_ev), ','.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:] for t in [self.StartTime, self.EndTime]]
+
     def load_info(self, log=None) -> dict:
         return (load_runlog(self.TCDir) if log is None else log)[str(self)]
 
@@ -136,6 +152,17 @@ class Run:
 
 
 if __name__ == '__main__':
+
+    from argparse import ArgumentParser
+    p_ = ArgumentParser()
+    p_.add_argument('b', nargs='?', default='23b')
+    p_.add_argument('-a', action='store_true')
+    args = p_.parse_args()
+
     a = Analysis()
-    b = Batch('23b', 0, a.BeamTest.Path)
+    b = Batch(args.b, 0, a.BeamTest.Path)
     r = b[0]
+    if args.a:
+        b.show_all()
+    else:
+        b.show()
