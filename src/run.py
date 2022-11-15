@@ -89,8 +89,10 @@ class Batch:
             if log['status'] == 'green':
                 log['run_nr'] = run
                 data[log['batch']].append(log)
-        rows = [[n, f'{logs[0]["run_nr"]:>03}-{logs[-1]["run_nr"]:>03}', ', '.join(logs[0]['duts'])] for n, logs in data.items() if len(logs)]
-        print_table(rows, header=['Batch', 'Runs', 'DUTs'])
+        r_str = lambda x: f'{x[0]["run_nr"]:>03}-{x[-1]["run_nr"]:>03}'
+        t_str = lambda x: [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [x[0]['start'], x[-1]['end']]]
+        rows = [[n, r_str(logs), ev2str(sum([log['events'] for log in logs])), ', '.join(logs[0]['duts'])] + t_str(logs) for n, logs in data.items() if len(logs)]
+        print_table(rows, header=['Batch', 'Events', 'Runs', 'DUTs', 'Begin', 'End'])
 
 
 class Run:
@@ -133,7 +135,7 @@ class Run:
 
     @property
     def info(self):
-        return [str(self.Number), ev2str(self.n_ev), ', '.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:] for t in [self.StartTime, self.EndTime]]
+        return [str(self.Number), ev2str(self.n_ev), ', '.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [self.StartTime, self.EndTime]]
 
     def load_info(self, log=None) -> dict:
         return (load_runlog(self.TCDir) if log is None else log)[str(self)]
