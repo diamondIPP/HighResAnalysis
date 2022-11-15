@@ -80,6 +80,8 @@ try:
     r = z.Run
     c = z.Converter
     p = z.Proteus
+    if 'CERN' in str(c):
+        al = c.EventAlignment
     cut = z.Cut
     cal = z.Calibration
     res = z.Residuals
