@@ -6,7 +6,7 @@
 from plotting.utils import info, choose, critical
 from cern.raw import Raw, Converter
 import uproot
-from numpy import array, roll, where, diff, abs, delete, ones
+from numpy import array, roll, where, diff, abs, delete, ones, arange
 
 
 class EventAlignment:
@@ -20,6 +20,7 @@ class EventAlignment:
         self.Cut = array([])    # invalid events
 
         self.NStrangeEvents = 0  # single events with strange timestamps
+        self.NAdditional = 0  # additional events at the end of the DUT data
         self.OffEvents = []
 
     def __repr__(self):
@@ -69,12 +70,16 @@ class EventAlignment:
     def find_events(self, start=0, off=0):
         off_events = self.off_events(start, off)
         if off_events.size:
-            while sum(diff(off_events[:3])) != 2:
+            while sum(diff(off_events[:3])) > 5:
                 self.NStrangeEvents += 1
                 off_events = off_events[1:]
             e = off_events[0] + 1 + start
             self.OffEvents.append(e + off)
             return self.find_events(e, off + 1)
+        self.NAdditional = self.X.size - self.Y.size - len(self.OffEvents)
+        if self.NAdditional > 0:
+            info(f'removing {self.NAdditional} additional events in the DUT data ...')
+            self.OffEvents += (self.X.size + arange(-self.NAdditional, 0)).tolist()  # remove all crap events at the end
         info(f'found {len(self.OffEvents)} event offsets')
 
     def find_tel_offset(self, max_off=1000):
@@ -87,4 +92,4 @@ class EventAlignment:
 
     @property
     def validated(self):
-        return self.off_events(x=delete(self.X, self.OffEvents)).size == len(self.OffEvents) + self.NStrangeEvents
+        return self.off_events(x=delete(self.X, self.OffEvents)).size == len(self.OffEvents) + self.NStrangeEvents - self.NAdditional
