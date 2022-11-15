@@ -92,6 +92,9 @@ class BatchConvert(AutoConvert):
     def converters(self):
         return list(filter(lambda c: not c.proteus_raw_file_path().exists() or not c.trigger_info_file().exists(), self.Converters))
 
+    def single(self):
+        super().run()
+
     def run(self):
         if super().run():  # create root files of the single runs
             self.merge_files()
