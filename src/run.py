@@ -4,7 +4,7 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array
+from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner
 from plotting.utils import load_json, warning, critical
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
@@ -80,6 +80,7 @@ class Batch:
         return self[-1]
 
     def show(self):
+        small_banner(f'{self!r}')
         print_table([run.info for run in self.Runs], header=['Nr.', 'Events', 'DUTs', 'Begin', 'End'])
 
     def show_all(self):
@@ -132,7 +133,7 @@ class Run:
 
     @property
     def info(self):
-        return [str(self.Number), ev2str(self.n_ev), ','.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:] for t in [self.StartTime, self.EndTime]]
+        return [str(self.Number), ev2str(self.n_ev), ', '.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:] for t in [self.StartTime, self.EndTime]]
 
     def load_info(self, log=None) -> dict:
         return (load_runlog(self.TCDir) if log is None else log)[str(self)]
