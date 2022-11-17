@@ -140,7 +140,7 @@ class BatchConvert(AutoConvert):
         with h5py.File(self.Batch.FileName, 'r+') as f:
             ev = array(f['Tracks']['Events']).astype('i8')   # event number of the tracks which needs to be fixed
             i_tr = diff(concatenate([[0], where(diff(ev) < 0)[0] + 1, [ev.size]]))  # number of tracks for each run
-            f['Tracks']['Events'][...] = cumsum(append(0, n_ev[:-1])).repeat(i_tr).astype('u4')  # add the cumulated number of events from the previous runs
+            f['Tracks']['Events'][...] = ev + cumsum(append(0, n_ev[:-1])).repeat(i_tr).astype('u4')  # add the cumulated number of events from the previous runs
 
     def remove_aux_files(self):
         for conv in self.Converters:
