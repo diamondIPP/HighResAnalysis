@@ -47,7 +47,7 @@ class DUTAnalysis(Analysis):
         self.Surface = False
 
         # SUBCLASSES
-        self.Calibration = self.Converter.load_calibration()
+        self.Calibration = self.Converter.load_calibration(self.DUT.Number)
         self.Cut = DUTCut(self)
         self.Residuals = self.init_residuals()
 
