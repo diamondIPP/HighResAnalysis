@@ -174,7 +174,7 @@ class Converter:
     def root2hdf5(self):
         """ convert tracked root file to hdf5 file. """
         remove_file(self.OutFilePath)  # remove hdf5 file if it exists
-        start_time = info('Start root -> hdf5 conversion ...')
+        start_time = info('starting root -> hdf5 conversion ...')
 
         self.F = self.load_file()
         self.RawFile = uproot.open(self.Proteus.OutFilePath)
@@ -187,13 +187,13 @@ class Converter:
         self.F = None
 
     def add_tracks(self):
-        t0 = info('add track information ...', endl=False)
+        t0 = info('adding track information ...', endl=False)
         g = self.F.create_group('Tracks')
         b = array([['evt_frame', 'Events', 'u4'], ['evt_ntracks', 'N', 'u1'],
                    ['trk_size',  'Size',   'f2'],
                    ['trk_chi2',  'Chi2',   'f2'], ['trk_dof', 'Dof', 'u1'],
                    ['trk_du',    'SlopeX', 'f2'], ['trk_dv', 'SlopeY', 'f2']]).T
-        tree = self.RawFile['C0/tracks_clusters_matched']
+        tree = self.RawFile['C0/tracks_clusters_matched']  # same for all planes
         self.add_time_stamp(tree)
         self.add_data(tree, g, b)
         add_to_info(t0, color=GREEN)
@@ -212,7 +212,7 @@ class Converter:
 
     def add_planes(self):
         n = len(self.RawFile.keys(recursive=False))  # noqa (raises stupid warning)
-        info(f'add {n} planes ... ')
+        info(f'adding {n} planes ... ')
         PBAR.start(n * 2)
         for pl in range(n):
             self.add_plane(pl)
