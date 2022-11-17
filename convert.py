@@ -3,6 +3,7 @@
 #       Script to automatically convert several files
 # created on October 19th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+import h5py
 import uproot
 
 from src.run import Batch
@@ -12,6 +13,7 @@ from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
 from src.converter import batch_converter
 from multiprocessing import cpu_count, Pool
+from numpy import where, diff, array, concatenate, cumsum, append
 
 
 class AutoConvert:
@@ -64,15 +66,18 @@ class AutoConvert:
 
     def run(self):
         """parallel conversion"""
+        conv = self.converters
+        if not conv:
+            return True
         self.copy_raw_files()
         info(f'Creating pool with {cpu_count()} processes')
         with Pool() as pool:
-            result = pool.map_async(self.convert_run, self.converters)
+            result = pool.map_async(self.convert_run, conv)
             conv = result.get()
             small_banner('Summary:')
             for c in conv:
                 speed = f'{c.Run.n_ev}, {c.Run.n_ev / c.T1.total_seconds():1.0f} Events/s' if c.finished else 'NOT CONVERTED!'
-                print(colored(f'{c} --> {c.T1} ({speed})', GREEN if c.finished else RED))
+                print(colored(f'{c} --> {str(c.T1)[:-5]} ({speed})', GREEN if c.finished else RED))
             return all([c.finished for c in conv])
 
 
@@ -85,39 +90,57 @@ class BatchConvert(AutoConvert):
 
     @staticmethod
     def convert_run(c: Converter):
-        c.raw2root()
+        c.run(force=AutoConvert.Force, steps=c.first_steps + c.Proteus.Steps[-1:])
         return c
 
     @property
     def converters(self):
-        return list(filter(lambda c: not c.proteus_raw_file_path().exists() or not c.trigger_info_file().exists(), self.Converters))
+        return list(filter(lambda c: not c.proteus_raw_file_path().exists() or not c.Proteus.OutFilePath.exists(), self.Converters))
 
     def single(self):
-        super().run()
+        return super().run()
 
     def run(self):
         if super().run():  # create root files of the single runs
             self.merge_files()
-            self.fix_event_nrs()
             self.Converter.run(force=self.Force)  # tracking and hdf5 conversion of the single merged file
+            # self.fix_event_nrs()
             self.remove_aux_files()
         else:
             warning('Not all runs were converted ... please re-run')
 
-    def merge_files(self):
-        """merge proteus raw files of all batch runs"""
-        cmd = f'hadd -f {self.Converter.proteus_raw_file_path()} {" ".join(str(c_.proteus_raw_file_path()) for c_ in self.Converters)}'
-        info(cmd)
-        check_call(cmd, shell=True)
-        if self.Converter.trigger_info_file() != self.Converter.proteus_raw_file_path():
-            cmd = f'hadd -f {self.Converter.trigger_info_file()} {" ".join(str(c_.trigger_info_file()) for c_ in self.Converters)}'
+    def merge_proteus_files(self):
+        """merge proteus out files of all batch runs"""
+        out = self.Converter.Proteus.OutFilePath
+        if not out.exists() or self.Force:
+            cmd = f'hadd -f {out} {" ".join(str(c_.Proteus.OutFilePath) for c_ in self.Converters)}'
             info(cmd)
             check_call(cmd, shell=True)
+        else:
+            info(f'found {out}')
+
+    def merge_trigger_info_files(self):
+        """merge dut files with trigger info for the CERN analysis"""
+        out = self.Converter.trigger_info_file()
+        if not out.exists() or self.Force:
+            cmd = f'hadd -f {out} {" ".join(str(c_.trigger_info_file()) for c_ in self.Converters)}'
+            info(cmd)
+            check_call(cmd, shell=True)
+        else:
+            info(f'found {out}')
+
+    def merge_files(self):
+        self.merge_proteus_files()
+        if self.Converter.trigger_info_file() != self.Converter.proteus_raw_file_path():
+            self.merge_trigger_info_files()
 
     def fix_event_nrs(self):
-        """removing the Event branch from the raw file for Proteus fixes the wrong event numbers"""
-        with uproot.update(self.Converter.Proteus.RawFilePath) as g:
-            del g['Event']
+        """fix the events numbers in the merged hdf5 file"""
+        n_ev = [uproot.open(c.trigger_info_file())['Event'].num_entries for c in self.Converters]  # number of events for each run
+        with h5py.File(self.Batch.FileName, 'r+') as f:
+            ev = array(f['Tracks']['Events']).astype('i8')   # event number of the tracks which needs to be fixed
+            i_tr = diff(concatenate([[0], where(diff(ev) < 0)[0] + 1, [ev.size]]))  # number of tracks for each run
+            f['Tracks']['Events'][...] = cumsum(append(0, n_ev[:-1])).repeat(i_tr).astype('u4')  # add the cumulated number of events from the previous runs
 
     def remove_aux_files(self):
         for conv in self.Converters:
