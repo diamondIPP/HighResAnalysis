@@ -78,7 +78,7 @@ class Proteus:
         return f'Proteus interface for run {self.RunNumber} ({self.RawFilePath.name})'
 
     def __del__(self):
-        remove_file(*self.ConfigDir.glob('tmp-*.toml'), warn=False)  # remove tmp files
+        remove_file(*self.ConfigDir.glob(f'tmp-*-{self.RunNumber}.toml'), warn=False)  # remove tmp files
 
     # ----------------------------------------
     # region INIT
