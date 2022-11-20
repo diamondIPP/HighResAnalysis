@@ -38,7 +38,7 @@ class CERNConverter(Converter):
 
     @property
     def aux_files(self):
-        return [self.Raw.OutFilePath, self.Adc2Vcal.OutFilePath] + super().aux_files
+        return [self.Raw.OutFilePath, self.Adc2Vcal.OutFilePath, self.Ref.OutFilePath] + super().aux_files
 
     @property
     def raw_files(self):
