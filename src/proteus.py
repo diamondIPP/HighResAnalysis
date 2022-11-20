@@ -183,19 +183,21 @@ class Proteus:
 
     # ----------------------------------------
     # region RUN
-    def run(self, prog, out: Path, cfg=None, geo=None, dev=None, section=None, f=None, n=None, s=None):
+    def run(self, prog, out: Path, cfg=None, geo=None, dev=None, section=None, f=None, n=None, s=None, progress=True):
         old_dir = Path.cwd()
         chdir(self.ConfigDir)  # proteus needs to be in the directory where all the toml files are (for the default args)...
-        cfg = '' if cfg is None else f' -c {str(cfg).replace(".toml", "")}.toml'
-        section = '' if section is None else f' -u {section}'
-        geo = f' -g {choose(geo, self.Geo)}'
-        dev = f' -d {choose(dev, self.Device)}'
-        n = f' -n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
-        s = f' -s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
+        cfg = '' if cfg is None else f'-c {str(cfg).replace(".toml", "")}.toml'
+        section = '' if section is None else f'-u {section}'
+        geo = f'-g {choose(geo, self.Geo)}'
+        dev = f'-d {choose(dev, self.Device)}'
+        n = f'-n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
+        s = f'-s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
+        p = '' if progress else '--no-progress'
         in_file = choose(f, self.RawFilePath)
         if not Path(in_file).exists():
             return warning(f'Could not find {in_file} for proteus to read ... ')
-        cmd = f'{self.SoftDir.joinpath("bin", prog)} {in_file} {out}{cfg}{dev}{geo}{section}{n}{s}'
+        opts = ' '.join([cfg, dev, geo, section, n, s, p])
+        cmd = f'{self.SoftDir.joinpath("bin", prog)} {in_file} {out} {opts}'
         info(cmd)
         try:
             check_call(cmd, shell=True)
@@ -233,10 +235,10 @@ class Proteus:
             remove_file(*self.ConfigDir.joinpath(self.AlignDir).glob('*.root'))  # remove hist files
         print_elapsed_time(t)
 
-    def recon(self, cfg=None):
+    def recon(self, cfg=None, progress=True):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file)
+        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file, progress=progress)
 
     def track(self):
         """ tracking and clustering for the event alignment. """
