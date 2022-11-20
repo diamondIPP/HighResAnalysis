@@ -242,6 +242,9 @@ class DUTCut(Cuts):
     def trk2pl(self, x, pl=None):
         return x[self.make_cluster(pl)]
 
+    def pl2pl(self, x, p0=None, p1=None):
+        return self.trk2pl(self.pl2trk(x, p0), p1)
+
     @staticmethod
     def to_trk(cut):
         return -1 if type(cut) is bool or cut is ... else cut
