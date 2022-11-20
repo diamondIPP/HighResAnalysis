@@ -114,7 +114,7 @@ def res_analysis(cls):
 
         def draw_xy(self, bw=10, cut=None, pl=None, **dkw):
             x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3  # noqa
-            return self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]', leg=self.cuts()))
+            return self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]', leg=self.cuts(), file_name=f'XYRes{self.Plane}'))
 
         def draw(self, bw=10, pl=None, **dkw):
             self.Draw.distribution(self(cut=..., pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
