@@ -7,8 +7,8 @@
 from numpy import arctan, sqrt, array, quantile, mean, polyfit, identity, arange
 from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle
 from plotting.fit import Gauss
-from plotting.draw import np_profile, choose
-from utility.utils import PBAR
+from plotting.draw import np_profile, choose, set_x_range, ax_range, ufloat
+from utility.utils import PBAR, uarr2n
 from utility.affine_transformations import transform, m_transform, matrix, scale_matrix, inv
 
 
@@ -43,10 +43,10 @@ def res_analysis(cls):
         def ty(self, cut=None, pl=None):
             return self.txy(cut, pl, local=True)[1]
 
-        def txy(self, cut=None, pl=None, local=True, trans=True):
+        def txy(self, cut=None, pl=None, local=True, trans=False):
             return m_transform(self.m, *self.get_txy(local, cut, pl, trans=False)) if trans else self.get_txy(local, cut, pl, trans=False)
 
-        def dxy(self, cut=None, pl=None, local=True, trans=True):
+        def dxy(self, cut=None, pl=None, local=True, trans=False):
             (x, y), (tx, ty) = self.get_xy(local, cut, pl), self.txy(cut, pl, local, trans)
             return x - tx, y - ty
 
@@ -66,18 +66,30 @@ def res_analysis(cls):
 
         # ----------------------------------------
         # region GET
-        @save_pickle('ResFit', suf_args='all')
+        @save_pickle('ResFit', suf_args='all', field='DUT')
         def fit(self, local=False, cut=None, pl=None, _redo=False):
+            """Fit the residual distributions with a Gaussian. The distributions are usually not Gaussian shaped though..."""
             return array([Gauss(f(show=False, cut=cut, pl=pl), thresh=.05).fit()[1:] for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])]) / (1 if local else 1e3)
 
+        @staticmethod
+        def mean_std(f, local=False, cut=None, pl=None, thresh=.3):
+            """estimate mean and std from the residual distribution"""
+            h = f(show=False, cut=cut, pl=pl, w=5, save=False)
+            set_x_range(*ax_range(h=h, thresh=thresh * h.GetMaximum()))
+            return array([ufloat(h.GetMean(), h.GetMeanError()), ufloat(h.GetStdDev(), h.GetStdDevError())]) / (1 if local else 1e3)
+
+        @save_pickle('Res', suf_args='all', field='DUT')
+        def mean_stds(self, local=False, cut=None, pl=None, thresh=.3, _redo=False):
+            return array([self.mean_std(f, local, cut, pl, thresh) for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])])
+
         def means(self, local=False, cut=None, pl=None, redo=False):
-            return self.fit(local, cut, pl, _redo=redo)[:, 0]
+            return self.mean_stds(local, cut, pl, _redo=redo)[:, 0]
 
         def std(self, local=False, cut=None, pl=None, redo=False):
-            return self.fit(local, cut, pl, _redo=redo)[:, 1]
+            return self.mean_stds(local, cut, pl, _redo=redo)[:, 1]
 
         def show(self, redo=False):
-            x, y = self.fit(_redo=redo) * 1e3
+            x, y = self.mean_stds(_redo=redo) * 1e3
             print(f'Res X: mean = {x[0]:.1f}, std = {x[1]:.1f}')
             print(f'Res Y: mean = {y[0]:.1f}, std = {y[1]:.1f}')
         # endregion DATA
@@ -97,9 +109,12 @@ def res_analysis(cls):
         def draw_y(self, cut=None, pl=None, **dkw):
             return self.Draw.distribution(self.dy(cut, pl), **prep_kw(dkw, title='Y Residuals', x_tit='Residual [Rows]'))
 
+        def draw_uv(self, bw=10, cut=None, pl=None, **dkw):
+            return self.draw_xy(bw, cut, pl, **dkw)
+
         def draw_xy(self, bw=10, cut=None, pl=None, **dkw):
             x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3  # noqa
-            self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]'))
+            return self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]', leg=self.cuts()))
 
         def draw(self, bw=10, pl=None, **dkw):
             self.Draw.distribution(self(cut=..., pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
@@ -131,6 +146,17 @@ def res_analysis(cls):
 
         def draw_ydx(self, cut=None, prof=True, pl=None, **dkw):
             self._draw_angle(self.ty(cut, pl), self.dx(cut, pl), prof, pl=pl, xb=False, local=True, **prep_kw(dkw, title='Y dX', x_tit='Y [Rows]', y_tit='dX [Cols]'))
+
+        def cuts(self):
+            return [self.get_pixel(), self.get_cut()]
+
+        def get_pixel(self):
+            xy, oxy = self.Plane.PXY * 1e3, uarr2n(self.means()) * 1e3
+            return self.Draw.box(*(xy - 1.5 * xy + oxy), *(xy - .5 * xy + oxy), show=False)
+
+        def get_cut(self, local=False):
+            (x, y), n = self.means(local) * 1e3, self.Cut.get_config('residuals', dtype=float)
+            return self.Draw.ellipse(*self.Plane.PXY / 2 * n * 1e3, x.n, y.n, show=False)
         # endregion DRAW
         # ----------------------------------------
 
