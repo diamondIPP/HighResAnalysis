@@ -8,6 +8,7 @@ from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, nd
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
 from utility.utils import critical, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
+from warnings import catch_warnings, simplefilter
 
 
 def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, cfield=None, **pkwargs):
@@ -133,9 +134,13 @@ class DUTCut(Cuts):
         return ones(x.size, '?') if q == 1 else x < quantile(x, q)
 
     @save_cut('Res', suf_args='all', cfg='residuals')
-    def make_residual(self, v=None, _redo=False):
+    def make_residual(self, v=None, _redo=1):
+        """exclude events if the track is outside the ellipse 1/px + 1/py = n"""
+        n = choose(v, self.get_config('residuals', dtype=float))
         x, y, (mx, my) = self.Ana.Residuals.du(cut=0), self.Ana.Residuals.dv(cut=0), self.Ana.Residuals.means(cut=0)
-        return sqrt((x - mx.n) ** 2 + (y - my.n) ** 2) < choose(v, self.get_config('residuals', dtype=float))
+        with catch_warnings():
+            simplefilter('ignore')
+            return sqrt(((x - mx.n) / self.Ana.Plane.PX * 2) ** 2 + ((y - my.n) / self.Ana.Plane.PY * 2) ** 2) < n
 
     def make_trk_residual(self, redo=False):
         return self.pl2trk(self.make_residual(_redo=redo))
