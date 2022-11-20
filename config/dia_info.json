@@ -217,12 +217,13 @@
     "irradiation": {"201610": "0",  "201705": "0",  "201708": "0",   "201708-2": "0",  "201810": "0" },
     "type": {"201610": "3D-pixel", "201705": "3D-pixel", "201708": "3D-pixel", "201708-2": "3D-pixel", "201810": "3D-pixel"},
     "version": ["201703"],
-    "thickness": "None",
-    "size": "[5.04, 5.08]",
-    "active pixels": "[20, 30]",
-    "column diameter": "2.6",
+    "thickness": 454,
+    "size": [5.04, 5.08],
+    "active pixels": [20, 31],
+    "cells": [20, 31],
+    "column diameter": 4.8,
     "manufacturer": "II-VI",
-    "cell size": "[150, 100]"
+    "cell size": [150, 100]
   }, 
   "II6-A7": {
     "irradiation": {
@@ -279,11 +280,11 @@
     "irradiation": {"201708": "0",  "201708-2": "0",  "201810": "0"},
     "type": { "201708": "3D-pixel",  "201708-2": "3D-pixel", "201810": "3D-pixel"},
     "version": ["201803", "201805", "201910"],
-    "thickness": "None",
+    "thickness": 500,
     "size": [4.85, 4.90],
     "active pixels": [20, 30],
     "cells": [53, 67],
-    "column diameter": "2.6",
+    "column diameter": 2.6,
     "manufacturer": "II-VI",
     "cell size": [50, 50]
   }, 
