@@ -14,6 +14,7 @@ from cern.converter import CERNConverter, Converter
 from src.converter import batch_converter
 from multiprocessing import cpu_count, Pool
 from numpy import where, diff, array, concatenate, cumsum, append
+from functools import partial
 
 
 class AutoConvert:
@@ -90,7 +91,8 @@ class BatchConvert(AutoConvert):
 
     @staticmethod
     def convert_run(c: Converter):
-        c.run(force=AutoConvert.Force, steps=c.first_steps + c.Proteus.Steps[-1:])
+        f, out = c.Proteus.Steps[-1]
+        c.run(force=True, steps=c.first_steps + [(partial(f, progress=False), out)], rm=False)
         return c
 
     @property
@@ -103,9 +105,9 @@ class BatchConvert(AutoConvert):
     def run(self):
         if super().run():  # create root files of the single runs
             self.merge_files()
-            self.Converter.run(force=self.Force)  # tracking and hdf5 conversion of the single merged file
-            # self.fix_event_nrs()
-            self.remove_aux_files()
+            self.Converter.run(force=self.Force, rm=False)  # tracking and hdf5 conversion of the single merged file
+            self.fix_event_nrs()
+            # self.remove_aux_files()
         else:
             warning('Not all runs were converted ... please re-run')
 
@@ -145,6 +147,7 @@ class BatchConvert(AutoConvert):
     def remove_aux_files(self):
         for conv in self.Converters:
             conv.remove_aux_files()
+        self.Converter.remove_aux_files()
 
 
 if __name__ == '__main__':
