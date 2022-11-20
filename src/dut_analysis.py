@@ -431,8 +431,9 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region IN PIXEL
     def contracted_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None, contract=True):
-        (x, y), z_ = self.get_txy(cut=cut), self.get_phs(cut=cut) if fz is None else fz(cut=cut)
-        x, y, z_ = (x + ox / self.Plane.PX / 1e3) % mx, (y + oy / self.Plane.PY / 1e3) % my, z_
+        x, y = self.get_txy(cut=cut)
+        z_ = self.get_phs(cut=cut) if fz is None else zeros(x.size, dtype='?') if not fz else fz(cut=cut)
+        x, y = (x + ox / self.Plane.PX / 1e3) % mx, (y + oy / self.Plane.PY / 1e3) % my
         return array(self.expand_vars(x, y, z_, mx, my) if contract else (x, y, z_)) * [[self.Plane.PX * 1e3], [self.Plane.PY * 1e3], [1]]  # convert from pixel to um
 
     @staticmethod
@@ -449,7 +450,8 @@ class DUTAnalysis(Analysis):
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
         binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
-        h = self.Draw.prof2d(x, y, z_, binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
+        fh = self.Draw.prof2d if any(z_) else self.Draw.histo_2d
+        h = fh(x, y, zz=z_, binning=binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
 
     def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
@@ -457,6 +459,12 @@ class DUTAnalysis(Analysis):
 
     def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
         return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
+
+    def draw_hitmap_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_pixel(ox, oy, n, cut, fz=False, tit='HitMap', **dkw)
+
+    def draw_hitmap_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
+        return self.draw_in_cell(ox, oy, n, cut, fz=False, tit='HitMap', **dkw)
 
     def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_cell(ox, oy, n, cut, **prep_kw(dkw, pal=53))
