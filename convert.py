@@ -7,7 +7,7 @@ import h5py
 import uproot
 
 from src.run import Batch
-from plotting.utils import choose, info, colored, GREEN, RED, check_call, warning
+from plotting.utils import choose, info, colored, GREEN, RED, check_call, critical
 from utility.utils import print_banner, PBAR, small_banner
 from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
@@ -107,9 +107,9 @@ class BatchConvert(AutoConvert):
             self.merge_files()
             self.Converter.run(force=self.Force, rm=False)  # tracking and hdf5 conversion of the single merged file
             self.fix_event_nrs()
-            # self.remove_aux_files()
+            self.remove_aux_files()
         else:
-            warning('Not all runs were converted ... please re-run')
+            critical('Not all runs were converted ... please re-run')
 
     def merge_proteus_files(self):
         """merge proteus out files of all batch runs"""
