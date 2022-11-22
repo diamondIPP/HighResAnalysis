@@ -118,7 +118,7 @@ class BatchConvert(AutoConvert):
     def check_file_sizes(self):
         r = self.file_size_ratios
         bad_runs = array(self.Batch.Runs)[r < mean(r) * .9]
-        return True if not bad_runs else bad_runs
+        return True if bad_runs.size == 0 else bad_runs
 
     def check_proteus_files(self, pl=0, branch='trk_v', min_run=0):
         conv = [c for c in self.Converters if c.Run >= min_run]
