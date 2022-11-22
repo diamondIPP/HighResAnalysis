@@ -7,7 +7,7 @@ import h5py
 import uproot
 
 from src.run import Batch
-from plotting.utils import choose, info, colored, GREEN, RED, check_call, critical
+from plotting.utils import choose, info, colored, GREEN, RED, check_call, critical, warning
 from utility.utils import print_banner, PBAR, small_banner
 from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
@@ -119,6 +119,18 @@ class BatchConvert(AutoConvert):
         r = self.file_size_ratios
         bad_runs = array(self.Batch.Runs)[r < mean(r) * .9]
         return True if not bad_runs else bad_runs
+
+    def check_proteus_files(self, pl=0, branch='trk_v', min_run=0):
+        conv = [c for c in self.Converters if c.Run >= min_run]
+        PBAR.start(len(conv))
+        for c in conv:
+            with uproot.open(c.Proteus.OutFilePath) as f:
+                key = f.keys(recursive=False)[pl]
+                try:
+                    array(f[f'{key}/tracks_clusters_matched'][branch])
+                except Exception as err:
+                    warning(f'{c} has corrupted data ({err})')
+                PBAR.update()
 
     def merge_proteus_files(self):
         """merge proteus out files of all batch runs"""

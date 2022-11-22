@@ -215,7 +215,11 @@ class Converter:
         info(f'adding {n} planes ... ')
         PBAR.start(n * 2)
         for pl in range(n):
-            self.add_plane(pl)
+            try:
+                self.add_plane(pl)
+            except Exception as err:
+                PBAR.finish()
+                raise ValueError(f'root2hdf crashed adding plane {pl} having {err}')
 
     def add_plane(self, i):
         g = self.F.create_group(f'Plane{i}')
