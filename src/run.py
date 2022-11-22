@@ -61,7 +61,7 @@ class Batch:
         return sorted(list(set([dic['batch'] for dic in self.Log.values()])), key=lambda x: (int(remove_letters(x)), x))
 
     def load_runs(self, dut_nr):
-        if self.Name in self.LogNames:
+        if self.Name in self.LogNames or self.Name is None:
             is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
             return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
         dic = load_json(Dir.joinpath('config', 'batches.json'))
@@ -95,6 +95,9 @@ class Batch:
         t_str = lambda x: [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [x[0]['start'], x[-1]['end']]]
         rows = [[n, r_str(logs), ev2str(sum([log['events'] for log in logs])), ', '.join(logs[0]['duts'])] + t_str(logs) for n, logs in data.items() if len(logs)]
         print_table(rows, header=['Batch', 'Events', 'Runs', 'DUTs', 'Begin', 'End'])
+
+    def find_runs(self, dut, bias, min_run=0):
+        return array([run.Number for run in self.Runs if dut in run.DUTs and int(run.Info['hv'][run.DUTs.index(dut)]) == bias and run >= min_run])
 
 
 class Run:
@@ -132,8 +135,14 @@ class Run:
     def __le__(self, other):
         return self.Number <= (other.Number if isinstance(other, Run) else other)
 
+    def __lt__(self, other):
+        return self.Number < (other.Number if isinstance(other, Run) else other)
+
     def __ge__(self, other):
         return self.Number >= (other.Number if isinstance(other, Run) else other)
+
+    def __gt__(self, other):
+        return self.Number > (other.Number if isinstance(other, Run) else other)
 
     @property
     def info(self):
@@ -162,10 +171,11 @@ if __name__ == '__main__':
     p_ = ArgumentParser()
     p_.add_argument('b', nargs='?', default='23b')
     p_.add_argument('-a', action='store_true')
+    p_.add_argument('-all', action='store_true')
     args = p_.parse_args()
 
     a = Analysis()
-    b = Batch(args.b, 0, a.BeamTest.Path)
+    b = Batch(None if args.all else args.b, 0, a.BeamTest.Path)
     r = b[0]
     if args.a:
         b.show_all()
