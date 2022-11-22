@@ -70,7 +70,7 @@ class EventAlignment:
     def find_events(self, start=0, off=0):
         off_events = self.off_events(start, off)
         if off_events.size:
-            while sum(diff(off_events[:3])) > 5:
+            while sum(diff(off_events[:4])) > 5:
                 self.NStrangeEvents += 1
                 off_events = off_events[1:]
             e = off_events[0] + 1 + start
