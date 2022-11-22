@@ -13,7 +13,7 @@ from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
 from src.converter import batch_converter
 from multiprocessing import cpu_count, Pool
-from numpy import where, diff, array, concatenate, cumsum, append
+from numpy import where, diff, array, concatenate, cumsum, append, mean
 from functools import partial
 
 
@@ -110,6 +110,15 @@ class BatchConvert(AutoConvert):
             self.remove_aux_files()
         else:
             critical('Not all runs were converted ... please re-run')
+
+    @property
+    def file_size_ratios(self):
+        return array([c.Proteus.OutFilePath.stat().st_size / c.Run.n_ev for c in self.Converters])
+
+    def check_file_sizes(self):
+        r = self.file_size_ratios
+        bad_runs = array(self.Batch.Runs)[r < mean(r) * .9]
+        return True if not bad_runs else bad_runs
 
     def merge_proteus_files(self):
         """merge proteus out files of all batch runs"""
