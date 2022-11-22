@@ -52,8 +52,10 @@ class Batch:
         return self.Runs[item]
 
     def verify(self):
-        duts = array([run.DUTs for run in self.Runs])
-        return (duts == duts[0]).all()
+        if self.Name is None:
+            return True
+        duts = [run.DUTs for run in self.Runs]
+        return all([d == duts[0] for d in duts])
 
     def load_log_names(self):
         return sorted(list(set([dic['batch'] for dic in self.Log.values()])), key=lambda x: (int(remove_letters(x)), x))
