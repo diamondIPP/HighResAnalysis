@@ -68,7 +68,8 @@ class Calibration:
         f = list(self.Dir.glob(f'phCalibration{self.Trim}_*{self.Number}.dat'))
         return f[0] if f else critical(f'Pulse height calibration file "{self.Trim}-{self.Number}" does not exist in {self.Dir} ...')
 
-    def get_fit_file(self):
+    @property
+    def fit_file(self):
         f = list(self.Dir.glob(f'phCalibrationFitErr{self.Trim}*-{self.Number}.dat'))
         return f[0] if len(f) else warning('Pulse height calibration fit file does not exist...')
 
@@ -117,10 +118,10 @@ class Calibration:
         return self.vcals[argmax(self.get_all_points() > 0, axis=2)]
 
     def read_fit_pars(self):
-        return genfromtxt(self.get_fit_file(), skip_header=3, usecols=arange(4), dtype='f2').reshape((self.NX, self.NY, -1))
+        return genfromtxt(self.fit_file, skip_header=3, usecols=arange(4), dtype='f2').reshape((self.NX, self.NY, -1))
 
     def get_formula(self):
-        return str(genfromtxt(self.get_fit_file(), skip_header=1, max_rows=1, dtype=str)).replace('par', '').replace('x[0]', 'x')
+        return str(genfromtxt(self.fit_file, skip_header=1, max_rows=1, dtype=str)).replace('par', '').replace('x[0]', 'x')
 
     def get_points(self, col, row):
         return self.get_all_points()[col, row]
@@ -178,7 +179,7 @@ class Calibration:
         pars = array([[[0, 0, 0, 1] if fit is None else fit.get_pars(err=False)[[2, 3, 0, 1]] for fit in lst] for lst in self.get_fits()])  # fix order
         pars[:, :, 2] /= pars[:, :, 3]  # fix offset
         lines = [' '.join(f'{p:.6e}' for p in ps) + f' Pix {col:2d} {row:2d}' for col, lst in enumerate(pars) for row, ps in enumerate(lst)]
-        header = list(genfromtxt(self.get_fit_file(), dtype=str, max_rows=2, delimiter='abc')) + ['']
+        header = list(genfromtxt(str(self.fit_file), dtype=str, max_rows=2, delimiter='abc')) + ['']
         savetxt(self.FitFileName, header + lines, fmt='%s')  # noqa
     # endregion FIT
     # ----------------------------------------
