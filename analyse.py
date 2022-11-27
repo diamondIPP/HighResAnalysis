@@ -88,10 +88,10 @@ try:
     tel = z.Tel
     ref = z.REF
     t = z.Tracks
-    cur = z.Currents
     e = z.Efficiency
     re = ref.Efficiency
     rsl = z.Resolution
+    cur = z.Currents
 
 except AttributeError:
     pass
