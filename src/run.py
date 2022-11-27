@@ -21,7 +21,7 @@ def load_runlog(p: Path):
 
 def load_nrs(p: Path):
     log = load_runlog(p)
-    return [key for key, dic in log.items() if dic['status'] == 'green']
+    return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green']
 
 
 class Batch:
