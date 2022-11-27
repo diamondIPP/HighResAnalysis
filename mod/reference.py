@@ -19,12 +19,12 @@ def ref_analysis(cls):
             self.Parent = parent
             self.REF = self.Parent  # make DUTAna ref of the reference
             self.__dict__.update(parent.__dict__)
-            self.Plane = self.Planes[self.Config.getint('DUT', 'reference plane')]
             self.N = self.n
             self.MetaSubDir = 'REF'
 
             self.Run = Run(parent.Run.Number, self.dut_nr, self.BeamTest.Path)
             self.DUT = REF(self.dut_nr) if self.Parent.Proteus.NRefPlanes else self.Run.DUT
+            self.Plane = self.Planes[self.Config.getint('DUT', 'reference plane')] if self.Parent.Proteus.NRefPlanes > 0 else self.DUT.Plane
             self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
             self.Cut = RefCut(self)
 
@@ -35,7 +35,8 @@ def ref_analysis(cls):
 
         @property
         def dut_nr(self):
-            default = next((i for i, dut in enumerate(self.Parent.Run.Info['duts']) if dut != self.Parent.DUT.Name), 0)
-            return 0 if self.Parent.Proteus.NRefPlanes else next((i for i, dut in enumerate(self.Parent.Run.Info['duts']) if dut.startswith('Si') or dut.startswith('D')), default)
+            default = next((i for i, dut in enumerate(self.Parent.Run.DUTs) if dut != self.Parent.DUT.Name), 0)
+            is_ref = lambda dut: dut in self.Config.get('DUT', 'reference detectors') and dut != self.Parent.DUT.Name
+            return 0 if self.Parent.Proteus.NRefPlanes > 0 else next((i for i, dut in enumerate(self.Parent.Run.DUTs) if is_ref(dut)), default)
 
     return RefAnalysis

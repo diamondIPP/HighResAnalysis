@@ -57,9 +57,6 @@ class DUT(Device):
     def __repr__(self):
         return f'{super().__repr__()}, Bias: {self.Bias:1.0f}V'
 
-    def init_plane(self):
-        return super(DUT, self).init_plane() + int('REF' in Analysis.Config)
-
     def load_specs(self):
         f = Dir.joinpath('config', 'dia_info.json')
         return Config(f, section=self.Name, from_json=True)

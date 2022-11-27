@@ -21,7 +21,7 @@ class DUTAnalysis(Analysis):
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
-        self.Run = Run.from_ana(run_number, dut_number, self)
+        self.Run = Run.from_ana(run_number, dut_number + (self.BeamTest.Tag in Analysis.Config.get('REF', 'dates')), self)
         self.print_start()
 
         # data
