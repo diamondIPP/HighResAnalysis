@@ -55,12 +55,13 @@ class DUTAnalysis(Analysis):
         self.REF = self.init_ref()
         self.Tracks = self.init_tracks()
 
-        self.Currents = Currents(self)
         self.Cut.make_additional()
         self.Efficiency = self.init_eff()
         self.Resolution = self.init_resolution()
+        self.Currents = Currents(self)
 
-        self.verify_alignment()
+        if self.BeamTest.Location == 'CERN':
+            self.verify_alignment()
 
     def __repr__(self):
         return f'{self} of run {self.Run} ({self.BeamTest}), {self.ev_str}'
@@ -84,12 +85,12 @@ class DUTAnalysis(Analysis):
 
     def init_planes(self):
         n_tel, n_dut = self.Converter.NTelPlanes, self.Converter.NDUTPlanes
-        rot = [abs(s['unit_u'][1]) > .5 for s in self.Proteus.alignment()['sensors']] if self.Proteus.has_alignment else [False] * (n_tel + n_dut + 1)
+        rot = [abs(s['unit_u'][1]) > .5 for s in self.Proteus.alignment()['sensors']] if self.Proteus.has_alignment else [False] * (n_tel + n_dut + self.Proteus.NRefPlanes)
         if len(rot) != n_tel + n_dut + self.Proteus.NRefPlanes:
             warning(f'Number of sensors in alignment ({len(rot)}) does not agree with found sensors ({n_tel + n_dut + ("REF" in Analysis.Config)})')
             return [Plane(i) for i in range(10)]
         pl = [Plane(i, typ='TELESCOPE', rotated=rot[i]) for i in range(n_tel)]
-        pl += [Plane(n_tel, typ='REF', rotated=rot[n_tel])] if 'REF' in Analysis.Config else []
+        pl += [Plane(n_tel, typ='REF', rotated=rot[n_tel])] if self.Proteus.NRefPlanes > 0 else []
         return pl + [Plane(len(pl) + i, typ='DUT', rotated=rot[len(pl) + i]) for i in range(n_dut)]
 
     def init_residuals(self):
