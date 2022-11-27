@@ -31,6 +31,9 @@ class Cuts:
     def __getitem__(self, v):
         return self.get(v)()
 
+    def __iter__(self):
+        return iter(self.Cuts.values())
+
     def __str__(self):
         return self.__class__.__name__
 
