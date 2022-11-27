@@ -194,21 +194,20 @@ class Converter:
                    ['trk_chi2',  'Chi2',   'f2'], ['trk_dof', 'Dof', 'u1'],
                    ['trk_du',    'SlopeX', 'f2'], ['trk_dv', 'SlopeY', 'f2']]).T
         tree = self.RawFile['C0/tracks_clusters_matched']  # same for all planes
-        self.add_time_stamp(tree)
+        self.add_time_stamp()
         self.add_data(tree, g, b)
         add_to_info(t0, color=GREEN)
 
     @property
     def time_stamp_file(self):
-        return Path()
+        return self.Raw.OutFilePath
 
-    @staticmethod
-    def get_time_stamp(tree: TTree):
-        t = array(tree['evt_timestamp'])
+    def get_time_stamp(self):
+        t = array(uproot.open(self.time_stamp_file)['Event']['TimeStamp'])
         return ((t - t[0]) / 1e9).astype('f4')  # time stamp is just a number counting up
 
-    def add_time_stamp(self, tree: TTree):
-        self.F.create_group('Event').create_dataset('Time', data=self.get_time_stamp(tree))
+    def add_time_stamp(self):
+        self.F.create_group('Event').create_dataset('Time', data=self.get_time_stamp())
 
     def add_planes(self):
         n = len(self.RawFile.keys(recursive=False))  # noqa (raises stupid warning)

@@ -7,7 +7,7 @@ from subprocess import check_call
 import uproot
 
 from plotting.utils import array, info as pinfo
-from src.converter import Converter, TTree
+from src.converter import Converter
 
 
 class CERNConverter(Converter):
@@ -71,7 +71,7 @@ class CERNConverter(Converter):
     def time_stamp_file(self):
         return self.Adc2Vcal.OutFilePath
 
-    def get_time_stamp(self, tree: TTree):
+    def get_time_stamp(self):
         return (array(uproot.open(self.time_stamp_file)['Event']['TimeStamp']) / 1000).astype('d')
 
     @property
