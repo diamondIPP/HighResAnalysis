@@ -8,7 +8,7 @@ from os import chdir
 import toml
 from numpy import array, arange
 from plotting.utils import info, warning, choose, remove_file, critical
-from utility.utils import print_banner, GREEN, print_elapsed_time, wraps, remove_letters
+from utility.utils import print_banner, GREEN, print_elapsed_time, wraps, remove_letters, byte2str
 from subprocess import check_call, CalledProcessError
 from shutil import copytree
 from copy import deepcopy
@@ -178,6 +178,11 @@ class Proteus:
     def remove_mask(self):
         for f in self.ConfigDir.joinpath('mask').glob('*.toml'):
             remove_file(f)
+
+    def clean_tmp(self):
+        f = list(self.ConfigDir.parent.rglob('tmp-*'))
+        info(f'removing {len(f)} temporary files ({byte2str(sum([i.stat().st_size for i in f]))})')
+        remove_file(*f, warn=False)
     # endregion MISC
     # ----------------------------------------
 
