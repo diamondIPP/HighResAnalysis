@@ -10,6 +10,7 @@ def eff_analysis(cls):
     class Efficiency(cls):
 
         YArgs = {'y_tit': 'Efficiency [%]', 'y_range': [0, 105]}
+        ZArgs = {'z_tit': 'Efficiency [%]', 'z_range': [0, 100]}
 
         def __init__(self, parent: DUTAnalysis):  # noqa
             self.__dict__.update(parent.__dict__)
@@ -24,6 +25,9 @@ def eff_analysis(cls):
 
         def values(self, cut=None):
             return self.get_cluster_size(cut=cut).astype('?')
+
+        def pvalues(self, cut=None):
+            return self.get_cluster_size(cut=cut).astype('?') * 100
 
         def segment_values(self, nx=2, ny=3, cut=None):
             return get_2d_hist_vec(self.draw_map(local=True, cut=cut, binning=bins.make2d(*self.segments(nx, ny)), save=False), err=False, flat=False)
@@ -60,10 +64,10 @@ def eff_analysis(cls):
             self.Draw.distribution(e, **prep_kw(dkw, title='Segment Efficiencies', x_tit='Efficiency [%]'))
 
         def draw_in_pixel(self, n=10, ox=0, oy=0, cut=None, **dkw):
-            return super().draw_in_pixel(ox, oy, n, cut, self.values, tit='Efficiency', **dkw)
+            return super().draw_in_pixel(ox, oy, n, cut, self.pvalues, tit='Efficiency', **prep_kw(dkw, **self.ZArgs))
 
         def draw_in_cell(self, n=10, ox=0, oy=0, cut=None, **dkw):
-            return super().draw_in_cell(ox, oy, n, cut, self.values, tit='Efficiency', **dkw)
+            return super().draw_in_cell(ox, oy, n, cut, self.pvalues, tit='Efficiency', **prep_kw(dkw, **self.ZArgs))
         # endregion DRAW
         # ----------------------------------------
 
