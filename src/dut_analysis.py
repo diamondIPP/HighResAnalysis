@@ -498,7 +498,7 @@ class DUTAnalysis(Analysis):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
         fit = Langau(h, nconv, fit_range)
         fit.get_parameters()
-        fit(show=show)
+        fit(draw=show)
         get_last_canvas().Modified()
         get_last_canvas().Update()
         if fit.get_chi2() > chi_thresh and nconv < 80:
