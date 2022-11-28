@@ -8,7 +8,7 @@ import uproot
 
 from src.run import Batch
 from plotting.utils import choose, info, colored, GREEN, RED, check_call, critical, warning
-from utility.utils import print_banner, PBAR, small_banner
+from utility.utils import print_banner, PBAR, small_banner, byte2str
 from src.analysis import Analysis
 from cern.converter import CERNConverter, Converter
 from src.converter import batch_converter
@@ -171,8 +171,10 @@ class BatchConvert(AutoConvert):
         self.Converter.remove_aux_files()
 
     def remove_raw_files(self):
+        f = [i for c in self.Converters for i in c.raw_files if i.exists()]
         for conv in self.Converters:
-            conv.remove_raw_files()
+            conv.remove_raw_files(warn=False)
+        info(f'removed {len(f)} raw files ({byte2str(sum([i.stat().st_size for i in f]))})')
 
 
 if __name__ == '__main__':

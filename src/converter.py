@@ -106,8 +106,8 @@ class Converter:
             if f.suffix == '.root' or f.suffix == '.hdf5' or all_:
                 remove_file(f)
 
-    def remove_raw_files(self):
-        remove_file(*self.raw_files)
+    def remove_raw_files(self, warn=True):
+        remove_file(*self.raw_files, warn=warn)
 
     def remove_aux_files(self):
         remove_file(*self.aux_files)
