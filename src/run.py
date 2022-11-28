@@ -64,7 +64,7 @@ class Batch:
         if self.Name in self.LogNames or self.Name is None:
             is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
             return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
-        dic = load_json(Dir.joinpath('config', 'batches.json'))
+        dic = load_json(Dir.joinpath('batches', f'{self.DataDir.stem}.json'))
         if self.Name in dic:
             return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in dic[self.Name] if self.Log[str(nr)]['status'] == 'green']
         critical('unknown batch name')

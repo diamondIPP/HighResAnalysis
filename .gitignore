@@ -5,7 +5,7 @@
 !*.md
 !*.ini
 !dia_info.json
-!batches.json
+!batches/*.json
 !*.toml
 !requirements.txt
 !Makefile
