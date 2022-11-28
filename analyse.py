@@ -56,7 +56,7 @@ if args.remove_meta:
     z = dut_ana(verbose=False, test=True)
     z.remove_metadata()
 
-if args.convert:
+if args.convert and not is_batch:
     z = dut_ana(verbose=False, test=True)
     z.remove_file()
     z.Converter.remove_aux_files()
