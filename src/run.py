@@ -117,7 +117,7 @@ class Run:
         self.DUTs = self.Info['duts']
         self.NDUTs = len(self.DUTs)
         self.Positions = self.Info['dut position']  # which of the DUT slots are occupied
-        self.DUT = DUT(dut_number, self.Info)
+        self.DUT = DUT(dut_number, self.Info, has_ref=tc_dir.stem in Analysis.Config.get('REF', 'dates'))
 
         # Times  TODO: Fix later with real timestamps from the data
         self.StartTime = self.Info['start']
