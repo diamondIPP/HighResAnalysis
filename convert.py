@@ -172,9 +172,9 @@ class BatchConvert(AutoConvert):
 
     def remove_raw_files(self):
         f = [i for c in self.Converters for i in c.raw_files if i.exists()]
+        info(f'removing {len(f)} raw files ({byte2str(sum([i.stat().st_size for i in f]))})')
         for conv in self.Converters:
             conv.remove_raw_files(warn=False)
-        info(f'removed {len(f)} raw files ({byte2str(sum([i.stat().st_size for i in f]))})')
 
 
 if __name__ == '__main__':
