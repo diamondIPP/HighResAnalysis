@@ -9,11 +9,11 @@ from src.analysis import Analysis
 
 class Device:
     """ parent class with information about a single device. """
-    def __init__(self, number=1, name='Name', typ=None):
+    def __init__(self, number=1, name='Name', typ=None, has_ref=False):
         self.Number = number
         self.Name = name
         self.Type = typ
-        self.Plane = self.init_plane()
+        self.Plane = self.init_plane(has_ref)
 
     def __str__(self):
         return self.Name
@@ -21,8 +21,8 @@ class Device:
     def __repr__(self):
         return f'{self.Type} {self.Number}, {self}'
 
-    def init_plane(self):
-        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + self.Number, self.Type)
+    def init_plane(self, has_ref):
+        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + int(has_ref), self.Type)
 
 
 class REF(Device):
@@ -33,10 +33,10 @@ class REF(Device):
 
 class DUT(Device):
     """ Class with all information about a single DUT. """
-    def __init__(self, number=1, run_log: dict = None):
+    def __init__(self, number=1, run_log: dict = None, has_ref=False):
 
         # Info
-        super().__init__(number, run_log['duts'][number], typ='DUT')
+        super().__init__(number, run_log['duts'][number], typ='DUT', has_ref=has_ref)
         self.Bias = int(run_log[f'hv'][self.Number])
         self.Position = int(run_log[f'dut position'][self.Number])
 
