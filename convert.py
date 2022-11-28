@@ -170,6 +170,10 @@ class BatchConvert(AutoConvert):
             conv.remove_aux_files()
         self.Converter.remove_aux_files()
 
+    def remove_raw_files(self):
+        for conv in self.Converters:
+            conv.remove_raw_files()
+
 
 if __name__ == '__main__':
 
