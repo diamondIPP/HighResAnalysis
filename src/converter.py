@@ -238,7 +238,7 @@ class Converter:
     @update_pbar
     def add_plane_tracks(self, group, tree: TTree):
         g = group.create_group('Tracks')
-        b = array([['trk_u', 'U', 'f2'], ['trk_v', 'V', 'f2'], ['trk_col', 'X', 'f2'], ['trk_row', 'Y', 'f2'], ['trk_std_u', 'eU', 'f2'], ['trk_std_v', 'eV', 'f2']]).T
+        b = array([['trk_u', 'U', 'f2'], ['trk_v', 'V', 'f2'], ['trk_col', 'X', 'f4'], ['trk_row', 'Y', 'f4'], ['trk_std_u', 'eU', 'f2'], ['trk_std_v', 'eV', 'f2']]).T
         self.add_data(tree, g, b)
 
     @update_pbar
@@ -321,7 +321,7 @@ def batch_converter(cls: Converter):
             return cls(b.DataDir, b.Name)
 
         def trigger_info_file(self):
-            return super().trigger_info_file().with_stem(f'dut-{self.Batch.FileName.stem}')
+            return super().trigger_info_file().with_name(f'dut-{self.Batch.FileName.stem}.root')
 
         @property
         def time_stamp_file(self):
