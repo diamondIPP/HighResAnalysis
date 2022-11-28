@@ -22,7 +22,7 @@ class Device:
         return f'{self.Type} {self.Number}, {self}'
 
     def init_plane(self, has_ref):
-        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + int(has_ref), self.Type)
+        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + self.Number + int(has_ref), self.Type)
 
 
 class REF(Device):
