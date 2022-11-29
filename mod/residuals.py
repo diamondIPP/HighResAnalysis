@@ -20,6 +20,7 @@ def res_analysis(cls):
             self.Parent = parent
             self.__dict__.update(parent.__dict__)
             self.MetaSubDir = 'residuals'
+            self.Residuals = self  # for self reference
 
             self.Rot, self.Trans = [], []
 
