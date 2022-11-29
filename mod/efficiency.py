@@ -27,7 +27,7 @@ def eff_analysis(cls):
             return self.get_cluster_size(cut=cut).astype('?')
 
         def pvalues(self, cut=None):
-            return self.get_cluster_size(cut=cut).astype('?') * 100
+            return (self.get_cluster_size(cut=cut).astype('?') * 100).astype('d')
 
         def segment_values(self, nx=2, ny=3, cut=None):
             return get_2d_hist_vec(self.draw_map(local=True, cut=cut, binning=bins.make2d(*self.segments(nx, ny)), save=False), err=False, flat=False)
@@ -43,10 +43,11 @@ def eff_analysis(cls):
             return self.Draw.efficiency(x, y, bins.TP, 'Efficiency vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', **self.YArgs, file_name='EffieciencyTP'))
 
         def draw_map(self, res=.5, local=True, eff=True, both=False, fid=False, cut=None, **dkw):
-            (x, y), e = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_xy, local=local), self.values]]
+            (x, y), e = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_xy, local=local), self.pvalues]]
+            e[e < 1] = 1e-4  # zero values are not shown in the map ...
             t = [*self.draw_text(self.Surface, cut, eff), *self.draw_text(not self.Surface, cut, eff and both)]
             b = bins.get_xy(local, self.Plane, res)
-            return self.Draw.prof2d(x, y, e * 100, **prep_kw(dkw, title='Efficiency Map', binning=b, **self.ax_tits(local), leg=t, file_name='EfficiencyMap'))
+            return self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=b, **self.ax_tits(local), leg=t, file_name='EfficiencyMap'))
 
         def draw_text(self, surface, cut, show=True):
             self.activate_surface(surface)
