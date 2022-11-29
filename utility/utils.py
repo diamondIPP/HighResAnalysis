@@ -410,7 +410,7 @@ def get_field(obj, field: str):
 
 
 def make_suffix(*values):
-    vals = [md5(val).hexdigest() if type(val) is ndarray else f'{val:.0f}' if isint(val) else val for val in values if val is not None]
+    vals = [md5(val).hexdigest() if type(val) is ndarray else f'{int(val):.0f}' if isint(val) else val for val in values if val is not None]
     return '_'.join(str(val) for val in vals)
 
 
