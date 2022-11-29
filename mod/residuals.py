@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from numpy import arctan, sqrt, array, quantile, mean, polyfit, identity, arange
-from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle
+from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle, no_trans
 from plotting.fit import Gauss
 from plotting.draw import np_profile, choose, set_x_range, ax_range, ufloat
 from utility.utils import PBAR, uarr2n
@@ -43,11 +43,11 @@ def res_analysis(cls):
         def ty(self, cut=None, pl=None):
             return self.txy(cut, pl, local=True)[1]
 
-        def txy(self, cut=None, pl=None, local=True, trans=False):
-            return m_transform(self.m, *self.get_txy(local, cut, pl, trans=False)) if trans else self.get_txy(local, cut, pl, trans=False)
+        def txy(self, cut=None, pl=None, local=True):
+            return self.get_txy(local, cut, pl)
 
-        def dxy(self, cut=None, pl=None, local=True, trans=False):
-            (x, y), (tx, ty) = self.get_xy(local, cut, pl), self.txy(cut, pl, local, trans)
+        def dxy(self, cut=None, pl=None, local=True):
+            (x, y), (tx, ty) = self.get_xy(local, cut, pl), self.txy(cut, pl, local)
             return x - tx, y - ty
 
         def __call__(self, cut=None, pl=None):
@@ -166,6 +166,7 @@ def res_analysis(cls):
         def m(self):
             return self.align(_save=False)
 
+        @no_trans
         @save_pickle('AM', sub_dir='alignment', run='', suf_args='[6]')
         def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False, _save=False):
             if d is None:
@@ -173,7 +174,7 @@ def res_analysis(cls):
             sx, sy = self.plane(pl).PX, self.plane(pl).PY
             cut = self.Cut(cut) & self.Cut['res']
             x, y = transform(*self.get_xy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[:2]  # convert to mm
-            tx, ty = transform(*self.get_txy(local=True, cut=cut, pl=pl, trans=False), sx, sy) if d is None else d[2:]
+            tx, ty = transform(*self.get_txy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[2:]
             d = self.rotate(x, y, *((tx, ty) if m is None else m_transform(m, *d[2:])), p=p)
             t = self.translate(*d[:4])
             self.Rot.append(d[4])

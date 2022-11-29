@@ -16,7 +16,20 @@ from utility.utils import *
 from utility.affine_transformations import transform, m_transform
 
 
+def no_trans(f):
+    def inner(*args, **kwargs):
+        old = DUTAnalysis.Trans
+        DUTAnalysis.Trans = False
+        v = f(*args, **kwargs)
+        DUTAnalysis.Trans = old
+        return v
+    return inner
+
+
 class DUTAnalysis(Analysis):
+
+    Trans = True  # use internal algorithm to improve alignment of the local track coordinates
+    L2G = False   # transform local to global coordinates instead of using global directly
 
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
@@ -35,7 +48,6 @@ class DUTAnalysis(Analysis):
             return
 
         self.F = self.load_file()
-        self.T = False
 
         # INFO
         self.N = self.n
@@ -186,29 +198,29 @@ class DUTAnalysis(Analysis):
         return self.get_data('Tracks', 'Y', cut, pl)
 
     def get_u(self, cut=None, pl=None, centre=False):
-        return self.get_uv(cut, pl, centre)[0] if self.T else self.get_data('Clusters', 'U', cut, pl)
+        return self.get_uv(cut, pl, centre)[0] if DUTAnalysis.L2G else self.get_data('Clusters', 'U', cut, pl)
 
     def get_v(self, cut=None, pl=None, centre=False):
-        return self.get_uv(cut, pl, centre)[1] if self.T else self.get_data('Clusters', 'V', cut, pl)
+        return self.get_uv(cut, pl, centre)[1] if DUTAnalysis.L2G else self.get_data('Clusters', 'V', cut, pl)
 
     def get_tu(self, cut=None, pl=None):
-        return self.get_tuv(cut, pl)[0] if self.T else self.get_data('Tracks', 'U', cut, pl)
+        return self.get_tuv(cut, pl)[0] if DUTAnalysis.L2G else self.get_data('Tracks', 'U', cut, pl)
 
     def get_tv(self, cut=None, pl=None):
-        return self.get_tuv(cut, pl)[1] if self.T else self.get_data('Tracks', 'V', cut, pl)
+        return self.get_tuv(cut, pl)[1] if DUTAnalysis.L2G else self.get_data('Tracks', 'V', cut, pl)
 
     def get_xy(self, local=True, cut=None, pl=None, centre=False, rot=False):
         return array([self.get_x(cut, pl, rot), self.get_y(cut, pl, rot)]) if local else self.get_uv(cut, pl, centre)
 
     def get_uv(self, cut=None, pl=None, centre=False):
-        return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if self.T else array([self.get_u(cut, pl), self.get_v(cut, pl)])
+        return self.l2g(self.get_x(cut, pl), self.get_y(cut, pl), pl, centre) if DUTAnalysis.L2G else array([self.get_u(cut, pl), self.get_v(cut, pl)])
 
-    def get_txy(self, local=True, cut=None, pl=None, centre=False, trans=False):
+    def get_txy(self, local=True, cut=None, pl=None, centre=False):
         d = array([self.get_tx(cut, pl), self.get_ty(cut, pl)]) if local else self.get_tuv(cut, pl, centre)
-        return m_transform(self.Residuals.m, *d) if trans and local else d
+        return m_transform(self.Residuals.m, *d) if DUTAnalysis.Trans and local else d
 
     def get_tuv(self, cut=None, pl=None, centre=False):
-        return self.l2g(self.get_tx(cut, pl), self.get_ty(cut, pl), pl, centre) if self.T else array([self.get_tu(cut, pl), self.get_tv(cut, pl)])
+        return self.l2g(self.get_tx(cut, pl), self.get_ty(cut, pl), pl, centre) if DUTAnalysis.L2G else array([self.get_tu(cut, pl), self.get_tv(cut, pl)])
 
     def get_mask(self):
         return self.get_data('Mask', cut=False)
@@ -300,7 +312,7 @@ class DUTAnalysis(Analysis):
         return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local), file_name='Occupancy'))
 
     def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, **dkw):
-        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, trans=self.T, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
+        return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(self.Cut.exclude('cs', cut), pl)

@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 
 from mod.dut_cuts import DUTCut, zeros, save_cut, choose, all, invert
+from src.dut_analysis import no_trans
 
 
 class TrackCut(DUTCut):
@@ -38,7 +39,8 @@ class TrackCut(DUTCut):
     def make_mask(self, t=None, _redo=False):
         return self.make_cluster_mask(*self.get_config('track mask', default=zeros((0, 2))).T, t=choose(t, self.get_config('track mask range', default=1.1)))
 
+    @no_trans
     def make_cluster_mask(self, mx, my, t=.5):
-        x, y = self.Ana.get_xy(local=True, cut=False, trans=False)  # TODO: check if trans is needed here
+        x, y = self.Ana.get_xy(local=True, cut=False)  # noqa TODO: check if trans is needed here
         return all([invert((x >= mx[i] - t) & (x <= mx[i] + t) & (y >= my[i] - t) & (y <= my[i] + t)) for i in range(mx.size)], axis=0)
 

@@ -44,8 +44,8 @@ def track_analysis(cls):
         def get_off_y(self, cut=None):
             return self.get_data('Y', cut=cut, main_grp='Tracks')
 
-        def get_xy(self, local=True, cut=None, pl=None, centre=False, trans=False):  # TODO: trans not working for CERN data
-            return self.get_txy(local, cut, pl, centre, trans)
+        def get_xy(self, local=True, cut=None, pl=None, centre=False):
+            return self.get_txy(local, cut, pl, centre)
         # endregion DATA
         # ----------------------------------------
 
@@ -77,9 +77,9 @@ def track_analysis(cls):
         def draw_n(self, cut=None, **dkw):
             return self.Draw.distribution(self.get_n(cut), **prep_kw(dkw, title='NTracks', x0=-.5, w=1, x_tit='Number of Tracks'))
 
-        def draw_map(self, bw=.3, local=True, cut=None, dut_plane=True, trans=True, **dkw):
+        def draw_map(self, bw=.3, local=True, cut=None, dut_plane=True, **dkw):
             binning = bins.get_xy(local, self.Plane if dut_plane else self.Tel.Plane, bw, aspect_ratio=True)
-            return self.Draw.histo_2d(*self.get_xy(local, cut, trans=trans), binning, **prep_kw(dkw, title='Track Map', **self.ax_tits(local)))
+            return self.Draw.histo_2d(*self.get_xy(local, cut), binning, **prep_kw(dkw, title='Track Map', **self.ax_tits(local)))
 
         def draw_chi2(self, cut=None, **dkw):
             return self.Draw.distribution(self.get_chi2(cut), **prep_kw(dkw, x0=0, title='Chi2', x_tit='#chi^{2}'))
