@@ -25,7 +25,7 @@ def ref_analysis(cls):
             self.Run = Run(parent.Run.Number, self.dut_nr, self.BeamTest.Path)
             self.DUT = REF(self.dut_nr) if self.Parent.Proteus.NRefPlanes else self.Run.DUT
             self.Plane = self.Planes[self.Config.getint('DUT', 'reference plane')] if self.Parent.Proteus.NRefPlanes > 0 else self.DUT.Plane
-            self.Calibration = self.Converter.load_calibration(self.Run.DUT.Number)
+            self.Calibration = None if self.Parent.Proteus.NRefPlanes else self.Converter.load_calibration(self.Run.DUT.Number)
             self.Cut = RefCut(self)
 
             self.Residuals = res_analysis(cls)(self)
