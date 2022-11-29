@@ -111,7 +111,7 @@ class Calibration:
         d = ensure_dir(Dir.joinpath('metadata', 'calibration'))
         return d.joinpath(f'{"_".join(str(v) for v in [name, self.Run.DUT, self.Trim, self.Number, suf] if v)}.hdf5')
 
-    @save_hdf5('Points', arr=True, field='Tag', verbose=True)
+    @save_hdf5('Points', arr=True, field='Tag')
     def get_all_points(self):
         return genfromtxt(self.RawFileName, skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
 

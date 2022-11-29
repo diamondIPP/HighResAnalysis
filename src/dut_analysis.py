@@ -303,8 +303,9 @@ class DUTAnalysis(Analysis):
     def draw_mask(self, **dkw):
         masks = self.Cut.get_config('mask', default=zeros((2, 0))), self.get_mask(), self.Cut.get_thresh_mask(), self.Cut.get_cal_chi2_mask()
         d = concatenate([tile(m, i) for i, m in enumerate(masks, 1)], axis=1)
-        self.Draw.histo_2d(*d, self.loc_bins, 'PixMask', **prep_kw(dkw, **self.ax_tits(), leg=self.Cut.get_fid(), pal=set_n_palette(len(masks)), rm=.03, stats=False, draw_opt='col', z_range=[0, 5]))
+        self.Draw.histo_2d(*d, self.loc_bins, 'PixMask', **prep_kw(dkw, **self.ax_tits(), leg=self.Cut.get_fid(), pal=n_pal(len(masks)), rm=.03, stats=False, draw_opt='col', z_range=[0, 5]))
         Draw.legend([Draw.box(*[-1] * 4, line_color=0, fillcolor=i, show=False) for i in Draw.get_colors(len(masks))], ['Config', 'Noise Scan', 'High Thresh', 'Bad Calibration'], 'f', bottom=True)
+        self.Draw.save_plots('Mask')
 
     def draw_occupancy(self, local=True, bw=1, cut=None, fid=False, pl=None, **dkw):
         x, y = self.get_xy(local, self.Cut.get_nofid(cut, fid), pl)
@@ -400,7 +401,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, self.get_phs]]
-        self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits(), file_name='SignalMap'))
+        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
@@ -420,6 +421,10 @@ class DUTAnalysis(Analysis):
         fit = FitRes(g.Fit('pol0', 'sq'))
         self.Draw(g, **prep_kw(dkw, stats=set_statbox(fit=True), show=False))
         return fit
+
+    def draw_eff_vs_ph(self, res=.5):
+        ph, e = self.draw_signal_map(res, fid=True), self.Efficiency.draw_map(res, fid=True)
+        return self.Draw.maps_profile(ph, e, file_name='EffVsPh')
     # endregion SIGNAL
     # ----------------------------------------
 
