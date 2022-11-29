@@ -1,6 +1,6 @@
 from os.path import getsize
 
-from numpy import genfromtxt, isnan, datetime64, invert, char, uint32
+from numpy import genfromtxt, datetime64, invert, char, uint32
 from pytz import timezone
 
 import src.bins as bins
@@ -55,6 +55,10 @@ class Currents(Analysis):
 
         # plotting
         self.Graphs = []
+
+    @property
+    def server_save_dir(self):
+        return Path('duts', str(self.Ana.DUT), self.BeamTest.Tag, str(self.Run)) if self.Ana is not None else None
 
     # ----------------------------------------
     # region INIT
@@ -238,10 +242,10 @@ class Currents(Analysis):
         gc = self.Draw.graph(t, c, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=899, color=899, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]), show=False)
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=.3)
-        self.Draw(gv, **prep_kw(dkw, **Draw.mode(2, lm=.1, rm=.1), draw_opt='aly+'))
+        self.Draw(gv, **prep_kw(dkw, save=False, **Draw.mode(2, lm=.1, rm=.1), draw_opt='aly+'))
         self.Draw.tpad('pc', transparent=True, c=get_last_canvas())
         gc.Draw(dkw['draw_opt'] if 'draw_opt' in dkw else 'al')
-        update_canvas()
+        self.Draw.save_plots('Currents')
     # endregion PLOTTING
     # ----------------------------------------
 
