@@ -129,8 +129,8 @@ def res_analysis(cls):
             self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [Row]', **self.ax_tits(True)))
 
         def draw_map(self, res=.3, local=True, cut=None, fid=False, pl=None, **dkw):
-            (x, y), z_ = [f(cut=self.Cut.get_nofid(fid, cut), pl=pl) for f in [partial(self.get_txy, local=local), self]]
-            self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.ax_tits(local)))
+            (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid), pl=pl) for f in [partial(self.get_txy, local=local), self]]
+            self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.ax_tits(local), file_name='ResMap'))
 
         def _draw_angle(self, x, y, prof=False, xb=True, local=False, pl=None, **dkw):
             b = (bins.get_x if xb else bins.get_y)(self.plane(pl), local=local) + find_bins(y)
