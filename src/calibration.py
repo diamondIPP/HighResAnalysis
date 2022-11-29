@@ -36,6 +36,7 @@ class Calibration:
         self.Fits = None
 
         self.RawFileName = self.load_raw_filename()
+        self.Tag = remove_letters(self.RawFileName.name)
         self.FileName = join(self.Dir, f'{self.Trim}-{self.Number}.h5py')
         self.FitFileName = self.Dir.joinpath(f'fitpars-{self.Trim}.txt')
         self.CalPath = self.Dir.parent.joinpath('fitpars-.txt')  # enter trim and DUT in eudaq
@@ -110,7 +111,7 @@ class Calibration:
         d = ensure_dir(Dir.joinpath('metadata', 'calibration'))
         return d.joinpath(f'{"_".join(str(v) for v in [name, self.Run.DUT, self.Trim, self.Number, suf] if v)}.hdf5')
 
-    @save_hdf5('Points', arr=True)
+    @save_hdf5('Points', arr=True, field='Tag', verbose=True)
     def get_all_points(self):
         return genfromtxt(self.RawFileName, skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
 
@@ -158,7 +159,7 @@ class Calibration:
     def get_fits(self):
         return self.fit_all() if self.Fits is None else self.Fits
 
-    @save_hdf5('Chi2', arr=True, dtype='f4')
+    @save_hdf5('Chi2', arr=True, dtype='f4', field='Tag')
     def get_chi2s(self, _redo=False):
         return array([[None if fit is None else fit.get_chi2() for fit in lst] for lst in self.get_fits()])
 
@@ -166,7 +167,7 @@ class Calibration:
     def get_vcal(self, f, adc):
         return f.GetX(adc) if adc > f.GetMinimum() else 0
 
-    @save_hdf5('LUT', arr=True, dtype='f2')
+    @save_hdf5('LUT', arr=True, dtype='f2', field='Tag')
     def get_lookup_table(self, _redo=False):
         fits = self.get_fits()
         info('creating calibration LUT ... ')
