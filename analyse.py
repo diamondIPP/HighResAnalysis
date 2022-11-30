@@ -13,6 +13,7 @@ from plotting.draw import *  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
 from src.batch_analysis import BatchAnalysis
 from src.run import load_nrs
+from src.scan import Ensemble, Scan, VScan
 from utility.utils import *  # noqa
 from functools import partial
 
@@ -36,47 +37,53 @@ if args.runplan is not None:
     exit(2)
 
 
-ana = Analysis(args.testcampaign)
-runs = load_nrs(ana.BeamTest.Path)
-is_batch = not (args.run in runs and args.batch is None)
-dut_ana = partial(BatchAnalysis, choose(args.batch, args.run)) if is_batch else partial(DUTAnalysis, args.run)
-dut_ana = partial(dut_ana, args.dut, args.testcampaign)
+ensembles = load_json(Ensemble.FilePath)
 
+if args.run in ensembles:
+    s = VScan if 'v-' in args.run else Scan
+    z = s(args.run)
 
-if is_batch:
-    bc = convert.BatchConvert(dut_ana.args[0], dut_ana.args[-1], verbose=False, force=False)
-    if args.convert:
-        remove_file(bc.Batch.FileName)
-        bc.remove_aux_files()
-    if not bc.Batch.FileName.exists() and not args.test:
-        bc.run()
+else:
 
+    ana = Analysis(args.testcampaign)
+    runs = load_nrs(ana.BeamTest.Path)
+    is_batch = not (args.run in runs and args.batch is None)
+    dut_ana = partial(BatchAnalysis, choose(args.batch, args.run)) if is_batch else partial(DUTAnalysis, args.run)
+    dut_ana = partial(dut_ana, args.dut, args.testcampaign)
 
-if args.remove_meta:
-    z = dut_ana(verbose=False, test=True)
-    z.remove_metadata()
+    if is_batch:
+        bc = convert.BatchConvert(dut_ana.args[0], dut_ana.args[-1], verbose=False, force=False)
+        if args.convert:
+            remove_file(bc.Batch.FileName)
+            bc.remove_aux_files()
+        if not bc.Batch.FileName.exists() and not args.test:
+            bc.run()
 
-if args.convert and not is_batch:
-    z = dut_ana(verbose=False, test=True)
-    z.remove_file()
-    z.Converter.remove_aux_files()
+    if args.remove_meta:
+        z = dut_ana(verbose=False, test=True)
+        z.remove_metadata()
 
-z = dut_ana(verbose=args.verbose, test=args.test)
+    if args.convert and not is_batch:
+        z = dut_ana(verbose=False, test=True)
+        z.remove_file()
+        z.Converter.remove_aux_files()
 
-# if not args.test and z.REF is not None and not z.has_alignment():
-#     z.Residuals.align(_save=True)
-#     z.REF.Residuals.align(_save=True)
-#     z.remove_metadata()
-#     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
+    z = dut_ana(verbose=args.verbose, test=args.test)
 
-z.add_info(t_start, 'Init time:', prnt=True)
+    # if not args.test and z.REF is not None and not z.has_alignment():
+    #     z.Residuals.align(_save=True)
+    #     z.REF.Residuals.align(_save=True)
+    #     z.remove_metadata()
+    #     z = DUTAnalysis(args.run, args.dut, test_campaign=args.testcampaign, single_mode=args.single_mode, verbose=args.verbose, test=args.test)
+
+    z.add_info(t_start, 'Init time:', prnt=True)
 
 # aliases
 try:
     d = z.Draw
     dut = z.DUT
-    b = z.BeamTest
     pl = dut.Plane
+    b = z.BeamTest
     r = z.Run
     c = z.Converter
     p = z.Proteus
