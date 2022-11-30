@@ -82,6 +82,10 @@ class DUTAnalysis(Analysis):
     def ev_str(self):
         return f'{ev2str(self.NEvents if hasattr(self, "NEvents") else self.Run.n_ev)} ev'
 
+    @classmethod
+    def from_run(cls, run: Run, verbose=True, test=False):
+        return cls(run.Number, run.DUT.Number, run.TCDir.stem, verbose, test)
+
     # ----------------------------------------
     # region INIT
     @property
@@ -172,6 +176,10 @@ class DUTAnalysis(Analysis):
     def time(self, cut=None):
         return self.get_data('Time', cut=cut, main_grp='Event').astype('f8')
 
+    def mean_time(self):
+        t0, t1 = self.F['Event']['Time'][[0, -1]]
+        return ufloat(mean([t0, t1]), (t1 - t0) / 2)
+
     def get_data(self, grp, key=None, cut=None, pl=None, main_grp=None):
         data = self.F[choose(main_grp, str(self.Planes[choose(pl, self.Plane.Number)]))][grp]
         data = array(data) if key is None else array(data[key])
@@ -242,6 +250,9 @@ class DUTAnalysis(Analysis):
 
     def alignment(self, pl):
         return self.Proteus.alignment()['sensors'][pl]
+
+    def eff(self):
+        return self.Efficiency.value()
     # endregion DATA
     # ----------------------------------------
 
