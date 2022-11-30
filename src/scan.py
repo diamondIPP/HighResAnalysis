@@ -13,7 +13,7 @@ from plotting.save import prep_kw, SaveDraw, Path
 class Scan(Ensemble):
     """Base class defining actions on several runs or batches"""
 
-    XArgs = {'x_tit': 'Time'}
+    XArgs = {'x_tit': 'Time', 't_ax_off': 0}
 
     def __init__(self, name, verbose=False, test=False):
 
@@ -29,15 +29,18 @@ class Scan(Ensemble):
     def values(self, f, *args, **kwargs):
         return array([f(ana, *args, **kwargs) for ana in self.Anas])
 
-    def x(self):
+    def t(self):
         return self.values(DUTAnalysis.mean_time)
+
+    def x(self):
+        return self.t()
 
     def init_analyses(self, verbose, test):
         return [BatchAnalysis.from_batch(u, verbose, test) if type(u) is Batch else DUTAnalysis.from_run(u, verbose, test) for u in self.Units]
 
-    def draw_efficiency(self, **dkw):
-        x, y = self.x(), self.values(DUTAnalysis.eff)
-        self.Draw.graph(x, y, **prep_kw(dkw, **self.XArgs, y_tit='Efficiency [%]', file_name='Eff'))
+    def draw_efficiency(self, t=False, **dkw):
+        x, y = self.t() if t else self.x(), self.values(DUTAnalysis.eff)
+        return self.Draw.graph(x, y, **prep_kw(dkw, **Scan.XArgs if t else self.XArgs, y_tit='Efficiency [%]', file_name='Eff'))
 
 
 class VScan(Scan):
