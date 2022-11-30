@@ -173,7 +173,7 @@ def res_analysis(cls):
             if d is None:
                 PBAR.start(imax)
             sx, sy = self.plane(pl).PX, self.plane(pl).PY
-            cut = self.Cut(cut) & self.Cut['res']
+            cut = self.Cut(cut) & (self.Cut['res'] if 'res' in self.Cut.names else True)
             x, y = transform(*self.get_xy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[:2]  # convert to mm
             tx, ty = transform(*self.get_txy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[2:]
             d = self.rotate(x, y, *((tx, ty) if m is None else m_transform(m, *d[2:])), p=p)
