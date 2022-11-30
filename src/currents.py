@@ -3,7 +3,6 @@ from os.path import getsize
 from numpy import genfromtxt, datetime64, invert, char, uint32
 from pytz import timezone
 
-import src.bins as bins
 from src.analysis import *
 from utility.utils import *
 from glob import glob
@@ -55,6 +54,9 @@ class Currents(Analysis):
 
         # plotting
         self.Graphs = []
+
+    def __call__(self, *args, **kwargs):
+        return self.get()
 
     @property
     def server_save_dir(self):
@@ -121,7 +123,7 @@ class Currents(Analysis):
                 return self.Collection.get_start_time(), self.Collection.get_end_time()
             else:  # actual time strings are provided
                 return (self.TimeZone.localize(datetime.strptime(f'{self.BeamTest.year}-{t}', '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
-        return [self.TimeZone.localize(datetime.fromtimestamp(self.RunLogs[key])) for key in ['start', 'end']]
+        return [self.TimeZone.localize(t) for t in [self.Ana.StartTime, self.Ana.EndTime]]
 
     def get_dut_name(self):
         if self.Ana is not None:
@@ -208,25 +210,23 @@ class Currents(Analysis):
     # region PLOTTING
     def draw_profile(self, bw=None, **dkw):
         x, y = self.Data['timestamps'], self.Data['currents']
-        return self.Draw.profile(x, y, find_bins(x, w=bw), 'Leakage Current', **prep_kw(dkw, x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, **Draw.mode(2)))
+        return self.Draw.profile(x, y, find_bins(x, w=bw), title='Leakage Current', **prep_kw(dkw, x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, **Draw.mode(2)))
 
-    def draw_distribution(self, show=True):
-        m, s = mean_sigma(self.Data['currents'])
-        xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
-        return self.Draw.distribution(self.Data['currents'], 'Current Distribution', bins.make(xmin, xmax, self.Precision * 2), show=show, x_tit='Current [nA]')
+    def draw_distribution(self, **dkw):
+        return self.Draw.distribution(self.Data['currents'], title='Current Dist', **prep_kw(dkw, x_tit='Current [nA]', file_name='CurrDist'))
 
-    def get_current(self):
+    def get(self):
         if self.Ana is not None and not self.Ana.DUT.Bias:
-            warning('Bias of run {} is 0!'.format(self.Ana.RunNumber))
+            warning(f'Bias of run {self.Ana.Run} is 0!')
             return ufloat(0, 0)
         else:
-            h = self.draw_distribution(show=False)
+            h = self.draw_distribution(show=False, save=False)
             if h.GetEntries() < 3:
                 return None
-            m, s = mean_sigma(*get_hist_vecs(h, err=False))
+            m, s = mean_sigma(*get_hist_vecs(h, err=False), err=False)
             fit = h.Fit('gaus', 'sq0', '', m - 2 * s, m + 2 * s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
-            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean
+            if .8 * m < fm < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean
                 current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
