@@ -13,11 +13,15 @@ class BatchAnalysis(DUTAnalysis):
 
     def __init__(self, batch_name, dut_number, test_campaign, verbose=True, test=False):
 
-        self.Batch = Batch(batch_name, dut_number, Analysis(test_campaign).BeamTest.Path)
+        self.Batch = batch_name if type(batch_name) is Batch else Batch(batch_name, dut_number, Analysis(test_campaign).BeamTest.Path)
         super().__init__(self.Batch.min_run.Number, dut_number, test_campaign, verbose, test)
 
     def __repr__(self):
         return f'{self} of batch {self.Batch} ({self.BeamTest}), {self.ev_str}'
+
+    @classmethod
+    def from_batch(cls, batch: Batch, verbose=True, test=False):
+        return cls(batch, batch.DUT.Number, test_campaign=batch.DataDir.stem, verbose=verbose, test=test)
 
     @property
     def server_save_dir(self):
