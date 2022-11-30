@@ -91,6 +91,10 @@ class Cuts:
     def none(self):
         return ones(self.size, '?')
 
+    @property
+    def names(self):
+        return [c.Name for c in self]
+
     def get_consecutive(self):
         return cumsum(sorted(filter(lambda x: x.Level < Cut.MaxLevel, self.Cuts.values())))
 
