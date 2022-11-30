@@ -4,7 +4,7 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner
+from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner, isint
 from plotting.utils import load_json, warning, critical
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
@@ -27,10 +27,10 @@ def load_nrs(p: Path):
 class Batch:
     """ class containing the run infos of a single batch. """
 
-    def __init__(self, name, dut_nr, data_dir: Path):
+    def __init__(self, name, dut_nr, data_dir: Path, log=None):
         self.Name = name
         self.DataDir = data_dir
-        self.Log = load_runlog(self.DataDir)
+        self.Log = load_runlog(self.DataDir) if log is None else log
         self.LogNames = self.load_log_names()
         self.Runs = self.load_runs(dut_nr)
         self.RunNrs = [run.Number for run in self.Runs]
@@ -64,7 +64,7 @@ class Batch:
         if self.Name in self.LogNames or self.Name is None:
             is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
             return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
-        dic = load_json(Dir.joinpath('batches', f'{self.DataDir.stem}.json'))
+        dic = load_json(Dir.joinpath('ensembles', f'{self.DataDir.stem}.json'))
         if self.Name in dic:
             return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in dic[self.Name] if self.Log[str(nr)]['status'] == 'green']
         critical('unknown batch name')
@@ -97,7 +97,13 @@ class Batch:
         print_table(rows, header=['Batch', 'Events', 'Runs', 'DUTs', 'Begin', 'End'])
 
     def find_runs(self, dut, bias, min_run=0):
-        return array([run.Number for run in self.Runs if dut in run.DUTs and int(run.Info['hv'][run.DUTs.index(dut)]) == bias and run >= min_run])
+        return array([run.Number for run in self.Runs if dut in run.DUTs and int(run.Info['hv'][run.DUTs.index(dut)]) == bias and run >= min_run])  # noqa
+
+    @staticmethod
+    def find_dut_numbers(batch_name, dut_name, log, bt):
+        new_batches = load_json(Dir.joinpath('ensembles', f'{bt.Path.stem}.json'))
+        logs = [log[str(run)] for run in new_batches[batch_name]] if batch_name in new_batches else filter(lambda x: x['batch'] == batch_name and x['status'] == 'green', log.values())
+        return [d['duts'].index(dut_name) for d in logs]
 
 
 class Run:
@@ -163,6 +169,52 @@ class Run:
     @property
     def n_ev(self):
         return self.Info['events']
+
+
+class Ensemble(object):
+    """ General enseble class for runs. """
+
+    FilePath = Dir.joinpath('ensembles', 'scans.json')
+
+    def __init__(self, name: str):
+
+        self.Name = name
+        self.Dic = self.load_dic()
+        self.DUTName = self.Dic.pop('dut')
+        self.BeamTests = {bt: Analysis.load_test_campaign(bt) for bt in self.Dic}
+        self.Logs = {bt: load_runlog(Analysis.load_test_campaign(bt).Path) for bt in self.Dic}
+        self.Units = self.init_units()
+        self.Size = len(self.Units)
+        self.DUT = self.Units[0].DUT
+
+    def __getitem__(self, item):
+        return self.Units[item]
+
+    def __str__(self):
+        return self.Name
+
+    def __repr__(self):
+        return f'{self.__class__.__name__} {self.Name} with {self.Size} units'
+
+    def load_dic(self):
+        d = load_json(Ensemble.FilePath)
+        if self.Name not in d:
+            critical(f'could not find ensemble "{self.Name}" in {self.FilePath}')
+        return d[self.Name]
+
+    def init_units(self):
+        return [self.init_run(name, bt) if isint(name) else self.init_batch(name, bt) for bt in self.Dic for name in self.Dic[bt]]
+
+    def init_run(self, run_number, bt):
+        return Run(run_number, self.Logs[bt][str(run_number)]['duts'].index(self.DUTName), self.BeamTests[bt].Path, self.Logs[bt])
+
+    def init_batch(self, name, bt):
+        dut_nr = Batch.find_dut_numbers(name, self.DUTName, self.Logs[bt], self.BeamTests[bt])[0]  # TODO: update if batches with varying dut_nrs are implemented
+        return Batch(name, dut_nr, self.BeamTests[bt].Path, self.Logs[bt])
+
+    @property
+    def biases(self):
+        return [u.DUT.Bias for u in self.Units]
 
 
 if __name__ == '__main__':
