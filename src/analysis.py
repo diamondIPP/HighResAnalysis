@@ -72,7 +72,7 @@ class Analysis:
 
     @staticmethod
     def load_test_campaign(beamtest=None):
-        bt = choose(beamtest, Analysis.Config.get('data', 'default test campaign'))
+        bt = choose(beamtest, Analysis.Config.get('data', 'default test campaign')).replace('-', '')
         Analysis.init_locations()
         ps = [p for loc in Analysis.Locations for p in Path(Analysis.DataDir, loc.lower()).glob('*')]
         p = next((p for p in ps if bt == p.stem.replace('-', '')), None)
