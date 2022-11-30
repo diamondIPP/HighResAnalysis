@@ -4,7 +4,7 @@
 # created on October 27th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.dut_analysis import DUTAnalysis, Analysis, ev2str, Path
+from src.dut_analysis import DUTAnalysis, Analysis, ev2str, Path, datetime
 from src.run import Batch
 from src.converter import batch_converter
 
@@ -45,3 +45,6 @@ class BatchAnalysis(DUTAnalysis):
     @property
     def file_name(self):
         return self.Batch.FileName
+
+    def get_end_time(self):
+        return datetime.fromtimestamp(self.Batch.Runs[-1].EndTime)
