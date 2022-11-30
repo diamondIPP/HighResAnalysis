@@ -253,6 +253,9 @@ class DUTAnalysis(Analysis):
 
     def eff(self):
         return self.Efficiency.value()
+
+    def current(self):
+        return self.Currents()
     # endregion DATA
     # ----------------------------------------
 
