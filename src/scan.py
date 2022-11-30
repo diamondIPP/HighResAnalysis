@@ -38,9 +38,16 @@ class Scan(Ensemble):
     def init_analyses(self, verbose, test):
         return [BatchAnalysis.from_batch(u, verbose, test) if type(u) is Batch else DUTAnalysis.from_run(u, verbose, test) for u in self.Units]
 
+    def draw_graph(self, y, t=False, **dkw):
+        x = self.t() if t else self.x()
+        fname = f'{dkw.pop("file_name")}{"Time" if t else ""}' if 'file_name' in dkw else None
+        return self.Draw.graph(x, y, **prep_kw(dkw, **Scan.XArgs if t else self.XArgs, file_name=fname))
+
     def draw_efficiency(self, t=False, **dkw):
-        x, y = self.t() if t else self.x(), self.values(DUTAnalysis.eff)
-        return self.Draw.graph(x, y, **prep_kw(dkw, **Scan.XArgs if t else self.XArgs, y_tit='Efficiency [%]', file_name='Eff'))
+        self.draw_graph(self.values(DUTAnalysis.eff), t, **prep_kw(dkw, y_tit='Efficiency [%]', file_name='Eff'))
+
+    def draw_current(self, t=False, **dkw):
+        self.draw_graph(self.values(DUTAnalysis.current), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
 
 
 class VScan(Scan):
