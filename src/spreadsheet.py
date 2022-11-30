@@ -39,6 +39,7 @@ def make_desy_run_log():
     sheet = client.open_by_key('1vtwJnPLbk0M1UztpSX9SZNsPYAyMCO0TnYQzD6jQWoo').sheet1
     data = sheet.get_all_values()[1:]
     dic = {}
+    status_dict = {'good': 'green', 'bad': 'red', 'ok': 'yellow'}
     for row in data:
         run = row[0]
         if not run or not run.isdigit() or not row[11]:
@@ -51,9 +52,11 @@ def make_desy_run_log():
                     'events': int(float(row[5]) * 1e6),
                     **dut_dict,
                     'angle': 0 if row[17] == '-' else int(row[17]),
+                    'status': status_dict[row[18]],
                     'runplan': row[19],
                     'batch': row[20],
-                    'comment': row[21]
+                    'comment': row[21],
+                    'dut position': list(range(len(dut_dict['duts'])))  # there were always two DUTs at DESY
                     }
     with open(file_name, 'w') as f:
         dump(dic, f, indent=2)
