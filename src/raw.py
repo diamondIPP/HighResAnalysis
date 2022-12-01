@@ -46,8 +46,7 @@ class Raw:
     # ----------------------------------------
     # region CONVERT
     def load_raw_file_path(self):
-        n = list(self.DataDir.joinpath('raw').glob(f'run{self.Run:06d}*.raw'))
-        return n[0] if len(n) else None
+        return self.DataDir.joinpath('raw', f'run{self.Run:06d}.raw')
 
     def load_out_file_path(self):
         return self.SaveDir.joinpath(f'run{self.Run:06d}.root')
