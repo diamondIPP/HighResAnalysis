@@ -367,6 +367,11 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region CORRELATION
+    def draw_u_corr(self, pl=2, pl1=None, **dkw):
+        c = self.Cut.make_correlation(pl, pl1)
+        x = [self.get_u(c, p) for p in [pl, pl1]]
+        return self.Draw.histo_2d(*x, **prep_kw(dkw, title='UCorr', x_tit=f'X P{pl} [#mum]', y_tit=f'Y P{self.plane(pl1).Number} [#mum]', file_name='UCorr'))
+
     def draw_x_correlation(self, pl=2, pl1=None, **dkw):
         c = self.Cut.make_correlation(pl, pl1)
         x = [self.get_x(c, p, rot=True) for p in [pl, pl1]]
