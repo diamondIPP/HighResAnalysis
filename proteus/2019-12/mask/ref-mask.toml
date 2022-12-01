@@ -1,1 +1,4 @@
-sensors = []
+
+[[sensors]]
+id = 6
+masked_pixels = [[47, 2], [48, 3], [49, 4], [50, 4], [50, 5]]
