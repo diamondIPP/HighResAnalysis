@@ -85,7 +85,9 @@ class Plane:
         self.NCols, self.NRows = config.get_value('pixel')
         self.NPixels = self.NCols * self.NRows
         self.PXY = array(config.get_value('pitch'))
+        self.PXYu = self.PXY * 1e3  # in um
         self.PX, self.PY = self.PXY
+        self.PXu, self.PYu = self.PXYu
         self.R = self.PX / self.PY
         self.M = array([[self.PX, 0], [0, self.PY]])
         self.W, self.H = self.PX * self.NCols, self.PY * self.NRows

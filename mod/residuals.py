@@ -15,6 +15,8 @@ from utility.affine_transformations import transform, m_transform, matrix, scale
 def res_analysis(cls):
     class ResidualAnalysis(cls):
 
+        RBin = {'x0': -1000, 'x1': 1000, 'y0': -1000, 'y1': 1000}
+
         def __init__(self, parent: DUTAnalysis, transformate=False):  # noqa
 
             self.Parent = parent
@@ -99,23 +101,24 @@ def res_analysis(cls):
         # ----------------------------------------
         # region DRAW
         def draw_u(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='X Residuals', x_tit='Residual [#mum]', file_name='ResX'))
+            return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='X Residuals', x_tit='dU [#mum]', file_name='ResU'))
 
         def draw_v(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='Y Residuals', x_tit='Residual [#mum]', file_name='ResY'))
+            return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='Y Residuals', x_tit='dV [#mum]', file_name='ResV'))
 
         def draw_x(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dx(cut, pl), **prep_kw(dkw, title='X Residuals', x_tit='Residual [Columns]'))
+            return self.Draw.distribution(self.dx(cut, pl) * self.Plane.PXu, **prep_kw(dkw, title='X Residuals', x_tit='dX [#mum]', file_name='ResX'))
 
         def draw_y(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dy(cut, pl), **prep_kw(dkw, title='Y Residuals', x_tit='Residual [Rows]'))
+            return self.Draw.distribution(self.dy(cut, pl) * self.Plane.PYu, **prep_kw(dkw, title='Y Residuals', x_tit='dY [#mum]', file_name='ResY'))
 
-        def draw_uv(self, bw=10, cut=None, pl=None, **dkw):
-            return self.draw_xy(bw, cut, pl, **dkw)
+        def draw_uv(self, cut=None, pl=None, **dkw):
+            x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3   # noqa
+            return self.Draw.histo_2d(x, y, **prep_kw(dkw, title='UV Residual', x_tit='dU [#mum]', y_tit='dV [#mum]', leg=self.cuts(), **self.RBin, file_name=f'UVRes{self.Plane}'))
 
-        def draw_xy(self, bw=10, cut=None, pl=None, **dkw):
-            x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3  # noqa
-            return self.Draw.histo_2d(x, y, bins.make(-1000, 1000, bw) * 2, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]', leg=self.cuts(), file_name=f'XYRes{self.Plane}'))
+        def draw_xy(self, cut=None, pl=None, **dkw):
+            x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.dx, self.dy]]) * self.Plane.PXY.reshape((2, -1)) * 1e3  # noqa
+            return self.Draw.histo_2d(x, y, **prep_kw(dkw, title='XY Residual', x_tit='dX [#mum]', y_tit='dY [#mum]', leg=self.cuts(), **self.RBin, file_name=f'XYRes{self.Plane}'))
 
         def draw(self, bw=10, pl=None, **dkw):
             self.Draw.distribution(self(cut=..., pl=pl) * 1e3, bins.make(0, 1000, bw), **prep_kw(dkw, title='Residuals', x_tit='Residual [#mum]'))
