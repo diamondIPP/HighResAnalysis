@@ -49,9 +49,9 @@ class Proteus:
         self.MaskDir = Path('mask')
 
         # CONFIG
-        self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
-        self.NRefPlanes = sum(['REF' in d['type'] for d in toml.load(self.ConfigDir.joinpath('device.toml'))['sensors']])
-        self.MaxDUTs = len(toml.load(self.ConfigDir.joinpath('geometry.toml'))['sensors']) - self.NTelPlanes - 1  # default geo has all sensors (tel, ref and dut)
+        self.NTelPlanes = sum([d['name'].startswith('M') for d in toml.load(str(self.ConfigDir.joinpath('device.toml')))['sensors']])
+        self.NRefPlanes = sum(['REF' in d['type'] for d in toml.load(str(self.ConfigDir.joinpath('device.toml')))['sensors']])
+        self.MaxDUTs = len(toml.load(str(self.ConfigDir.joinpath('geometry.toml')))['sensors']) - self.NTelPlanes - 1  # default geo has all sensors (tel, ref and dut)
         self.DUTs = duts
 
         self.RawFilePath = Path(raw_file)
@@ -70,7 +70,8 @@ class Proteus:
         self.N = max_events
         self.S = skip_events
         self.AlignDir = Path('alignment')
-        self.AlignSteps = self.align_steps()
+        self.Align = self.init_align(self.DUTs)
+        self.AlignSteps = list(toml.load(str(self.Align))['align'])
 
         self.Steps = [(self.noise_scan, self.toml_name(self.dut_names[-1], 'mask', 'mask')), (self.align, self.align_file), (self.recon, self.OutFilePath)]
 
@@ -116,8 +117,9 @@ class Proteus:
 
     @init_toml('align')
     def init_align(self, duts=None, data=None):
-        dut_fine = next(dic for step, dic in data['align'].items() if 'dut_fine' in step)
-        for step in self.AlignSteps:
+        default_steps = deepcopy(data['align'])
+        dut_fine = next(dic for step, dic in default_steps.items() if 'dut_fine' in step)
+        for step in default_steps:
             t, r, d = self.NTelPlanes, self.NRefPlanes, len(duts)
             if 'dut_coarse' in step:
                 data['align'][step]['sensor_ids'] = list(range(t + r + d))
@@ -130,12 +132,6 @@ class Proteus:
                     data['align'][step]['align_ids'] = [t + r + i]
     # endregion INIT
     # ----------------------------------------
-
-    def align_steps(self):
-        if not self.ConfigDir.is_dir():
-            warning(f'no proteus config found for {self.ConfigDir.stem}, creating default!')
-            self.__create_default_cfg()
-        return list(toml.load(str(self.ConfigDir.joinpath('align.toml')))['align'])
 
     @property
     def align_file(self):
@@ -230,7 +226,7 @@ class Proteus:
         for i in range(len(self.AlignSteps)) if step is None else [step]:
             s = self.AlignSteps[i]
             if not self.toml_name(s).exists() or force:
-                self.run('pt-align', out=self.AlignDir.joinpath(s), geo=self.toml_name(self.AlignSteps[i - 1]) if i else None, section=s, cfg=cfg, n=n)
+                self.run('pt-align', out=self.AlignDir.joinpath(s), geo=self.toml_name(self.AlignSteps[i - 1]) if i else None, section=s, cfg=cfg, n=n * 3 if 'dut' in s else n)
             else:
                 warning(f'geo file "{s}" already exists!')
         if step is None:
