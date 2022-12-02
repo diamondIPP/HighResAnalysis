@@ -86,6 +86,7 @@ try:
     b = z.BeamTest
     r = z.Run
     c = z.Converter
+    raw = c.Raw
     p = z.Proteus
     if 'CERN' in str(c):
         al = c.EventAlignment
