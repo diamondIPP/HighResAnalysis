@@ -14,6 +14,7 @@ class BatchAnalysis(DUTAnalysis):
     def __init__(self, batch_name, dut_number, test_campaign, verbose=True, test=False):
 
         self.Batch = batch_name if type(batch_name) is Batch else Batch(batch_name, dut_number, Analysis(test_campaign).BeamTest.Path)
+        self.DUT = self.Batch.DUT
         super().__init__(self.Batch.min_run.Number, dut_number, test_campaign, verbose, test)
 
     def __repr__(self):
