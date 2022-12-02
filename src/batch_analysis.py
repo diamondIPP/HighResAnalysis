@@ -17,7 +17,7 @@ class BatchAnalysis(DUTAnalysis):
         super().__init__(self.Batch.min_run.Number, dut_number, test_campaign, verbose, test)
 
     def __repr__(self):
-        return f'{self} of batch {self.Batch} ({self.BeamTest}), {self.ev_str}'
+        return f'{self} of {self.DUT}, batch {self.Batch} ({self.BeamTest}), {self.ev_str}'
 
     @classmethod
     def from_batch(cls, batch: Batch, verbose=True, test=False):

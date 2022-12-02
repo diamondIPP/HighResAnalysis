@@ -76,7 +76,7 @@ class DUTAnalysis(Analysis):
             self.verify_alignment()
 
     def __repr__(self):
-        return f'{self} of run {self.Run} ({self.BeamTest}), {self.ev_str}'
+        return f'{self} of {self.DUT}, run {self.Run} ({self.BeamTest}), {self.ev_str}'
 
     @property
     def ev_str(self):
