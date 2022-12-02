@@ -101,16 +101,16 @@ def res_analysis(cls):
         # ----------------------------------------
         # region DRAW
         def draw_u(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='X Residuals', x_tit='dU [#mum]', file_name='ResU'))
+            return self.Draw.distribution(self.du(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='X Residuals', x_tit='dU [#mum]', file_name=self.fn('ResU', pl)))
 
         def draw_v(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='Y Residuals', x_tit='dV [#mum]', file_name='ResV'))
+            return self.Draw.distribution(self.dv(cut, pl) * 1e3, **prep_kw(dkw, w=1, r=[-300, 300], title='Y Residuals', x_tit='dV [#mum]', file_name=self.fn('ResV', pl)))
 
         def draw_x(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dx(cut, pl) * self.Plane.PXu, **prep_kw(dkw, title='X Residuals', x_tit='dX [#mum]', file_name='ResX'))
+            return self.Draw.distribution(self.dx(cut, pl) * self.Plane.PXu, **prep_kw(dkw, title='X Residuals', x_tit='dX [#mum]', file_name=self.fn('ResX', pl)))
 
         def draw_y(self, cut=None, pl=None, **dkw):
-            return self.Draw.distribution(self.dy(cut, pl) * self.Plane.PYu, **prep_kw(dkw, title='Y Residuals', x_tit='dY [#mum]', file_name='ResY'))
+            return self.Draw.distribution(self.dy(cut, pl) * self.Plane.PYu, **prep_kw(dkw, title='Y Residuals', x_tit='dY [#mum]', file_name=self.fn('ResY', pl)))
 
         def draw_uv(self, cut=None, pl=None, **dkw):
             x, y = array([f(cut=self.Cut.exclude('res', cut), pl=pl) for f in [self.du, self.dv]]) * 1e3   # noqa
@@ -212,6 +212,9 @@ def res_analysis(cls):
             return mean([x - tx, y - ty], axis=1)
         # endregion ALIGN
         # ----------------------------------------
+
+        def fn(self, name, pl):
+            return f'{name}{self.plane(pl)}'
 
     def fit_angle(x, y):
         x, y, ey = np_profile(x, y, u=False)
