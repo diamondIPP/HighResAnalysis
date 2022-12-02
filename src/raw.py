@@ -66,15 +66,14 @@ class Raw:
     def soft(self):
         return self.SoftDir.joinpath('bin', 'euCliConverter')
 
-    @property
-    def options(self):
-        return f'-c {self.generate_fit_files()}'
+    def options(self, max_events=None):
+        return f'-c {self.generate_fit_files()}{f" -m {max_events}" if max_events is not None else ""}'
 
-    def convert(self):
+    def convert(self, max_events=None):
         """ convert binary raw file to root file with eudaq"""
         Converter.download_raw_file(self.RawFilePath)
         self.OutFilePath.parent.mkdir(exist_ok=True)
-        cmd = f'{self.soft} -i {self.RawFilePath} -o {self.OutFilePath} {self.options}'
+        cmd = f'{self.soft} -i {self.RawFilePath} -o {self.OutFilePath} {self.options(max_events)}'
         info(f'Convert {self.RawFilePath.name} to {self.OutFilePath.name} using {self.soft.name}\n')
         info(f'{cmd}\n')
         check_call(cmd, shell=True)

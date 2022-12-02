@@ -26,10 +26,10 @@ class CERNRaw(Raw):
     def soft(self):
         return self.SoftDir.joinpath('Judith')
 
-    @property
-    def options(self):
-        return f'-c convert -m {self.SoftDir.joinpath("configs", "readout", "CERN.cfg")}{f" -s {self.Offset}" if self.Offset else ""}'
+    def options(self, max_events=None):
+        emax = f' -n {max_events}' if max_events is not None else ''
+        return f'-c convert -m {self.SoftDir.joinpath("configs", "readout", "CERN.cfg")}{f" -s {self.Offset}" if self.Offset else ""}{emax}'
 
-    def convert(self):  # update doc str
+    def convert(self, max_events=None):  # update doc str
         """convert binary raw file (from KARTEL telescope) to root file with judith."""
         super().convert()
