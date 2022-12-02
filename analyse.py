@@ -20,7 +20,7 @@ from functools import partial
 t_start = time()
 aparser = ArgumentParser()
 aparser.add_argument('run', nargs='?', default=Analysis.Config.get_value('data', 'default run'))
-aparser.add_argument('dut', nargs='?', default=0, type=int)
+aparser.add_argument('dut', nargs='?', default=Analysis.Config.get_value('data', 'default dut', default=0), type=int)
 aparser.add_argument('--batch', '-b', nargs='?', default=None, help='batch name')
 aparser.add_argument('--testcampaign', '-tc', nargs='?', default=Analysis.find_testcampaign())
 aparser.add_argument('--verbose', '-v', action='store_false')
