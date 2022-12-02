@@ -58,7 +58,7 @@ class Batch:
         return all([d == duts[0] for d in duts])
 
     def load_log_names(self):
-        return sorted(list(set([dic['batch'] for dic in self.Log.values()])), key=lambda x: (int(remove_letters(x)), x))
+        return sorted(list(set([dic['batch'] for dic in self.Log.values() if dic['batch']])), key=lambda x: (int(remove_letters(x)), x))
 
     def load_runs(self, dut_nr):
         if self.Name in self.LogNames or self.Name is None:
