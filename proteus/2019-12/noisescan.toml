@@ -33,7 +33,7 @@ row_max = 71
 
 #noise scan parameters for the DUT.
 [noisescan.II6-B6]
-sigma_above_avg_max = 10.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
+sigma_above_avg_max = 20.0 #cut that defines how many sigma above avg a pixel must have to be considered noisy
 rate_max = 0.05 # max hits per pixel per event
 density_bandwidth = 3.0 # Parameter to calculate the expected number of hits in each pixel
 
