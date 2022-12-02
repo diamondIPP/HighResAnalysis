@@ -53,8 +53,7 @@ def make_desy_run_log():
                     **dut_dict,
                     'angle': 0 if row[17] == '-' else int(row[17]),
                     'status': status_dict[row[18]],
-                    'runplan': row[19],
-                    'batch': row[20],
+                    'batch': f'{row[19]}{row[20]}',
                     'comment': row[21],
                     'dut position': list(range(len(dut_dict['duts'])))  # there were always two DUTs at DESY
                     }
