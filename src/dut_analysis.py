@@ -76,7 +76,7 @@ class DUTAnalysis(Analysis):
             self.verify_alignment()
 
     def __repr__(self):
-        return f'{self} of {self.DUT}, run {self.Run} ({self.BeamTest}), {self.ev_str}'
+        return f'{self} of {self.Run.DUT}, run {self.Run} ({self.BeamTest}), {self.ev_str}'
 
     @property
     def ev_str(self):
@@ -85,6 +85,28 @@ class DUTAnalysis(Analysis):
     @classmethod
     def from_run(cls, run: Run, verbose=True, test=False):
         return cls(run.Number, run.DUT.Number, run.TCDir.stem, verbose, test)
+
+    @property
+    def suffix(self):
+        return f'{self.DUT}-{self.Run}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
+
+    def make_plots(self, res=.2, n=50):
+        old_dir = self.Draw.ResultsDir
+        SaveDraw.SaveOnServer = False
+        self.Draw.ResultsDir = Dir.joinpath('tmp')
+        rx, ry = self.Cut.get_config('dia size').reshape(2, -1) if 'dia size' in self.Cut.Config.options() else (None, None)
+        self.draw_signal_distribution(x0=-50, x1=1040, fn=f'sd-{self.suffix}')
+        for pal in [53, 55]:
+            self.draw_occupancy(cut=0, x_range=rx, y_range=ry, pal=pal, fn=f'occ-{self.suffix}-p{pal}')
+            self.Efficiency.draw_map(res=res, x_range=rx, y_range=ry, pal=pal, fn=f'em-{self.suffix}-p{pal}', leg=self.Cut.get_fid())
+            self.draw_signal_map(res=res, x_range=rx, y_range=ry, pal=pal, qz=.999, fn=f'sm-{self.suffix}-p{pal}')
+            self.draw_cluster_size_map(res=.1, x_range=rx, y_range=ry, pal=pal, qz=.995, fn=f'csm-{self.suffix}-p{pal}')
+            self.draw_ph_in_pixel(n, 75, 50, pal=pal, fn=f'ph-pix-{self.suffix}-p{pal}')
+            self.draw_cs_in_pixel(n, 75, 50, pal=pal, qz=.999, fn=f'cs-pix-{self.suffix}-p{pal}')
+            self.Efficiency.draw_in_pixel(n, 75, 50, pal=pal, z_range=[70, 100], fn=f'e-pix-{self.suffix}-p{pal}')
+            self.draw_hitmap_in_pixel(n, 75, 50, pal=pal, fn=f'hm-pix-{self.suffix}-p{pal}')
+        self.Draw.ResultsDir = old_dir
+        SaveDraw.SaveOnServer = True
 
     # ----------------------------------------
     # region INIT
@@ -416,7 +438,7 @@ class DUTAnalysis(Analysis):
         return self.draw_signal_distribution(cut, draw_thresh, e=True, **dkw)
 
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
-        self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **dkw)
+        self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, self.get_phs]]
@@ -428,7 +450,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_vs_tp(self, cut=None, **dkw):
         x, y = [f(cut=self.Cut.exclude('tp', cut)) for f in [self.get_trigger_phase, self.get_phs]]
-        self.Draw.profile(x, y, bins.TP, 'Charge vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', y_tit=self.ph_tit, graph=True))
+        self.Draw.profile(x, y, bins.TP, 'Charge vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', y_tit=self.ph_tit, graph=True, file_name='PH-TP'))
 
     def draw_signal_trend(self, bw=None, e=False, cut=None, **dkw):
         x, y = self.time(cut), self.get_phs(e=e, cut=cut)

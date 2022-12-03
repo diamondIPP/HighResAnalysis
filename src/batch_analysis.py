@@ -33,6 +33,10 @@ class BatchAnalysis(DUTAnalysis):
         return f'{ev2str(self.NEvents if hasattr(self, "NEvents") else self.Batch.n_ev)} ev'
 
     @property
+    def suffix(self):
+        return f'{self.DUT}-{self.Batch}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
+
+    @property
     def run_str(self):
         return f'b-{self.Batch}'
 
