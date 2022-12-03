@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones, isnan
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
 from src.cut import Cuts
@@ -102,7 +102,8 @@ class DUTCut(Cuts):
         return self.make_cluster_mask(*self.get_thresh_mask())
 
     def get_cal_chi2_mask(self):
-        return where(self.Ana.Calibration.get_chi2s() > self.get_config('calibration chi2', default=10.)) if self.Ana.Calibration is not None else zeros((2, 0))
+        v = self.Ana.Calibration.get_chi2s()
+        return where((v > self.get_config('calibration chi2', default=10.)) | isnan(v)) if self.Ana.Calibration is not None else zeros((2, 0))
 
     @save_cut('CMask', cfg='calibration chi2')
     def make_cal_chi2_mask(self, _redo=False):
