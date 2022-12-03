@@ -40,6 +40,7 @@ class DUTAnalysis(Analysis):
         # data
         self.DUT = self.Run.DUT
         self.Converter = self.init_converter()
+        self.Calibration = self.Converter.load_calibration(self.DUT.Number)
         self.Proteus = self.Converter.Proteus
         self.Planes = self.init_planes()
         self.Plane = self.Planes[self.DUT.Plane.Number]  # update rotated
@@ -59,7 +60,6 @@ class DUTAnalysis(Analysis):
         self.Surface = False
 
         # SUBCLASSES
-        self.Calibration = self.Converter.load_calibration(self.DUT.Number)
         self.Cut = DUTCut(self)
         self.Residuals = self.init_residuals()
 
@@ -210,10 +210,8 @@ class DUTAnalysis(Analysis):
     def get_phs(self, e=False, cut=None):
         return self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
 
-    def get_ph(self, cut=None):
-        values = self.get_phs(cut=cut)
-        m, s = mean_sigma(values)
-        return ufloat(m, s / sqrt(values.size))
+    def ph(self, cut=None):
+        return mean_sigma(self.get_phs(cut=cut))[0]
 
     def get_x(self, cut=None, pl=None, rot=False):
         return self.get_y(cut, pl) if self.plane(pl).Rotated and rot else self.get_data('Clusters', 'X', cut, pl)
