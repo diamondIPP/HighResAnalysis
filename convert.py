@@ -186,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('-tc', nargs='?', default=None)
     parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
     parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]', type=int)
-    parser.add_argument('-b', nargs='?', default='23b', help='batch number, default [None]')
+    parser.add_argument('-b', nargs='?', default=None, help='batch number, default [None]')
     parser.add_argument('-v', action='store_false', help='turn verbose OFF')
     parser.add_argument('-t', action='store_true', help='turn test mode ON')
     parser.add_argument('-f', action='store_true', help='force conversion')
