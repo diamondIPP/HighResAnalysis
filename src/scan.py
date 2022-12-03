@@ -49,6 +49,9 @@ class Scan(Ensemble):
     def draw_current(self, t=False, **dkw):
         self.draw_graph(self.values(DUTAnalysis.current), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
 
+    def draw_pulse_height(self, t=False, **dkw):
+        self.draw_graph(self.values(DUTAnalysis.ph), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
+
 
 class VScan(Scan):
 
@@ -59,6 +62,17 @@ class VScan(Scan):
 
     def x(self):
         return array(self.biases)
+
+
+class TScan(Scan):
+
+    XArgs = {'x_tit': 'Trim [vcal]'}
+
+    def __init__(self, name, verbose=False, test=False):
+        super().__init__(name, verbose, test)
+
+    def x(self):
+        return array([ana.Calibration.Trim for ana in self.Anas])
 
 
 if __name__ == '__main__':

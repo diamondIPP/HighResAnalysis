@@ -13,7 +13,7 @@ from plotting.draw import *  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
 from src.batch_analysis import BatchAnalysis
 from src.run import load_nrs
-from src.scan import Ensemble, Scan, VScan
+from src.scan import Ensemble, Scan, VScan, TScan
 from utility.utils import *  # noqa
 from functools import partial
 
@@ -40,7 +40,7 @@ if args.runplan is not None:
 ensembles = load_json(Ensemble.FilePath)
 
 if args.run in ensembles:
-    s = VScan if 'v-' in args.run else Scan
+    s = VScan if 'v-' in args.run else TScan if 't-' in args.run else Scan
     z = s(args.run)
 
 else:
