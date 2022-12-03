@@ -4,7 +4,7 @@
 # created on July 2nd 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import genfromtxt, all, delete, round, argmax, savetxt, isnan
+from numpy import genfromtxt, all, delete, round, argmax, savetxt, isnan, any
 
 import src.bins as bins
 from plotting.save import Draw, SaveDraw, FitRes, warning
@@ -116,7 +116,10 @@ class Calibration:
         return genfromtxt(self.RawFileName, skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
 
     def get_thresholds(self):
-        return self.vcals[argmax(self.get_all_points() > 0, axis=2)]
+        p = self.get_all_points()
+        x = self.vcals[argmax(p > 0, axis=2)].astype('f2')
+        x[~any(p, axis=2)] = None
+        return x
 
     def read_fit_pars(self):
         return genfromtxt(self.fit_file, skip_header=3, usecols=arange(4), dtype='f2').reshape((self.NX, self.NY, -1))
@@ -193,7 +196,7 @@ class Calibration:
 
     def draw_fit(self, col=14, row=14, **dkw):
         f = self.fit(self.vcals, self.get_points(col, row))
-        return self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pix {col} {row}', leg=f.Fit))
+        return self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pix {col} {row}', leg=f.Fit, file_name=f'CalFit{col}-{row}'))
 
     def draw_pxar_fit(self, col=14, row=14, **dkw):
         """ draws the Erf fit from pXar """
@@ -201,7 +204,11 @@ class Calibration:
         return self.draw(col, row, **prep_kw(dkw, title=f'Calibration Fit for Pixel {col} {row}', leg=f))
 
     def draw_thresholds(self, **dkw):
-        return self.Draw.prof2d(self.get_thresholds(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Threshold [vcal]'))
+        x = self.get_thresholds().flatten()
+        return self.Draw.distribution(x[~isnan(x)], **prep_kw(dkw, x_tit='Threshold [vcal]', fn='CalThresh'))
+
+    def draw_threshold_map(self, **dkw):
+        return self.Draw.prof2d(self.get_thresholds(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Threshold [vcal]', fn='ThreshMap'))
 
     def draw_chi2_map(self, **dkw):
         return self.Draw.prof2d(self.get_chi2s(), binning=bins.get_local(self.Plane), **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='#chi^{2}', file_name='Chi2Map'))
