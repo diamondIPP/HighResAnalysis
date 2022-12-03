@@ -102,8 +102,12 @@ class DUTCut(Cuts):
         return self.make_cluster_mask(*self.get_thresh_mask())
 
     def get_cal_chi2_mask(self):
+        if self.Ana.Calibration is None:
+            return zeros((2, 0))
         v = self.Ana.Calibration.get_chi2s()
-        return where((v > self.get_config('calibration chi2', default=10.)) | isnan(v)) if self.Ana.Calibration is not None else zeros((2, 0))
+        d = array(where((v > self.get_config('calibration chi2', default=10.)) | isnan(v))).T
+        fid = self.get_fid(name='full size') if 'full size' in self.Config.options() else None
+        return d if fid is None else d[self.points_in_polygon(d, fid)].T
 
     @save_cut('CMask', cfg='calibration chi2')
     def make_cal_chi2_mask(self, _redo=False):
@@ -158,6 +162,7 @@ class DUTCut(Cuts):
 
     @save_cut('Slope', suf_args='all', cfg='slope quantile')
     def make_slope(self, q=None, _redo=False, _save=True):
+        """ cut the [q] percent of events left and right of the Gaussian distribution"""
         x, y, q = self.Ana.get_slope_x(cut=False), self.Ana.get_slope_y(cut=False), choose(q, self.get_config('slope quantile', dtype=float))
         (xmin, xmax), (ymin, ymax) = quantile(x, [q, 1 - q]), quantile(y, [q, 1 - q])
         return ones(x.size, '?') if q >= .5 else (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
@@ -206,6 +211,9 @@ class DUTCut(Cuts):
     @staticmethod
     def point_in_polygon(p, poly: TCutG):
         return poly.IsInside(*p)
+
+    def points_in_polygon(self, p, poly: TCutG):
+        return array([self.point_in_polygon(ip, poly) for ip in p], '?')
     # endregion FIDUCIAL
     # ----------------------------------------
 
