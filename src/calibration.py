@@ -37,7 +37,6 @@ class Calibration:
 
         self.RawFileName = self.load_raw_filename()
         self.Tag = remove_letters(self.RawFileName.name)
-        self.FileName = join(self.Dir, f'{self.Trim}-{self.Number}.h5py')
         self.FitFileName = self.Dir.joinpath(f'fitpars-{self.Trim}.txt')
         self.CalPath = self.Dir.parent.joinpath('fitpars-.txt')  # enter trim and DUT in eudaq
 
@@ -112,7 +111,7 @@ class Calibration:
         return d.joinpath(f'{"_".join(str(v) for v in [name, self.Run.DUT, self.Trim, self.Number, suf] if v)}.hdf5')
 
     @save_hdf5('Points', arr=True, field='Tag')
-    def get_all_points(self):
+    def get_all_points(self, _redo=False):
         return genfromtxt(self.RawFileName, skip_header=3, dtype='u2')[:, :-3].reshape((self.NX, self.NY, -1))   # last three entries are pixel info
 
     def get_thresholds(self):
