@@ -132,7 +132,7 @@ class DUTCut(Cuts):
     @save_cut('Chi2', suf_args='all', cfg='chi2 quantile')
     def make_chi2(self, q=None, _redo=False, _save=True):
         x, q = self.Ana.get_chi2(cut=False), choose(q, self.get_config('chi2 quantile', dtype=float))
-        return ones(x.size, '?') if q == 1 else x < quantile(x, q)
+        return x < quantile(x, q)
 
     @save_cut('Res', suf_args='all', cfg='residuals')
     def make_residual(self, v=None, _redo=1):
