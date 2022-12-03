@@ -17,7 +17,7 @@ def save_cut(*pargs, suf_args='[]', field=None, verbose=False, cfg=None, cfield=
             ana = args[0]
             redo, kw_redo = False, kwargs.pop('_redo') if '_redo' in kwargs else False
             if cfg is not None:
-                @save_pickle(cfg.replace(' ', ''), field=cfield, suf=ana.Config.Section, sub_dir='cuts', verbose=verbose)
+                @save_pickle(cfg.replace(' ', ''), field=cfield, suf=ana.Config.Section, sub_dir=ana.MetaSubDir, verbose=verbose)
                 def get_config(a, c, _redo=False):
                     return a.get_config(c)
                 redo = ana.get_config(cfg) != get_config(ana, cfg)
