@@ -87,7 +87,8 @@ class Currents(Analysis):
         data = h5py.File(self.FileName, 'r')[self.Tag]
         data = data[where((data['timestamps'] >= time_stamp(self.Begin, off=True)) & (data['timestamps'] <= time_stamp(self.End, off=True)))]
         if self.IgnoreJumps:  # filter out jumps
-            data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
+            c = abs(data['currents'])
+            data = data[append(False, c[:-1] * 100 > c[1:]) | ~c.astype('?')]  # take out the events that are 100 larger than the previous
         data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
         if self.Ana is not None and data.size:
             data['timestamps'] -= uint32(data['timestamps'][0] - self.Run.StartTime)  # synchronise time vectors
