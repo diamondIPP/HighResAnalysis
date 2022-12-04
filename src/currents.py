@@ -175,6 +175,14 @@ class Currents(Analysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region GET
+    @property
+    def currents(self):
+        return self.Data['currents']
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region DATA ACQUISITION
     def get_log_date(self, name):
         log_date = ''.join(basename(name).split('_')[-6:])
@@ -203,7 +211,6 @@ class Currents(Analysis):
                 PBAR.update()
             if len(arrays):
                 f.create_dataset(basename(d), data=concatenate(arrays))
-
     # endregion DATA ACQUISITION
     # ----------------------------------------
 
@@ -221,6 +228,9 @@ class Currents(Analysis):
             warning(f'Bias of run {self.Ana.Run} is 0!')
             return ufloat(0, 0)
         else:
+            x = self.currents
+            if all(x == x[0]):
+                return ufloat(x[0], self.Precision)
             h = self.draw_distribution(show=False, save=False)
             if h.GetEntries() < 3:
                 return None
