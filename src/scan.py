@@ -4,7 +4,7 @@
 # created on November 30th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.run import Ensemble
+from src.run import Ensemble, Dir
 from src.batch_analysis import DUTAnalysis, BatchAnalysis, Batch
 from numpy import array
 from plotting.save import prep_kw, SaveDraw, Path
@@ -25,6 +25,20 @@ class Scan(Ensemble):
     @property
     def server_save_dir(self):
         return Path('duts', str(self.DUT), self.Name)
+
+    @property
+    def suffix(self):
+        return f'{self.DUT.Name}-{self.__class__.__name__}-{self.Anas[0].BeamTest.Location}'.lower().replace('ii6-', '')
+
+    def save_plots(self):
+        old_dir = self.Draw.ResultsDir
+        SaveDraw.SaveOnServer = False
+        self.Draw.ResultsDir = Dir.joinpath('tmp')
+        self.draw_current(fn=f'cur-{self.suffix}')
+        self.draw_efficiency(fn=f'e-{self.suffix}')
+        self.draw_pulse_height(fn=f'ph-{self.suffix}')
+        self.Draw.ResultsDir = old_dir
+        SaveDraw.SaveOnServer = True
 
     def values(self, f, *args, **kwargs):
         return array([f(ana, *args, **kwargs) for ana in self.Anas])
