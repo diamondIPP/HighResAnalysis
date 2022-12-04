@@ -232,6 +232,14 @@ def ev2str(v):
     return f'{v / 10 ** (3 * n):.{2 if n > 1 else 0}f}{["", "k", "M"][n]}'
 
 
+def bias2str(*bias):
+    return array([f'{i:+.0f} V' for i in bias])[... if len(bias) > 1 else 0]
+
+
+def bias2rootstr(*bias):
+    return array([f'{i:+.0f} V'.replace('+-', '#pm').replace('+/-', '#pm').replace('+', '#plus').replace('-', '#minus') for i in bias])[... if len(bias) > 1 else 0]
+
+
 def get_buf(buf, n, dtype=None):
     return frombuffer(buf, dtype=buf.typecode, count=n).astype(dtype)
 
