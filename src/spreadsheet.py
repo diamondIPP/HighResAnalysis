@@ -31,8 +31,8 @@ def colnum_string(n):
     return string
 
 
-def make_timestamp(date, time):
-    return int(mktime(datetime.strptime(f'{date}{time}', '%m/%d/%Y%H:%M').timetuple()))
+def make_timestamp(date, time, off=0):
+    return int(mktime(datetime.strptime(f'{date}{time}', '%m/%d/%Y%H:%M').timetuple())) + off
 
 
 def make_desy_run_log():
@@ -48,7 +48,7 @@ def make_desy_run_log():
         dut_data = array(row[7:17]).reshape((2, -1)).T.tolist()  # two DUTs
         dut_dict = {name: d for name, d in zip(['duts', 'hv supplies', 'hv', 'current', 'trim'], dut_data)}
         dic[run] = {'start': make_timestamp(row[1], row[2]),
-                    'end': make_timestamp(row[1], row[3]),
+                    'end': make_timestamp(row[1], row[3], off=24 * 60 * 60 if row[3] < row[2] else 0),
                     'events': int(float(row[5]) * 1e6),
                     **dut_dict,
                     'angle': 0 if row[17] == '-' else int(row[17]),
@@ -93,7 +93,7 @@ def make_cern_run_log(tc='2018-10'):
             continue
         dic[run] = {'telescope run': int(row[0]),
                     'start': make_timestamp(row[r1 + 1], row[r1 + 2]),
-                    'end': make_timestamp(row[r1 + 1], row[r1 + 3]),
+                    'end': make_timestamp(row[r1 + 1], row[r1 + 3], off=24 * 60 * 60 if row[r1 + 3] < row[r1 + 2] else 0),
                     'events': int(row[r1 + 6]) if row[r1 + 6] else 0,
                     'dut position': where(raw_dut_data[:, 0])[0].tolist(),
                     **dut_dict,
