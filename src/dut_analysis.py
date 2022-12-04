@@ -90,7 +90,7 @@ class DUTAnalysis(Analysis):
     def suffix(self):
         return f'{self.DUT}-{self.Run}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
 
-    def make_plots(self, res=.2, n=50):
+    def save_plots(self, res=.2, n=50):
         old_dir = self.Draw.ResultsDir
         SaveDraw.SaveOnServer = False
         self.Draw.ResultsDir = Dir.joinpath('tmp')
