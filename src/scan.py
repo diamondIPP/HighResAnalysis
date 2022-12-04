@@ -7,7 +7,8 @@
 from src.run import Ensemble, Dir
 from src.batch_analysis import DUTAnalysis, BatchAnalysis, Batch
 from numpy import array
-from plotting.save import prep_kw, SaveDraw, Path
+from plotting.save import prep_kw, SaveDraw, Path, Draw, datetime, choose, rm_key
+from utility.utils import bias2rootstr
 
 
 class Scan(Ensemble):
@@ -49,6 +50,12 @@ class Scan(Ensemble):
     def x(self):
         return self.t()
 
+    def x2str(self):
+        return [datetime.fromtimestamp(i).strftime('%H:%M') for i in self.x()]
+
+    def legend(self, h, titles=None, **kwargs):
+        return Draw.legend(h, choose(self.x2str, titles), **kwargs)
+
     def init_analyses(self, verbose, test):
         return [BatchAnalysis.from_batch(u, verbose, test) if type(u) is Batch else DUTAnalysis.from_run(u, verbose, test) for u in self.Units]
 
@@ -58,13 +65,17 @@ class Scan(Ensemble):
         return self.Draw.graph(x, y, **prep_kw(dkw, **Scan.XArgs if t else self.XArgs, file_name=fname))
 
     def draw_efficiency(self, t=False, **dkw):
-        self.draw_graph(self.values(DUTAnalysis.eff), t, **prep_kw(dkw, y_tit='Efficiency [%]', file_name='Eff'))
+        return self.draw_graph(self.values(DUTAnalysis.eff), t, **prep_kw(dkw, y_tit='Efficiency [%]', file_name='Eff'))
 
     def draw_current(self, t=False, **dkw):
-        self.draw_graph(self.values(DUTAnalysis.current), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
+        return self.draw_graph(self.values(DUTAnalysis.current), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
 
     def draw_pulse_height(self, t=False, **dkw):
-        self.draw_graph(self.values(DUTAnalysis.ph), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
+        return self.draw_graph(self.values(DUTAnalysis.ph), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
+
+    def draw_ph_dists(self, **dkw):
+        h = [ana.draw_signal_distribution(save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
+        return self.Draw.stack(h, 'PHDists', self.x2str(), **prep_kw(dkw, scale=True, file_name='PhDists'))
 
 
 class VScan(Scan):
@@ -77,6 +88,9 @@ class VScan(Scan):
     def x(self):
         return array(self.biases)
 
+    def x2str(self):
+        return bias2rootstr(*self.x())
+
 
 class TScan(Scan):
 
@@ -87,6 +101,12 @@ class TScan(Scan):
 
     def x(self):
         return array([ana.Calibration.Trim for ana in self.Anas])
+
+    def x2str(self):
+        return [str(i) for i in self.x()]
+
+    def draw_ph_dists(self, **dkw):
+        return super().draw_ph_dists(**prep_kw(dkw, leg_head='Trim [vcal]'))
 
 
 if __name__ == '__main__':
