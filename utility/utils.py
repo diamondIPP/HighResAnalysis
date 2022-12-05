@@ -425,7 +425,7 @@ def make_suffix(*values):
 def prep_suffix(f, ana, args, kwargs, suf_args, field=None):
     def_pars = signature(f).parameters
     names, values = list(def_pars.keys())[1:], [par.default for par in def_pars.values()][1:]  # first par is class instance
-    i_arg = arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))
+    i_arg = arange(len([n for n in names if n not in ['self', '_redo', '_save']])) if suf_args == 'all' else make_list(loads(str(suf_args)))
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
     suf_vals += [] if field is None else [get_field(ana, field)]
     return make_suffix(*suf_vals)
