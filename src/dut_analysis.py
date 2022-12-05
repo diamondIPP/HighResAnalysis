@@ -90,23 +90,26 @@ class DUTAnalysis(Analysis):
     def suffix(self):
         return f'{self.DUT}-{self.Run}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
 
-    def save_plots(self, res=.2, n=50):
+    def save_plots(self, res=.2, n=50, pal=55, rz_cs=None):
         old_dir = self.Draw.ResultsDir
         SaveDraw.SaveOnServer = False
-        self.Draw.ResultsDir = Dir.joinpath('tmp')
-        rx, ry = self.Cut.get_config('dia size').reshape(2, -1) if 'dia size' in self.Cut.Config.options() else (None, None)
-        self.draw_signal_distribution(x0=-50, x1=1040, fn=f'sd-{self.suffix}')
-        for pal in [53, 55]:
-            self.draw_occupancy(cut=0, x_range=rx, y_range=ry, pal=pal, fn=f'occ-{self.suffix}-p{pal}')
-            self.Efficiency.draw_map(res=res, x_range=rx, y_range=ry, pal=pal, fn=f'em-{self.suffix}-p{pal}', leg=self.Cut.get_fid())
-            self.draw_signal_map(res=res, x_range=rx, y_range=ry, pal=pal, qz=.999, fn=f'sm-{self.suffix}-p{pal}')
-            self.draw_cluster_size_map(res=.1, x_range=rx, y_range=ry, pal=pal, qz=.995, fn=f'csm-{self.suffix}-p{pal}')
-            self.draw_ph_in_pixel(n, 75, 50, pal=pal, fn=f'ph-pix-{self.suffix}-p{pal}')
-            self.draw_cs_in_pixel(n, 75, 50, pal=pal, qz=.999, fn=f'cs-pix-{self.suffix}-p{pal}')
-            self.Efficiency.draw_in_pixel(n, 75, 50, pal=pal, z_range=[70, 100], fn=f'e-pix-{self.suffix}-p{pal}')
-            self.draw_hitmap_in_pixel(n, 75, 50, pal=pal, fn=f'hm-pix-{self.suffix}-p{pal}')
+        self.Draw.ResultsDir = Dir.joinpath('tmp', self.suffix)
+        self.draw_signal_distribution(x0=-.05, x1=1.05, fn=f'sd-{self.suffix}', qscale=.95)
+        r = self.r_fid()
+        self.draw_occupancy(cut=0, **r, pal=pal, fn=f'occ-{self.suffix}')
+        self.Efficiency.draw_map(res=res, **self.r_fid(), pal=pal, fn=f'em-{self.suffix}', leg=self.Cut.get_fid())
+        self.draw_signal_map(res=res, **r, pal=pal, qz=.999, fn=f'sm-{self.suffix}', qscale=.95)
+        self.draw_cluster_size_map(res=.1, **r, pal=pal, qz=.995, fn=f'csm-{self.suffix}', z_range=rz_cs)
+        self.draw_ph_in_pixel(n, 75, 50, pal=pal, fn=f'ph-pix-{self.suffix}', qscale=.95)
+        self.draw_cs_in_pixel(n, 75, 50, pal=pal, qz=.999, fn=f'cs-pix-{self.suffix}', z_range=rz_cs)
+        self.Efficiency.draw_in_pixel(n, 75, 50, pal=pal, z_range=[70, 100], fn=f'e-pix-{self.suffix}')
+        self.draw_hitmap_in_pixel(n, 75, 50, pal=pal, fn=f'hm-pix-{self.suffix}')
         self.Draw.ResultsDir = old_dir
         SaveDraw.SaveOnServer = True
+
+    def r_fid(self, name='dia size'):
+        rx, ry = self.Cut.get_config(name).reshape(2, -1) if name in self.Cut.Config.options() else (None, None)
+        return {'x_range': rx, 'y_range': ry}
 
     # ----------------------------------------
     # region INIT
@@ -207,8 +210,9 @@ class DUTAnalysis(Analysis):
         data = array(data) if key is None else array(data[key])
         return data if type(cut) is bool else self.Cut(cut, data, pl)
 
-    def get_phs(self, e=False, cut=None):
-        return self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
+    def get_phs(self, e=False, cut=None, qscale=None):
+        x = self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
+        return x if qscale is None else x / quantile(x, qscale)
 
     def ph(self, cut=None):
         return mean_sigma(self.get_phs(cut=cut))[0]
@@ -317,8 +321,8 @@ class DUTAnalysis(Analysis):
     def ph_tit(self):
         return 'Pulse Height [vcal]'
 
-    def get_ph_tit(self, e=False):
-        return 'Charge [e]' if e else self.ph_tit
+    def get_ph_tit(self, e: Any = False, qscale=None):
+        return 'Normalised Pulse Height' if qscale is not None else 'Charge [e]' if e else self.ph_tit
 
     def segments(self, nx, ny, width=False):
         x0, x1, y0, y1 = self.Cut.get_config('full size')
@@ -423,8 +427,8 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL
-    def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, **dkw):
-        return self.Draw.distribution(self.get_phs(e, cut), **prep_kw(dkw, title='PH', x_tit=self.ph_tit, leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
+    def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, qscale=None, **dkw):
+        return self.Draw.distribution(self.get_phs(e, cut, qscale), **prep_kw(dkw, title='PH', x_tit=self.get_ph_tit(0, qscale), leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
 
     def draw_trim(self, e, thresh=False):
         if self.Calibration.Trim is None:
@@ -438,9 +442,10 @@ class DUTAnalysis(Analysis):
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
         self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
 
-    def draw_signal_map(self, res=.3, fid=False, cut=None, **dkw):
-        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, self.get_phs]]
-        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits(), file_name='SignalMap'))
+    def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, **dkw):
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, partial(self.get_phs, qscale=qscale)]]
+        zt = self.get_ph_tit(0, qscale)
+        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
@@ -489,7 +494,7 @@ class DUTAnalysis(Analysis):
     # region IN PIXEL
     def contracted_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None, contract=True):
         x, y = self.get_txy(cut=cut)
-        z_ = self.get_phs(cut=cut) if fz is None else zeros(x.size, dtype='?') if not fz else fz(cut=cut)
+        z_ = zeros(x.size, dtype='?') if fz is None else fz(cut=cut)
         x, y = (x + ox / self.Plane.PX / 1e3) % mx, (y + oy / self.Plane.PY / 1e3) % my
         return array(self.expand_vars(x, y, z_, mx, my) if contract else (x, y, z_)) * [[self.Plane.PX * 1e3], [self.Plane.PY * 1e3], [1]]  # convert from pixel to um
 
@@ -508,7 +513,7 @@ class DUTAnalysis(Analysis):
         binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
         fh = self.Draw.prof2d if any(z_) else self.Draw.histo_2d
-        h = fh(x, y, zz=z_, binning=binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]'))
+        h = fh(x, y, zz=z_, binning=binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]'))
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
 
     def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
@@ -518,16 +523,16 @@ class DUTAnalysis(Analysis):
         return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
 
     def draw_hitmap_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_pixel(ox, oy, n, cut, fz=False, tit='HitMap', **dkw)
+        return self.draw_in_pixel(ox, oy, n, cut, tit='HitMap', **dkw)
 
     def draw_hitmap_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_cell(ox, oy, n, cut, fz=False, tit='HitMap', **dkw)
+        return self.draw_in_cell(ox, oy, n, cut, tit='HitMap', **dkw)
 
-    def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_cell(ox, oy, n, cut, **prep_kw(dkw, pal=53))
+    def draw_ph_in_cell(self, n=None, ox=0, oy=0, cut=None, qscale=None, **dkw):
+        return self.draw_in_cell(ox, oy, n, cut, fz=partial(self.get_phs, qscale=qscale), **prep_kw(dkw, pal=53, z_tit=self.get_ph_tit(0, qscale)))
 
-    def draw_ph_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_pixel(ox, oy, n, cut, **prep_kw(dkw, pal=53))
+    def draw_ph_in_pixel(self, n=None, ox=0, oy=0, cut=None, qscale=None, **dkw):
+        return self.draw_in_pixel(ox, oy, n, cut, fz=partial(self.get_phs, qscale=qscale), **prep_kw(dkw, pal=53, z_tit=self.get_ph_tit(0, qscale)))
 
     def draw_cs_in_cell(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_cell(ox, oy, n, self.Cut.exclude('cs', cut), fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=1, pal=53, z_tit='Cluster Size'))
