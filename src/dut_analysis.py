@@ -506,7 +506,8 @@ class DUTAnalysis(Analysis):
         cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
         return x[cut], y[cut], e[cut]
 
-    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, **dkw):
+    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, **dkw):
+        mx *= 2 if dc else 1
         x, y, z_ = self.contracted_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, fz, cut)
         n = choose(n, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
@@ -516,11 +517,11 @@ class DUTAnalysis(Analysis):
         h = fh(x, y, zz=z_, binning=binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]'))
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
 
-    def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
-        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Cell', file_name=f'{tit.title()}InCell'))
+    def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, tit='PH', **dkw):
+        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, fz, dc, **prep_kw(dkw, title=f'{tit} in Cell', file_name=f'{tit.title()}InCell'))
 
-    def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, fz=None, tit='PH', **dkw):
-        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
+    def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, tit='PH', **dkw):
+        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, dc, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
 
     def draw_hitmap_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_pixel(ox, oy, n, cut, tit='HitMap', **dkw)
