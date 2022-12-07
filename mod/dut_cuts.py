@@ -106,7 +106,7 @@ class DUTCut(Cuts):
             return zeros((2, 0))
         v = self.Ana.Calibration.get_chi2s()
         d = array(where((v > self.get_config('calibration chi2', default=10.)) | isnan(v))).T
-        fid = self.get_fid(name='full size') if 'full size' in self.Config.options(self.Config.Section) else None
+        fid = self.get_fid(name='full size') if 'full size' in self.Config.options() else None
         return d.T if fid is None else d[self.points_in_polygon(d, fid)].T
 
     @save_cut('CMask', cfg='calibration chi2')
