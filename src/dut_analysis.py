@@ -492,11 +492,11 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region IN PIXEL
-    def contracted_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None, contract=True):
-        x, y = self.get_txy(cut=cut)
+    def contracted_vars(self, mx=1, my=1, ox=0, oy=0, fz=None, cut=None, expand=True):
+        x, y = self.get_txy(cut=cut) + .5  # put 0 to the corner of the pixel (is in the centre by default)
         z_ = zeros(x.size, dtype='?') if fz is None else fz(cut=cut)
-        x, y = (x + ox / self.Plane.PX / 1e3) % mx, (y + oy / self.Plane.PY / 1e3) % my
-        return array(self.expand_vars(x, y, z_, mx, my) if contract else (x, y, z_)) * [[self.Plane.PX * 1e3], [self.Plane.PY * 1e3], [1]]  # convert from pixel to um
+        x, y = (x + ox / self.Plane.PXu) % mx, (y + oy / self.Plane.PYu) % my
+        return array(self.expand_vars(x, y, z_, mx, my) if expand else (x, y, z_)) * [[self.Plane.PX * 1e3], [self.Plane.PY * 1e3], [1]]  # convert from pixel to um
 
     @staticmethod
     def expand_vars(x, y, z_, mx, my):
@@ -519,10 +519,10 @@ class DUTAnalysis(Analysis):
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=get_kw('show', dkw, default=True)) + [cell]))
 
     def draw_in_cell(self, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, dr=False, tit='PH', **dkw):
-        return self.draw_in(*self.DUT.PXY, ox, oy, n, cut, fz, dc, dr, **prep_kw(dkw, title=f'{tit} in Cell', file_name=f'{tit.title()}InCell'))
+        return self.draw_in(*self.DUT.PXYu, ox, oy, n, cut, fz, dc, dr, **prep_kw(dkw, title=f'{tit} in Cell', file_name=f'{tit.title()}InCell'))
 
     def draw_in_pixel(self, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, dr=False, tit='PH', **dkw):
-        return self.draw_in(*self.Plane.PXY * 1e3, ox, oy, n, cut, fz, dc, dr, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
+        return self.draw_in(*self.Plane.PXYu, ox, oy, n, cut, fz, dc, dr, **prep_kw(dkw, title=f'{tit} in Pixel', file_name=f'{tit.title()}InPixel'))
 
     def draw_hitmap_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_pixel(ox, oy, n, cut, tit='HitMap', **dkw)
@@ -547,7 +547,7 @@ class DUTAnalysis(Analysis):
 
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
-            wx, wy, c, d = self.DUT.PX, self.DUT.PY, get_last_canvas(), self.DUT.ColumnDiameter.n
+            wx, wy, c, d = self.DUT.PXu, self.DUT.PYu, get_last_canvas(), self.DUT.ColumnDiameter.n
             x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
             b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
             r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
