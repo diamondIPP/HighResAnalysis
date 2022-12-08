@@ -6,6 +6,7 @@
 
 from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner, isint
 from plotting.utils import load_json, warning, critical
+import plotting.latex as tex
 from src.analysis import Analysis, Path, choose
 from src.dut import DUT
 
@@ -32,8 +33,10 @@ class Batch:
         self.DataDir = data_dir
         self.Log = load_runlog(self.DataDir) if log is None else log
         self.LogNames = self.load_log_names()
+        self.Custom = self.load_custom()
         self.Runs = self.load_runs(dut_nr)
-        self.RunNrs = [run.Number for run in self.Runs]
+        self.FirstRun = self.Runs[0]
+        self.RunNrs = array([run.Number for run in self.Runs])
         self.Size = len(self.Runs)
         self.DUT = self.Runs[0].DUT
 
@@ -60,13 +63,15 @@ class Batch:
     def load_log_names(self):
         return sorted(list(set([dic['batch'] for dic in self.Log.values() if dic['batch']])), key=lambda x: (int(remove_letters(x)), x))
 
+    def load_custom(self):
+        return load_json(Dir.joinpath('ensembles', f'{self.DataDir.stem}.json'))
+
     def load_runs(self, dut_nr):
         if self.Name in self.LogNames or self.Name is None:
             is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
             return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
-        dic = load_json(Dir.joinpath('ensembles', f'{self.DataDir.stem}.json'))
-        if self.Name in dic:
-            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in dic[self.Name] if self.Log[str(nr)]['status'] == 'green']
+        if self.Name in self.Custom:
+            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in self.Custom[self.Name] if self.Log[str(nr)]['status'] == 'green']
         critical('unknown batch name')
 
     @property
@@ -95,6 +100,18 @@ class Batch:
         t_str = lambda x: [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [x[0]['start'], x[-1]['end']]]
         rows = [[n, r_str(logs), ev2str(sum([log['events'] for log in logs])), ', '.join(logs[0]['duts'])] + t_str(logs) for n, logs in data.items() if len(logs)]
         print_table(rows, header=['Batch', 'Events', 'Runs', 'DUTs', 'Begin', 'End'])
+
+    def show_custom(self, dut_nr=0, dut=None):
+        rows = []
+        batches = [Batch(n, dut_nr, self.DataDir, self.Log) for n, runs in self.Custom.items() if len(self.Log[str(runs[0])]['duts']) > dut_nr]
+        batches = list(filter(lambda x: x.DUT.Name == dut, batches)) if dut is not None else batches
+        irrs = array([i.DUT.get_irradiation(self.DataDir.name.replace('-', '')) for i in batches]).astype('d')
+        for i, b_ in enumerate(batches):
+            tc = self.DataDir.name.replace('-', '')
+            bt = tex.multirow(datetime.strptime(tc, '%Y%m').strftime('%b%y'), len(batches)) if not i else ''
+            irr = f'{irrs[i]:.1f}' if not all(irrs == irrs[0]) else tex.multirow(f'{irrs[i]:.1f}', len(batches)) if not i else ''
+            rows.append([bt, irr, b_.Name, f'{tex.num_range(*b_.RunNrs[[0, -1]])} ({b_.Size})', 'data', b_.DUT.Bias, ev2str(b_.n_ev)])
+        print(tex.table(None, rows=rows))
 
     def find_runs(self, dut, bias, min_run=0):
         return array([run.Number for run in self.Runs if dut in run.DUTs and int(run.Info['hv'][run.DUTs.index(dut)]) == bias and run >= min_run])  # noqa
