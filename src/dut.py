@@ -50,8 +50,8 @@ class DUT(Device):
         if self.Cells is not None:
             self.NColumns = 2 * self.Cells[0] * self.Cells[1] + sum(self.Cells) + 1
             self.ColumnDiameter = add_perr(self.Info.get_float('column diameter'), .05)
-            self.PXY = array(self.Info.get_list('cell size'))
-            self.PXYu = self.PXY * 1e3  # in um
+            self.PXYu = array(self.Info.get_list('cell size'))  # [um]
+            self.PXY = self.PXYu / 1e3  # in mm
             self.PX, self.PY = self.PXY
             self.PXu, self.PYu = self.PXYu
         self.VcalToEl = Analysis.Config.get_float('DUT', 'vcal to electrons')
