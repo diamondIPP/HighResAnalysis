@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones, isnan
 
-from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config
+from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config, cart2pol
 from src.cut import Cuts
 from utility.utils import critical, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
 from warnings import catch_warnings, simplefilter
@@ -171,6 +171,19 @@ class DUTCut(Cuts):
     def make_cluster_size(self, _redo=False):
         cut_value = self.get_config('max cluster size', dtype=int)
         return None if cut_value is None else self.Ana.get_cluster_size(cut=False) <= cut_value
+
+    def make_pixel_fiducial(self, r0, r1=0, ox=0, oy=0):
+        r0, r1 = sorted([r0, r1])
+        x, y, zz = self.Ana.contracted_vars(cut=0, ox=self.Ana.Plane.PXu / 2 - ox, oy=self.Ana.Plane.PYu / 2 - oy, expand=False)  # move 0 to the centre of the pixel
+        r, phi = cart2pol(x - self.Ana.Plane.PXu / 2, y - self.Ana.Plane.PYu / 2)  # centre around 0
+        return (r0 <= r) & (r <= r1)
+
+    def make_cell_fiducial(self, r0, r1=0, ox=0, oy=0):
+        r0, r1 = sorted([r0, r1])
+        mx, my = self.Ana.DUT.PXY / self.Ana.Plane.PXY
+        x, y, zz = self.Ana.contracted_vars(mx, my, cut=0, ox=self.Ana.DUT.PXu / 2 - ox, oy=self.Ana.DUT.PYu / 2 - oy, expand=False)  # move 0 to the centre of the pixel
+        r, phi = cart2pol(x - self.Ana.DUT.PXu / 2, y - self.Ana.DUT.PYu / 2)  # centre around 0
+        return (r0 <= r) & (r <= r1)
     # endregion GENERATE
     # ----------------------------------------
 

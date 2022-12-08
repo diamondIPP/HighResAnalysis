@@ -112,7 +112,7 @@ class Cuts:
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def add(self, cut: ndarray):
-        return self() & cut
+        return self() & self(cut)
 
     def remove(self, name):
         return self.Cuts.pop(name) if name in self.Cuts else None
