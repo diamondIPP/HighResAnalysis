@@ -41,7 +41,7 @@ ensembles = load_json(Ensemble.FilePath)
 
 if args.run in ensembles:
     s = VScan if 'v-' in args.run else TScan if 't-' in args.run else Scan
-    z = s(args.run)
+    z = s(args.run, args.verbose, args.test)
 
 else:
 
