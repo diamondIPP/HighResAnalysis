@@ -41,6 +41,10 @@ class Scan(Ensemble):
         self.Draw.ResultsDir = old_dir
         SaveDraw.SaveOnServer = True
 
+    @property
+    def n_ev(self):
+        return sum([u.n_ev for u in self.Units])
+
     def values(self, f, *args, **kwargs):
         return array([f(ana, *args, **kwargs) for ana in self.Anas])
 
