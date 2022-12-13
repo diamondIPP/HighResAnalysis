@@ -355,25 +355,26 @@ class DUTAnalysis(Analysis):
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(self.Cut.exclude('cs', cut), pl)
-        self.Draw.distribution(v, **prep_kw(dkw, title='Cluster Size', w=1, x0=-.5, q=1e-3, x_tit='Cluster Size', file_name='ClusterSize'))
+        return self.Draw.distribution(v, **prep_kw(dkw, title='Cluster Size', w=1, x0=-.5, q=1e-3, x_tit='Cluster Size', file_name='ClusterSize'))
 
     def draw_cluster_size_map(self, res=.3, local=True, cut=None, fid=False, **dkw):
         cut = self.Cut.get_nofid(self.Cut.exclude('cs', cut), fid)
         (x, y), cs = self.get_txy(local, cut), self.get_cluster_size(cut)
-        self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Cluster Size', **self.ax_tits(local), file_name='CSMap'))
+        return self.Draw.prof2d(x, y, cs, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Cluster Size', **self.ax_tits(local), file_name='CSMap'))
 
     def draw_trigger_phase(self, cut=None, **dkw):
         h = self.Draw.distribution(self.get_trigger_phase(self.Cut.exclude('tp', cut)), bins.TP, **prep_kw(dkw, title='Trigger Phase', x_tit='Trigger Phase'))
-        self.Draw(h, **prep_kw(dkw, y_range=[0, 1.1 * h.GetMaximum()], file_name='TriggerPhase'))
+        return self.Draw(h, **prep_kw(dkw, y_range=[0, 1.1 * h.GetMaximum()], file_name='TriggerPhase'))
 
     def draw_time(self, cut=None, **dkw):
         t = self.time(cut)
         g = self.Draw.profile(arange(t.size), t, title='Time', **prep_kw(dkw, markersize=.6, x_tit='Event Number', y_tit='Time [hh:mm]', draw_opt='aplx', graph=True))
         set_time_axis(g, axis='Y')
         self.Draw.save_plots('Time')
+        return g
 
     def draw_time_dist(self, cut=None, **dkw):
-        self.Draw.distribution(self.time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
+        return self.Draw.distribution(self.time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
         return self.Draw.grid(*self.segments(nx, ny, width), width=w)
