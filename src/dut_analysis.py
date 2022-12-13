@@ -4,16 +4,17 @@
 # created on August 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 import cern.converter
+import plotting.latex as tex
 import src.bins as bins
 import src.converter
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
 from src.analysis import *
 from src.currents import Currents
-from src.run import Run
 from src.dut import Plane
-from utility.utils import *
+from src.run import Run
 from utility.affine_transformations import transform, m_transform
+from utility.utils import *
 
 
 def no_trans(f):
@@ -76,7 +77,10 @@ class DUTAnalysis(Analysis):
             self.verify_alignment()
 
     def __repr__(self):
-        return f'{self} of {self.Run.DUT}, run {self.Run} ({self.BeamTest}), {self.ev_str}'
+        return f'{self} of {self.DUT}, {self.unit_str} ({self.BeamTest}), {self.ev_str}'
+
+    def i(self):
+        print(f'{self.DUT} @ {tex.qty(self.DUT.Bias, fmt="+.0f", unt="V")[0]}, {self.unit_str}, {self.BeamTest}.')
 
     @property
     def ev_str(self):

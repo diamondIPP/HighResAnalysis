@@ -17,9 +17,6 @@ class BatchAnalysis(DUTAnalysis):
         self.DUT = self.Batch.DUT
         super().__init__(self.Batch.min_run.Number, dut_number, test_campaign, verbose, test)
 
-    def __repr__(self):
-        return f'{self} of {self.DUT}, batch {self.Batch} ({self.BeamTest}), {self.ev_str}'
-
     @classmethod
     def from_batch(cls, batch: Batch, verbose=True, test=False):
         return cls(batch, batch.DUT.Number, test_campaign=batch.DataDir.stem, verbose=verbose, test=test)
@@ -35,6 +32,10 @@ class BatchAnalysis(DUTAnalysis):
     @property
     def suffix(self):
         return f'{self.DUT}-{self.Batch}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
+
+    @property
+    def unit_str(self):
+        return f'batch {self.Batch}'
 
     @property
     def run_str(self):

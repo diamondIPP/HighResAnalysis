@@ -103,8 +103,12 @@ class Analysis:
         return directory.joinpath(f'{"_".join([v for v in [name, campaign, run, dut, str(suf)] if v])}.pickle')
 
     @property
+    def unit_str(self):
+        return f'run {self.Run}' if hasattr(self, 'Run') else ''
+
+    @property
     def run_str(self):
-        return self.RunPlan if hasattr(self, 'RunPlan') else str(self.Run) if hasattr(self, 'Run') else ''
+        return str(self.Run) if hasattr(self, 'Run') else ''
 
     def get_meta_files(self):
         return [*Path(self.MetaDir).rglob(f'*_{self.BeamTest.Tag}_{self.run_str}*')] if self.run_str else []
