@@ -4,7 +4,7 @@
 # created on March 30th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from mod.dut_cuts import DUTCut, zeros, save_cut, choose, all, invert
+from mod.dut_cuts import DUTCut, zeros, save_cut, choose, all, invert, array
 from src.dut_analysis import no_trans
 
 
@@ -30,7 +30,8 @@ class TrackCut(DUTCut):
             self.register('fid', self.make_fiducial(redo=redo), 30, 'tracks in fiducial area')
         self.register('mask', self.make_mask(_redo=redo), 31, 'masked pixels for tracks')
         self.register('tstart', self.make_start_time(_redo=redo), 40, 'exclude first events')
-        self.register('chi2', self.make_chi2(_redo=redo), 50, 'small chi2')
+        self.register('chi2', self.make_chi2(_redo=redo), 50, f'chi2 < {100 * self.get_config("chi2 quantile", dtype=float)}%q')
+        self.register('slope', self.make_slope(_redo=redo), 88, '{}%q < slope < {}%q'.format(*100 * abs(array([0, 1]) - self.get_config('slope quantile', dtype=float))))
 
     def make_trk(self, trks):
         return self.make_ev(trks, self.Ana.NTracks)
