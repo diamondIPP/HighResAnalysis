@@ -78,12 +78,12 @@ class DUTCut(Cuts):
     # region GENERATE
     @save_cut('Fid', suf_args='all', cfg='fiducial', cfield='MetaSubDir')
     @parallel('point_in_polygon', 'fiducial cut')
-    def make_fiducial_(self, surface=False, _redo=False):
+    def make_fiducial_(self, surface=False, name=None, _redo=False):
         x, y = self.Ana.get_xy(local=True, cut=False)
-        return array([x, y]).T, self.get_fid(surface=surface)
+        return array([x, y]).T, self.get_fid(surface=surface, name=name)
 
-    def make_fiducial(self, surface=False, redo=False):
-        return None if self.get_fid(surface=surface) is None else self.make_fiducial_(surface, _redo=redo)
+    def make_fiducial(self, surface=False, name=None, redo=False):
+        return None if self.get_fid(surface=surface, name=name) is None else self.make_fiducial_(surface, name, _redo=redo)
 
     def make_cluster_mask(self, mx, my, t=.5):
         """ exclude all clusters within half a pixel distance of the masked pixel"""
