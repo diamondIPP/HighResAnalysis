@@ -178,6 +178,7 @@ class DUTCut(Cuts):
         r, phi = cart2pol(x - self.Ana.Plane.PXu / 2, y - self.Ana.Plane.PYu / 2)  # centre around 0
         return (r0 <= r) & (r <= r1)
 
+    @save_hdf5(suf_args='all')
     def make_cell_fiducial(self, r0, r1=0, ox=0, oy=0):
         r0, r1 = sorted([r0, r1])
         mx, my = self.Ana.DUT.PXY / self.Ana.Plane.PXY
@@ -208,6 +209,8 @@ class DUTCut(Cuts):
         if p is None:
             return None, None
         p = make_box_args(*p[[0, 2, 1, 3]]) if p.size == 4 else p  # unpack short box notation
+        if name and 'pixel' in name:
+            return p
         p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
         return p - .5  # pixel centre is at the integer
 
