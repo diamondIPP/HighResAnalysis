@@ -236,10 +236,10 @@ class Proteus:
             remove_file(*self.ConfigDir.joinpath(self.AlignDir).glob('*.root'))  # remove hist files
         print_elapsed_time(t)
 
-    def recon(self, cfg=None, progress=True):
+    def recon(self, cfg=None, progress=True, section=None):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file, progress=progress)
+        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file, progress=progress, section=section)
 
     def track(self):
         """ tracking and clustering for the event alignment. """
