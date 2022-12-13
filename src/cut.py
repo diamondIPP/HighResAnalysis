@@ -58,7 +58,7 @@ class Cuts:
         return array(v) if is_iter(v) else v
 
     def generate(self):
-        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80]
+        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < Cut.MaxLevel]
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def register(self, name, values=None, level=None, description=None):
@@ -108,7 +108,7 @@ class Cuts:
         if cut is not None:
             return self(cut)
         exclude = make_list(exclude)
-        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < 80 and cut.Name not in exclude]
+        cuts = [cut.Values for cut in self.Cuts.values() if cut.Level < Cut.MaxLevel and cut.Name not in exclude]
         return all(cuts, axis=0).flatten() if len(cuts) else ...
 
     def add(self, cut: ndarray):
