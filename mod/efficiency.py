@@ -4,6 +4,7 @@
 # created on March 22nd 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.dut_analysis import DUTAnalysis, calc_eff, prep_kw, bins, get_2d_hist_vec, partial, mean, ax_range
+from numpy import rad2deg
 
 
 def eff_analysis(cls):
@@ -47,7 +48,7 @@ def eff_analysis(cls):
             e[e < 1] = 1e-4  # zero values are not shown in the map ...
             t = [*self.draw_text(not self.Surface, cut, eff and both), *self.draw_text(self.Surface, cut, eff)]
             b = bins.get_xy(local, self.Plane, res)
-            return self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=b, **self.ax_tits(local), leg=t, file_name='EfficiencyMap'))
+            return self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=b, **self.ZArgs, **self.ax_tits(local), leg=t, file_name='EfficiencyMap'))
 
         def draw_text(self, surface, cut, show=True):
             if show:
@@ -71,6 +72,11 @@ def eff_analysis(cls):
 
         def draw_in_cell(self, n=10, ox=0, oy=0, cut=None, **dkw):
             return super().draw_in_cell(ox, oy, n, cut, self.pvalues, tit='Efficiency', **prep_kw(dkw, **self.ZArgs))
+
+        def draw_col_vs_angle(self, r=10, bias=True, **dkw):
+            cut = self.Cut.add(self.Cut.make_cell_fiducial(0, r, *self.DUT.PXYu / 2 if bias else (0, 0)))
+            x, y, zz = rad2deg(self.get_slope_x(cut=cut)), rad2deg(self.get_slope_y(cut=cut)), self.pvalues(cut=cut)
+            return self.Draw.prof2d(x, y, zz, **prep_kw(dkw, x_tit='Slope X [deg]', y_tit='Slope Y [deg]', **self.ZArgs, file_name='EffColvsAngle'))
         # endregion DRAW
         # ----------------------------------------
 
