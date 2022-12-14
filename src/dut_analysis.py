@@ -471,9 +471,13 @@ class DUTAnalysis(Analysis):
         self.Draw(g, **prep_kw(dkw, stats=set_statbox(fit=True), show=False))
         return fit
 
-    def draw_eff_vs_ph(self, res=.5):
+    def draw_eff_vs_ph(self, res=.2):
         ph, e = self.draw_signal_map(res, fid=True), self.Efficiency.draw_map(res, fid=True)
         return self.Draw.maps_profile(ph, e, file_name='EffVsPh')
+
+    def draw_cs_vs_ph(self, n=50, qscale=None):
+        ph, cs = [f(n=n, expand=False, dc=1, qscale=qscale) for f in [self.draw_ph_in_pixel, self.draw_cs_in_pixel]]
+        return self.Draw.maps_profile(ph, cs, file_name='CSVsPh')
     # endregion SIGNAL
     # ----------------------------------------
 
@@ -511,10 +515,10 @@ class DUTAnalysis(Analysis):
         cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
         return x[cut], y[cut], e[cut]
 
-    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, dr=False, **dkw):
+    def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, dr=False, expand=True, **dkw):
         mx *= 2 if dc else 1
         my *= 2 if dr else 1
-        x, y, z_ = self.contracted_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, fz, cut)
+        x, y, z_ = self.contracted_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, fz, cut, expand)
         n = choose(n, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
         binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
