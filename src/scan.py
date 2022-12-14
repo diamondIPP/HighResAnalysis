@@ -77,6 +77,9 @@ class Scan(Ensemble):
     def draw_pulse_height(self, t=False, **dkw):
         return self.draw_graph(self.values(DUTAnalysis.ph), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
 
+    def draw_cluster_size(self, t=False, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.cs), t, **prep_kw(dkw, y_tit='Cluster Size', file_name='CS'))
+
     def draw_ph_dists(self, **dkw):
         h = [ana.draw_signal_distribution(save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
         return self.Draw.stack(h, 'PHDists', self.x2str(), **prep_kw(dkw, scale=True, file_name='PhDists'))

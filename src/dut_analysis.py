@@ -221,6 +221,9 @@ class DUTAnalysis(Analysis):
     def ph(self, cut=None):
         return mean_sigma(self.get_phs(cut=cut))[0]
 
+    def cs(self, cut=None):
+        return mean_sigma(self.get_cluster_size(cut=cut))[0]
+
     def get_x(self, cut=None, pl=None, rot=False):
         return self.get_y(cut, pl) if self.plane(pl).Rotated and rot else self.get_data('Clusters', 'X', cut, pl)
 
