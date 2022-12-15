@@ -29,8 +29,9 @@ def no_trans(f):
 
 class DUTAnalysis(Analysis):
 
-    Trans = True  # use internal algorithm to improve alignment of the local track coordinates
-    L2G = False   # transform local to global coordinates instead of using global directly
+    Trans = True      # use internal algorithm to improve alignment of the local track coordinates
+    L2G = False       # transform local to global coordinates instead of using global directly
+    DrawCols = False  # draw bias and readout column in in-pixel plots
 
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
@@ -558,7 +559,7 @@ class DUTAnalysis(Analysis):
         return self.draw_in_pixel(ox, oy, n, self.Cut.exclude('tp', cut), fz=self.get_trigger_phase, tit='TP', **prep_kw(dkw, pal=53, z_tit='Trigger Phase'))
 
     def draw_columns(self, show=True):
-        if hasattr(self.DUT, 'ColumnDiameter'):
+        if hasattr(self.DUT, 'ColumnDiameter') and DUTAnalysis.DrawCols:
             wx, wy, c, d = self.DUT.PXu, self.DUT.PYu, get_last_canvas(), self.DUT.ColumnDiameter.n
             x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
             b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
