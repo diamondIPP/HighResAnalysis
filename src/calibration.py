@@ -149,10 +149,10 @@ class Calibration:
             return None
         self.Fit.SetParameters(255 / 2, 255 / 2, 400, 500)
         Draw.make_tgraph(x, y).Fit(self.Fit, 'q0', '', 0, 255 * 7)
-        return FitRes(self.Fit)
+        return FitRes(deepcopy(self.Fit))
 
     def fit_all(self):
-        info('fit calibration points ...')
+        info(f'fit calibration points ({self.RawFileName.stem}) ...')
         x, y = self.vcals, self.get_all_points()
         PBAR.start(self.NPix)
         self.Fits = [[self.fit(x, iy) for iy in lst] for lst in y]
@@ -169,7 +169,7 @@ class Calibration:
     def get_vcal(self, f, adc):
         return f.GetX(adc) if adc > f.GetMinimum() else 0
 
-    @save_hdf5('LUT', arr=True, dtype='f2', field='Tag')
+    @save_hdf5('LUT', arr=True, dtype='f4', field='Tag')
     def get_lookup_table(self, _redo=False):
         fits = self.get_fits()
         info('creating calibration LUT ... ')
