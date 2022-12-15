@@ -95,20 +95,23 @@ class DUTAnalysis(Analysis):
     def suffix(self):
         return f'{self.DUT}-{self.Run}-{self.BeamTest.Location}'.lower().replace('ii6-', '')
 
-    def save_plots(self, res=.2, n=50, pal=55, rz_cs=None):
+    def save_plots(self, res=.2, n=50, pal=55, rz_cs=None, dc=False, rz_ph=None):
         old_dir = self.Draw.ResultsDir
         SaveDraw.SaveOnServer = False
         self.Draw.ResultsDir = Dir.joinpath('tmp', self.suffix)
-        self.draw_signal_distribution(x0=-.05, x1=1.05, fn=f'sd-{self.suffix}', qscale=.95)
         r = self.r_fid()
+        # PH
+        self.draw_signal_distribution(x0=-.05, x1=1.05, fn=f'sd-{self.suffix}', qscale=.95)
+        self.draw_signal_map(res=res, **r, pal=pal, qz=.999, fn=f'sm-{self.suffix}', qscale=.95, pix_grid=False)
+        self.draw_signal_map(res=res, **r, pal=pal, qz=.999, fn=f'sm-grid-{self.suffix}', qscale=.95, pix_grid=True)
+        self.draw_ph_in_pixel(n, pal=pal, fn=f'ph-pix-{self.suffix}', qscale=.95, dc=dc, z_range=rz_ph)
+        # Other
         self.draw_occupancy(cut=0, **r, pal=pal, fn=f'occ-{self.suffix}')
         self.Efficiency.draw_map(res=res, **self.r_fid(), pal=pal, fn=f'em-{self.suffix}', leg=self.Cut.get_fid())
-        self.draw_signal_map(res=res, **r, pal=pal, qz=.999, fn=f'sm-{self.suffix}', qscale=.95)
         self.draw_cluster_size_map(res=.1, **r, pal=pal, qz=.995, fn=f'csm-{self.suffix}', z_range=rz_cs)
-        self.draw_ph_in_pixel(n, 75, 50, pal=pal, fn=f'ph-pix-{self.suffix}', qscale=.95)
-        self.draw_cs_in_pixel(n, 75, 50, pal=pal, qz=.999, fn=f'cs-pix-{self.suffix}', z_range=rz_cs)
-        self.Efficiency.draw_in_pixel(n, 75, 50, pal=pal, z_range=[70, 100], fn=f'e-pix-{self.suffix}')
-        self.draw_hitmap_in_pixel(n, 75, 50, pal=pal, fn=f'hm-pix-{self.suffix}')
+        self.draw_cs_in_pixel(n, pal=pal, qz=.999, fn=f'cs-pix-{self.suffix}', z_range=rz_cs, dc=dc)
+        self.Efficiency.draw_in_pixel(n, pal=pal, z_range=[70, 100], fn=f'e-pix-{self.suffix}', dc=dc)
+        self.draw_hitmap_in_pixel(n, pal=pal, fn=f'hm-pix-{self.suffix}')
         self.Draw.ResultsDir = old_dir
         SaveDraw.SaveOnServer = True
 
@@ -385,7 +388,10 @@ class DUTAnalysis(Analysis):
         return self.Draw.distribution(self.time(cut), **prep_kw(dkw, title='TimeDist', **self.t_args(), stats=set_statbox(entries=True)))
 
     def draw_grid(self, nx=2, ny=3, w=1, width=False):
-        return self.Draw.grid(*self.segments(nx, ny, width), width=w)
+        return self.Draw.grid(*self.segments(nx, ny, width), width=w, show=False)
+
+    def draw_pixel_grid(self, w=1):
+        return self.Draw.grid(arange(self.Plane.NCols + 1) - .5, arange(self.Plane.NRows + 1) - .5, width=w, show=False)
 
     def draw_geo(self, top=True):
         x, y = self.Proteus.z_positions(raw=True), [pl.W if top else pl.H for pl in self.Planes]
@@ -451,10 +457,11 @@ class DUTAnalysis(Analysis):
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
         self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
 
-    def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, **dkw):
+    def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, pix_grid=False, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, partial(self.get_phs, qscale=qscale)]]
         zt = self.get_ph_tit(0, qscale)
-        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=self.Cut.get_fid(), z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
+        leg = [self.Cut.get_fid()] + (self.draw_pixel_grid() if pix_grid else [])
+        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=leg, z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
