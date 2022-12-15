@@ -53,7 +53,7 @@ class Converter:
 
     def run(self, force=False, steps=None, rm=True):
         if force or not self.OutFilePath.exists():
-            t0 = info(f'Starting {self!r}\n')
+            self.T0 = info(f'Starting {self!r}\n')
             for i, (s, f) in enumerate(choose(steps, self.steps)):
                 if not f.exists() or force:
                     print_banner(f'Start converter step {i}: {s.__doc__}')
@@ -67,7 +67,7 @@ class Converter:
                     info(f'found outfile of step {i}, continue with next step ({f})')
             if rm:
                 self.remove_aux_files()
-            add_to_info(t0, f'\nFinished {self!r} in ', color=GREEN)
+            add_to_info(self.T0, f'\nFinished {self!r} in ', color=GREEN)
             self.T1 = timedelta(seconds=time() - self.T0)
             return True
         return False
