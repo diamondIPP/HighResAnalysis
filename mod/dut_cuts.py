@@ -155,7 +155,8 @@ class DUTCut(Cuts):
 
     def make_ph(self, xmax, xmin=None):
         x = self.Ana.get_phs(cut=False)
-        return (x >= choose(xmin, -inf)) & (x < xmax)
+        xmin, xmax = sorted([choose(xmin, -inf), xmax])
+        return (x >= xmin) & (x < xmax)
 
     def make_correlation(self, pl0, pl1=None):
         return self.make_cluster(pl0) & self.make_cluster(pl1)
