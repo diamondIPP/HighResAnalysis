@@ -36,10 +36,10 @@ class DUTAnalysis(Analysis):
 
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
         self.Run = Run.from_ana(run_number, dut_number, self)
+        self.DUT = self.Run.DUT
         self.print_start()
 
         # data
-        self.DUT = self.Run.DUT
         self.Converter = self.init_converter()
         self.Calibration = self.Converter.load_calibration(self.DUT.Number)
         self.Proteus = self.Converter.Proteus
