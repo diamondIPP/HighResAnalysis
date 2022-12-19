@@ -15,6 +15,7 @@ from src.dut import Plane
 from src.run import Run
 from utility.affine_transformations import transform, m_transform
 from utility.utils import *
+from plotting.draw import set_statbox
 
 
 def no_trans(f):
@@ -489,6 +490,20 @@ class DUTAnalysis(Analysis):
     def draw_cs_vs_ph(self, n=50, qscale=None):
         ph, cs = [f(n=n, expand=False, dc=1, qscale=qscale) for f in [self.draw_ph_in_pixel, self.draw_cs_in_pixel]]
         return self.Draw.maps_profile(ph, cs, file_name='CSVsPh')
+
+    def draw_uniformity(self, h=None, fwc=True, **dkw):
+        h = choose(h, self.draw_signal_distribution(show=False, save=False, normalise=True))
+        (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if fwc else ufloat(h.GetMean(), h.GetMeanError())
+        fwhm, half_max = high - low, h.GetMaximum() / 2
+        li = Draw.vertical_line(m.n, style=7, w=2)
+        a = Draw.arrow(low.n, high.n, half_max, half_max, col=2, width=3, opt='<>', size=.02)
+        leg = [a, li, Draw.legend([a, li], ['FWHM', 'FWC' if fwc else 'Mean'], 'l', y2=.72, w=.2)]
+        fwhm = add_err(fwhm, 2 * h.GetBinWidth(1))  # add error for false estimate
+        value = fwhm / m
+        Draw.add_stats_entry(h, f'FWHM/{"FWC" if fwc else "Mean"}', value, line=3)
+        self.info(f'Uniformity: {value:.2f}')
+        self.Draw(h, **prep_kw(dkw, file_name='Uniformity', leg=leg, normalise=True, stats=set_statbox(w=.35, all_stat=True)))
+        return m, fwhm, value
     # endregion SIGNAL
     # ----------------------------------------
 
