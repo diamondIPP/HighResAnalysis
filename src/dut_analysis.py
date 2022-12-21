@@ -32,7 +32,7 @@ class DUTAnalysis(Analysis):
 
     Trans = True      # use internal algorithm to improve alignment of the local track coordinates
     L2G = False       # transform local to global coordinates instead of using global directly
-    DrawColLeg = False  # draw bias and readout column in in-pixel plots
+    DrawColLeg = True # draw bias and readout column in in-pixel plots
 
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
@@ -220,7 +220,7 @@ class DUTAnalysis(Analysis):
         return data if type(cut) is bool else self.Cut(cut, data, pl)
 
     def get_phs(self, e=False, cut=None, qscale=None):
-        x = self.get_data('Clusters', 'Charge', cut) * (self.DUT.VcalToEl if e else 1)
+        x = self.get_data('Clusters', 'Charge', cut) * (self.DUT.Vcal2ke if e else 1)
         return x if qscale is None else x / quantile(x, qscale)
 
     def ph(self, cut=None):
@@ -334,7 +334,7 @@ class DUTAnalysis(Analysis):
         return 'Pulse Height [vcal]'
 
     def get_ph_tit(self, e: Any = False, qscale=None):
-        return 'Normalised Pulse Height' if qscale is not None else 'Charge [e]' if e else self.ph_tit
+        return 'Normalised Pulse Height' if qscale is not None else 'Charge [ke]' if e else self.ph_tit
 
     def segments(self, nx, ny, width=False):
         x0, x1, y0, y1 = self.Cut.get_config('full size')
@@ -444,12 +444,12 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region SIGNAL
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, qscale=None, **dkw):
-        return self.Draw.distribution(self.get_phs(e, cut, qscale), **prep_kw(dkw, title='PH', x_tit=self.get_ph_tit(0, qscale), leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
+        return self.Draw.distribution(self.get_phs(e, cut, qscale), **prep_kw(dkw, title='PH', x_tit=self.get_ph_tit(e, qscale), leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
 
     def draw_trim(self, e, thresh=False):
         if self.Calibration.Trim is None:
             return
-        trim = self.Calibration.Trim * (self.DUT.VcalToEl if e else 1)
+        trim = self.Calibration.Trim * (self.DUT.Vcal2e if e else 1)
         return [self.Draw.vertical_line(trim, 0, 1e5, w=2, show=False), self.Draw.tlatex(.2, .5, f'Threshold = {trim:.0f} vcal', ndc=True, angle=90, size=.04, show=False)] if thresh else None
 
     def draw_charge_distribution(self, cut=None, draw_thresh=False, **dkw):
@@ -582,10 +582,11 @@ class DUTAnalysis(Analysis):
 
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
-            wx, wy, c, d = self.DUT.PXu, self.DUT.PYu, get_last_canvas(), self.DUT.ColumnDiameter.n
-            x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
-            b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
-            r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
+            wx, wy, h, d = self.DUT.PXu, self.DUT.PYu, get_last_canvas().GetListOfPrimitives()[1], self.DUT.ColumnDiameter.n
+            xb, yb, z_ = get_2d_vecs(h, z_sup=True)
+            cut = lambda x, y: xb.min() <= x <= xb.max() and yb.min() <= y <= yb.max()
+            b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-3, 5) * wx for y in arange(-3, 5) * wy if cut(x, y)]           # bias
+            r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-3.5, 5.5) * wx for y in arange(-3.5, 5.5) * wy if cut(x, y)]   # readout
             g = [Draw.make_tgraph([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
             leg = [Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)] if DUTAnalysis.DrawColLeg else []
             return leg + b + r
