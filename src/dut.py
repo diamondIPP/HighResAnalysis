@@ -54,7 +54,8 @@ class DUT(Device):
             self.PXY = self.PXYu / 1e3  # in mm
             self.PX, self.PY = self.PXY
             self.PXu, self.PYu = self.PXYu
-        self.VcalToEl = Analysis.Config.get_float('DUT', 'vcal to electrons')
+        self.Vcal2e = Analysis.Config.get_float('DUT', 'vcal to electrons')
+        self.Vcal2ke = self.Vcal2e / 1e3
 
     def __repr__(self):
         return f'{super().__repr__()}, Bias: {self.Bias:1.0f}V'
