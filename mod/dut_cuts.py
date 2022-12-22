@@ -186,6 +186,15 @@ class DUTCut(Cuts):
         x, y, zz = self.Ana.contracted_vars(mx, my, cut=0, ox=self.Ana.DUT.PXu / 2 - ox, oy=self.Ana.DUT.PYu / 2 - oy, expand=False)  # move 0 to the centre of the pixel
         r, phi = cart2pol(x - self.Ana.DUT.PXu / 2, y - self.Ana.DUT.PYu / 2)  # centre around 0
         return (r0 <= r) & (r <= r1)
+
+    def make_bcol_fiducial(self, r0, r1=0):
+        return self.make_cell_fiducial(r0, r1, *self.Ana.DUT.PXYu / 2)
+
+    def make_rcol_pix_fiducial(self, r0, r1=0):
+        return self.make_pixel_fiducial(r0, r1)
+
+    def make_rcol_cell_fiducial(self, r0, r1=0):
+        return self.make_cell_fiducial(r0, r1)
     # endregion GENERATE
     # ----------------------------------------
 
