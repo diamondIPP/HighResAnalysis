@@ -80,6 +80,10 @@ class Scan(Ensemble):
     def draw_cluster_size(self, t=False, **dkw):
         return self.draw_graph(self.values(DUTAnalysis.cs), t, **prep_kw(dkw, y_tit='Cluster Size', file_name='CS'))
 
+    def draw_r_ph_cols(self, t=False, r=7, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.r_ph_cols, r=r), t, **prep_kw(dkw, y_tit='Pulse Height Ratio', file_name='RPHCols'))
+
+
     def draw_ph_dists(self, **dkw):
         h = [ana.draw_signal_distribution(save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
         return self.Draw.stack(h, 'PHDists', self.x2str(), **prep_kw(dkw, scale=True, file_name='PhDists'))
