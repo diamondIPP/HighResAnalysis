@@ -171,7 +171,7 @@ def res_analysis(cls):
             return self.align(_save=False)
 
         @no_trans
-        @save_pickle('AM', sub_dir='alignment', run='', suf_args='[6]')
+        @save_pickle('AM', sub_dir='alignment', suf_args='[6]')
         def align(self, d=None, m=None, cut=None, pl=None, p=.05, i=0, imax=20, _redo=False, _save=False):
             if d is None:
                 PBAR.start(imax)
