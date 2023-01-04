@@ -46,15 +46,15 @@ def eff_analysis(cls):
         def draw_map(self, res=.5, local=True, eff=True, both=False, fid=False, cut=None, **dkw):
             (x, y), e = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.Tracks.get_xy, local=local), self.pvalues]]
             e[e < 1] = 1e-4  # zero values are not shown in the map ...
-            t = [*self.draw_text(not self.Surface, cut, eff and both), *self.draw_text(self.Surface, cut, eff)]
+            t = [*self.draw_text(not self.Surface, cut, local, eff and both), *self.draw_text(self.Surface, cut, local, eff)]
             b = bins.get_xy(local, self.Plane, res)
             return self.Draw.prof2d(x, y, e, **prep_kw(dkw, title='Efficiency Map', binning=b, **self.ZArgs, **self.ax_tits(local), leg=t, file_name='EfficiencyMap'))
 
-        def draw_text(self, surface, cut, show=True):
+        def draw_text(self, surface, cut, local=True, show=True):
             if show:
                 self.activate_surface(surface)
-                x, y = [.5 if i is None else mean(ax_range(i)) for i in self.Cut.get_fid_config(surface)]
-                return [self.Cut.get_fid(surface), self.Draw.textbox(f'{self.value(cut)[0]:2.1f}%', x, y, s=2, opacity=.4, ndc=False, show=False)]
+                x, y = [.5 if i is None else mean(ax_range(i)) for i in self.Cut.get_fid_config(surface, local=local)]
+                return [self.Cut.get_fid(surface, local=local), self.Draw.textbox(f'{self.value(cut)[0]:2.1f}%', x, y, s=2 if local else .3, opacity=.4, ndc=False, show=False)]
             return []
 
         def draw_segments(self, res=.5, local=True, nx=10, ny=15, cut=None, **dkw):

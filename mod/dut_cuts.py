@@ -8,6 +8,7 @@ from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, nd
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config, cart2pol
 from src.cut import Cuts
 from utility.utils import critical, save_hdf5, parallel, make_list, choose, save_pickle, uarr2n
+from utility.affine_transformations import transform
 from warnings import catch_warnings, simplefilter
 
 
@@ -214,7 +215,11 @@ class DUTCut(Cuts):
 
     # ----------------------------------------
     # region FIDUCIAL
-    def get_fid_config(self, surface=False, name=None):
+    def fid2g(self, x, y):
+        pl = self.Ana.Plane
+        return transform(x, y, pl.PX, pl.PY, -pl.W / 2, -pl.H / 2, order='tsr')
+
+    def get_fid_config(self, surface=False, name=None, local=True):
         p = self.get_config(choose(name, 'surface fiducial' if surface else 'fiducial'), default=self.get_config('full size'))
         if p is None:
             return None, None
@@ -222,10 +227,11 @@ class DUTCut(Cuts):
         if name and 'pixel' in name:
             return p
         p[p == max(p, axis=1).reshape((-1, 1))] += 1  # extend one pixel to the top and right
-        return p - .5  # pixel centre is at the integer
+        p = p - .5  # pixel centre is at the integer
+        return p if local else self.fid2g(*p)
 
-    def get_fid(self, surface=False, name=None, **dkw):
-        x, y = self.get_fid_config(surface, name)
+    def get_fid(self, surface=False, name=None, local=True, **dkw):
+        x, y = self.get_fid_config(surface, name, local)
         return None if x is None else Draw.polygon(x, y, **prep_kw(dkw, show=False, line_color=2, width=2, fillstyle=0, name=choose(name, f'fid{surface:d}')))
 
     def get_full_fid(self):
