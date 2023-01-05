@@ -463,11 +463,11 @@ class DUTAnalysis(Analysis):
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
         self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
 
-    def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, pix_grid=False, **dkw):
-        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_txy, partial(self.get_phs, qscale=qscale)]]
+    def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, pix_grid=False, local=True, **dkw):
+        (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.get_txy, local=local), partial(self.get_phs, qscale=qscale)]]
         zt = self.get_ph_tit(0, qscale)
-        leg = (self.draw_pixel_grid() if pix_grid else []) + [self.Cut.get_fid()]
-        return self.Draw.prof2d(x, y, z_, bins.get_local(self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=leg, z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
+        obj = (self.draw_pixel_grid() if pix_grid else []) + [self.Cut.get_fid(local=local)]
+        return self.Draw.prof2d(x, y, z_, bins.get_xy(local, self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=obj, z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
