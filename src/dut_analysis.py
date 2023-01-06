@@ -323,7 +323,7 @@ class DUTAnalysis(Analysis):
 
     @staticmethod
     def ax_tits(local=True):
-        return {'x_tit': 'Column', 'y_tit': 'Row'} if local else {'x_tit': 'X [mm]', 'y_tit': 'Y [mm]'}
+        return {'x_tit': 'Column', 'y_tit': 'Row'} if local else {'x_tit': 'Track Position X [mm]', 'y_tit': 'Track Position Y [mm]'}
 
     @property
     def loc_bins(self):
@@ -467,7 +467,7 @@ class DUTAnalysis(Analysis):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.get_txy, local=local), partial(self.get_phs, qscale=qscale)]]
         zt = self.get_ph_tit(0, qscale)
         obj = (self.draw_pixel_grid() if pix_grid else []) + [self.Cut.get_fid(local=local)]
-        return self.Draw.prof2d(x, y, z_, bins.get_xy(local, self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=obj, z_tit=zt, **self.ax_tits(), file_name='SignalMap'))
+        return self.Draw.prof2d(x, y, z_, bins.get_xy(local, self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=obj, z_tit=zt, **self.ax_tits(local), file_name='SignalMap'))
 
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
