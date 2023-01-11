@@ -42,6 +42,7 @@ class TrackCut(DUTCut):
 
     @no_trans
     def make_cluster_mask(self, mx, my, t=.5):
-        x, y = self.Ana.get_xy(local=True, cut=False)  # noqa TODO: check if trans is needed here
+        """cluster mask in track space doesn't require the DUT alignment"""  # no duplicate
+        x, y = self.Ana.get_xy(local=True, cut=False)  # noqa
         return all([invert((x >= mx[i] - t) & (x <= mx[i] + t) & (y >= my[i] - t) & (y <= my[i] + t)) for i in range(mx.size)], axis=0)
 
