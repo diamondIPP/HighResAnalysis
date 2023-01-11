@@ -64,7 +64,7 @@ def time_stamp(dt, off=None):
 def print_elapsed_time(start, what='This', show=True, color=WHITE):
     string = f'Elapsed time for {what}: {get_elapsed_time(start)}'
     print_banner(string, color=color) if show else do_nothing()
-    return string
+    return time()
 
 
 def get_elapsed_time(start, hrs=False):
