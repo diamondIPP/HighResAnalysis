@@ -430,10 +430,10 @@ class DUTAnalysis(Analysis):
 
     def draw_alignment(self, pl=2, thresh=.3, **dkw):
         gx, gy = self.draw_correlation_trend(pl, show=False).GetListOfGraphs()
-        (t, x), y = get_graph_vecs(gx, err=False), get_graph_y(gy, err=False)
+        (t, x), y = graph_xy(gx, err=False), graph_y(gy, err=False)
         r = [1 if abs(ix) > thresh and abs(iy) > thresh else 2 for ix, iy in zip(x, y)]
         x, y = t.repeat(r), ones(sum(r))
-        binning = bins.from_vec(get_graph_x(gx)) + [3, 0, 3]
+        binning = bins.from_vec(graph_x(gx)) + [3, 0, 3]
         gStyle.SetPalette(3, array([1, 633, 418], 'i'))
         self.Draw.histo_2d(x, y, binning, 'Event Alignment', **prep_kw(dkw, **self.t_args(), y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
@@ -477,10 +477,10 @@ class DUTAnalysis(Analysis):
         x, y = [f(cut=self.Cut.exclude('tp', cut)) for f in [self.get_trigger_phase, self.get_phs]]
         self.Draw.profile(x, y, bins.TP, 'Charge vs. Trigger Phase', **prep_kw(dkw, x_tit='Trigger Phase', y_tit=self.ph_tit, graph=True, file_name='PH-TP'))
 
-    def draw_signal_trend(self, bw=None, e=False, cut=None, **dkw):
+    def draw_signal_trend(self, e=False, cut=None, **dkw):
         x, y = self.time(cut), self.get_phs(e=e, cut=cut)
-        g = self.Draw.profile(x, y, find_bins(x, w=bw), **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
-        return self.Draw(g, **prep_kw(dkw, y_range=ax_range(get_graph_y(g, err=False), fl=1, fh=2)))
+        g = self.Draw.profile(x, y, **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
+        return self.Draw(g, **prep_kw(dkw, y_range=ax_range(graph_y(g, err=False), fl=1, fh=2)))
 
     def fit_signal(self, bw=None, e=False, **dkw):
         g = self.draw_signal_trend(bw, e, show=False)
@@ -550,9 +550,9 @@ class DUTAnalysis(Analysis):
         mx *= 2 if dc else 1
         my *= 2 if dr else 1
         x, y, z_ = self.contracted_vars(mx / self.Plane.PX * 1e-3, my / self.Plane.PY * 1e-3, ox, oy, fz, cut, expand)
-        n = choose(n, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
+        n = choose(n, bins.freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
-        binning = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
+        binning = sum([bins.make(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
         fh = self.Draw.prof2d if any(z_) else self.Draw.histo_2d
         h = fh(x, y, zz=z_, binning=binning, save=False, show=False, **prep_kw(rm_key(dkw, 'show'), title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]'))
@@ -588,7 +588,7 @@ class DUTAnalysis(Analysis):
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
             wx, wy, h, d = self.DUT.PXu, self.DUT.PYu, get_last_canvas().GetListOfPrimitives()[1], self.DUT.ColumnDiameter.n
-            xb, yb, z_ = get_2d_vecs(h, z_sup=True)
+            xb, yb, z_ = hist_xyz(h, z_sup=True)
             cut = lambda x, y: xb.min() <= x <= xb.max() and yb.min() <= y <= yb.max()
             b = [Draw.circle(d / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-3, 5) * wx for y in arange(-3, 5) * wy if cut(x, y)]           # bias
             r = [Draw.circle(d / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-3.5, 5.5) * wx for y in arange(-3.5, 5.5) * wy if cut(x, y)]   # readout

@@ -3,7 +3,7 @@
 #       class for efficiency of a single DUT
 # created on March 22nd 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.dut_analysis import DUTAnalysis, calc_eff, prep_kw, bins, get_2d_hist_vec, partial, mean, ax_range
+from src.dut_analysis import DUTAnalysis, calc_eff, prep_kw, bins, hist_values_2d, partial, mean, ax_range
 from numpy import rad2deg
 
 
@@ -31,7 +31,7 @@ def eff_analysis(cls):
             return (self.get_cluster_size(cut=cut).astype('?') * 100).astype('d')
 
         def segment_values(self, nx=2, ny=3, cut=None):
-            return get_2d_hist_vec(self.draw_map(local=True, cut=cut, binning=bins.make2d(*self.segments(nx, ny)), save=False), err=False, flat=False)
+            return hist_values_2d(self.draw_map(local=True, cut=cut, binning=bins.make2d(*self.segments(nx, ny)), save=False), err=False, flat=False)
 
         # ----------------------------------------
         # region DRAW
@@ -64,7 +64,7 @@ def eff_analysis(cls):
             return self.draw_map(res, local, cut=cut, eff=False, **prep_kw(dkw, leg=t, file_name=f'EffMap{nx}x{ny}'))
 
         def draw_segment_distribution(self, nx=10, ny=15, cut=None, segments=True, **dkw):
-            e = self.segment_values(nx, ny, cut).flatten() if segments else get_2d_hist_vec(self.draw_map(.5, show=False), err=False)
+            e = self.segment_values(nx, ny, cut).flatten() if segments else hist_values_2d(self.draw_map(.5, show=False), err=False)
             self.Draw.distribution(e, **prep_kw(dkw, title='Segment Efficiencies', x_tit='Efficiency [%]'))
 
         def draw_in_pixel(self, n=10, ox=0, oy=0, cut=None, **dkw):

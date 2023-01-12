@@ -218,7 +218,7 @@ class Currents(Analysis):
     # region PLOTTING
     def draw_profile(self, bw=None, **dkw):
         x, y = self.Data['timestamps'], self.Data['currents']
-        return self.Draw.profile(x, y, find_bins(x, w=bw), title='Leakage Current', **prep_kw(dkw, x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, **Draw.mode(2)))
+        return self.Draw.profile(x, y, bins.find(x, w=bw), title='Leakage Current', **prep_kw(dkw, x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, **Draw.mode(2)))
 
     def draw_distribution(self, **dkw):
         return self.Draw.distribution(self.Data['currents'], title='Current Dist', **prep_kw(dkw, x_tit='Current [nA]', file_name='CurrDist'))
@@ -234,7 +234,7 @@ class Currents(Analysis):
             h = self.draw_distribution(show=False, save=False)
             if h.GetEntries() < 3:
                 return None
-            m, s = mean_sigma(*get_hist_vecs(h, err=False), err=False)
+            m, s = mean_sigma(*hist_xy(h, err=False), err=False)
             fit = h.Fit('gaus', 'sq0', '', m - 2 * s, m + 2 * s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
             if .8 * m < fm < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean

@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from numpy import arctan, sqrt, array, quantile, mean, polyfit, identity, arange
-from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, find_bins, FitRes, save_pickle, no_trans
+from src.dut_analysis import DUTAnalysis, bins, prep_kw, partial, FitRes, save_pickle, no_trans
 from plotting.fit import Gauss
 from plotting.draw import np_profile, choose, set_x_range, ax_range, ufloat
 from utility.utils import PBAR, uarr2n
@@ -136,7 +136,7 @@ def res_analysis(cls):
             self.Draw.prof2d(x, y, z_ * 1e3, bins.get_xy(local, self.Plane, res), 'Residuals', **prep_kw(dkw, z_tit='Residuals [#mum]', **self.ax_tits(local), file_name='ResMap'))
 
         def _draw_angle(self, x, y, prof=False, xb=True, local=False, pl=None, **dkw):
-            b = (bins.get_x if xb else bins.get_y)(self.plane(pl), local=local) + find_bins(y)
+            b = (bins.get_x if xb else bins.get_y)(self.plane(pl), local=local) + bins.find(y)
             return arctan(FitRes((self.Draw.profile if prof else self.Draw.histo_2d)(x, y, b[:2 if prof else 4], graph=True, **dkw).Fit('pol1', 'qs'))[1].n)
 
         def draw_udv(self, cut=None, prof=True, pl=None, **dkw):
