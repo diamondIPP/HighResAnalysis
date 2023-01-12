@@ -4,7 +4,7 @@
 # created on June 10th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import arange, append, diff
+from plotting.binning import *
 
 
 # Pixel
@@ -94,25 +94,6 @@ def get_triggerphase():
     return make(-.5, 10.5)
 # endregion PIXEL
 # ----------------------------------------
-
-
-def make(min_val, max_val, bin_width=1, last=False):
-    bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d')
-    return [bins.size - 1, bins]
-
-
-def make2d(x, y):
-    return make(x[0], x[-1], x[1] - x[0], last=True) + make(y[0], y[-1], y[1] - y[0], last=True)
-
-
-def from_vec(x):
-    return [x.size, append([i.n - i.s for i in x], x[-1].n + x[-1].s).astype('d')]
-
-
-def from_p(x):
-    d = x[-1] - x[-2]
-    x = append(x, [x[-1] + d, x[-1] + 2 * d])
-    return [x.size - 2, x[:-1] - diff(x) / 2]
 
 
 # Binning
