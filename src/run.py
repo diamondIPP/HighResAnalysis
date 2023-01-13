@@ -142,9 +142,9 @@ class Run:
         self.Positions = self.Info['dut position']  # which of the DUT slots are occupied
         self.DUT = DUT(dut_number, self.Info, has_ref=tc_dir.stem in Analysis.Config.get('REF', 'dates'))
 
-        # Times  TODO: Fix later with real timestamps from the data
-        self.StartTime = self.Info['start']
-        self.EndTime = self.Info['end']
+        # Times for the run log
+        self.LogStart = self.Info['start']
+        self.LogEnd = self.Info['end']
 
     def __str__(self):
         return str(self.Number)
@@ -169,7 +169,7 @@ class Run:
 
     @property
     def info(self):
-        return [str(self.Number), ev2str(self.n_ev), ', '.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [self.StartTime, self.EndTime]]
+        return [str(self.Number), ev2str(self.n_ev), ', '.join(self.DUTs)] + [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [self.LogStart, self.LogEnd]]
 
     def load_info(self, log=None) -> dict:
         return (load_runlog(self.TCDir) if log is None else log)[str(self)]

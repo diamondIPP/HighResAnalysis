@@ -313,13 +313,17 @@ class DUTAnalysis(Analysis):
         self.activate_surface(False)
 
     def get_start_time(self):
-        return datetime.fromtimestamp(self.Run.StartTime)
+        """ :returns datetime when the run was started. """
+        t0, t1 = self.Run.LogStart, self.F['Event']['Time'][0]
+        return datetime.fromtimestamp(t1 if abs(t1 - t0) < 60 * 10 else t0)  # only take data time stamp if deviating less than 10 min from when the log was started
 
     def get_end_time(self):
-        return datetime.fromtimestamp(self.Run.EndTime)
+        """ :returns datetime when the run was stopped. """
+        t0, t1 = self.Run.LogEnd, self.F['Event']['Time'][-1]
+        return datetime.fromtimestamp(t1 if abs(t1 - t0) < 60 * 10 else t0)  # only take data time stamp if deviating less than 10 min from when the log was started
 
     def t_args(self, rel_t=False):
-        return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.StartTime if rel_t else 0}
+        return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.Run.LogStart if rel_t else 0}
 
     @staticmethod
     def ax_tits(local=True):

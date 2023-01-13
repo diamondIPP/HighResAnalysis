@@ -53,4 +53,5 @@ class BatchAnalysis(DUTAnalysis):
         return self.Batch.FileName
 
     def get_end_time(self):
-        return datetime.fromtimestamp(self.Batch.Runs[-1].EndTime)
+        t0, t1 = self.Batch.Runs[-1].LogEnd, self.F['Event']['Time'][-1]
+        return datetime.fromtimestamp(t1 if abs(t1 - t0) < 60 * 10 else t0)  # only take data time stamp if deviating less than 10 min from when the log was started

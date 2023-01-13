@@ -91,7 +91,7 @@ class Currents(Analysis):
             data = data[append(False, c[:-1] * 100 > c[1:]) | ~c.astype('?')]  # take out the events that are 100 larger than the previous
         data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
         if self.Ana is not None and data.size:
-            data['timestamps'] -= uint32(data['timestamps'][0] - self.Run.StartTime)  # synchronise time vectors
+            data['timestamps'] -= uint32(data['timestamps'][0] - self.Run.LogStart)  # synchronise time vectors
         return data
 
     def reload_data(self, ignore_jumps):
@@ -156,16 +156,16 @@ class Currents(Analysis):
         return data_dir
 
     def load_time(self, t, t_log):
-        t = self.TimeZone.localize(datetime.fromtimestamp(t)) if t is not None else t_log
+        t = self.TimeZone.localize(choose(t, t_log))
         return t_log if t.year < 2000 or t.day != t_log.day else t
 
     def load_ana_start_time(self):
         ana = self.Ana if not self.IsCollection else self.Ana.FirstAnalysis
-        return self.load_time(ana.Run.StartTime if hasattr(ana.Run, 'StartTime') else None, ana.Run.LogStart)
+        return self.load_time(ana.StartTime if hasattr(ana.Run, 'StartTime') else None, datetime.fromtimestamp(ana.Run.LogStart))
 
     def load_ana_end_time(self):
         ana = self.Ana if not self.IsCollection else self.Ana.LastAnalysis
-        return self.load_time(ana.Run.EndTime if hasattr(ana.Run, 'EndTime') else None, ana.Run.LogEnd)
+        return self.load_time(ana.EndTime if hasattr(ana.Run, 'EndTime') else None, datetime.fromtimestamp(ana.Run.LogEnd))
 
     def get_title(self):
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
