@@ -484,7 +484,7 @@ class DUTAnalysis(Analysis):
     def draw_signal_trend(self, e=False, cut=None, **dkw):
         x, y = self.time(cut), self.get_phs(e=e, cut=cut)
         g = self.Draw.profile(x, y, **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
-        return self.Draw(g, **prep_kw(dkw, y_range=ax_range(graph_y(g, err=False), fl=1, fh=2)))
+        return self.Draw(g, **prep_kw(dkw, y_range=ax_range(graph_y(g, err=False), fl=1, fh=2), file_name='PhTime'))
 
     def fit_signal(self, bw=None, e=False, **dkw):
         g = self.draw_signal_trend(bw, e, show=False)
