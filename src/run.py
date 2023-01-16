@@ -25,6 +25,11 @@ def load_nrs(p: Path):
     return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green']
 
 
+def init_batch(name, dut_nr, beam_test, log=None):
+    custom = Batch.load_custom(beam_test.Name)
+    return DUTBatch(name, beam_test.Path, log) if name in custom and type(custom[name]) == dict else Batch(name, dut_nr, beam_test.Path, log)
+
+
 class Batch:
     """ class containing the run infos of a single batch. """
 
@@ -33,7 +38,7 @@ class Batch:
         self.DataDir = data_dir
         self.Log = load_runlog(self.DataDir) if log is None else log
         self.LogNames = self.load_log_names()
-        self.Custom = self.load_custom()
+        self.Custom = Batch.load_custom(data_dir)
         self.Runs = self.load_runs(dut_nr)
         self.FirstRun = self.Runs[0]
         self.RunNrs = array([run.Number for run in self.Runs])
@@ -54,6 +59,10 @@ class Batch:
     def __getitem__(self, item):
         return self.Runs[item]
 
+    @classmethod
+    def from_beamtest(cls, bt, name, dut_nr, log=None):
+        return cls(name, dut_nr, bt.Path, log)
+
     def verify(self):
         if self.Name is None:
             return True
@@ -63,15 +72,20 @@ class Batch:
     def load_log_names(self):
         return sorted(list(set([dic['batch'] for dic in self.Log.values() if dic['batch']])), key=lambda x: (int(remove_letters(x)), x))
 
-    def load_custom(self):
-        return load_json(Dir.joinpath('ensembles', f'{self.DataDir.stem}.json'))
+    @staticmethod
+    def load_custom(name):
+        """ user defined batches in ./ensembles"""
+        return load_json(Dir.joinpath('ensembles', f'{Path(name).stem}.json'))
+
+    def run_is_good(self, nr):
+        return self.Log[str(nr)]['status'] == 'green'
 
     def load_runs(self, dut_nr):
         if self.Name in self.LogNames or self.Name is None:
             is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
             return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
         if self.Name in self.Custom:
-            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in self.Custom[self.Name] if self.Log[str(nr)]['status'] == 'green']
+            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in self.Custom[self.Name] if self.run_is_good(nr)]
         critical('unknown batch name')
 
     @property
@@ -121,6 +135,19 @@ class Batch:
         new_batches = load_json(Dir.joinpath('ensembles', f'{bt.Path.stem}.json'))
         logs = [log[str(run)] for run in new_batches[batch_name]] if batch_name in new_batches else filter(lambda x: x['batch'] == batch_name and x['status'] == 'green', log.values())
         return [d['duts'].index(dut_name) for d in logs]
+
+
+class DUTBatch(Batch):
+    """ extension of batch class for a single DUT (for runs with mismatching duts). """
+
+    def __init__(self, name, data_dir: Path, log=None):
+        super().__init__(name, 0, data_dir, log)
+
+    def verify(self):
+        return True
+
+    def load_runs(self, dut_nr=None):
+        return [Run.from_dut_name(nr, dut_name, self.DataDir, self.Log) for dut_name, nrs in self.Custom[self.Name].items() for nr in nrs if self.run_is_good(nr)]
 
 
 class Run:
@@ -183,6 +210,10 @@ class Run:
         ana = choose(ana, Analysis)
         return cls(run_number, dut, ana.BeamTest.Path)
 
+    @classmethod
+    def from_dut_name(cls, run_number, dut_name, tc_dir, log):
+        return cls(run_number, log[str(run_number)]['duts'].index(dut_name), tc_dir, log)
+
     @property
     def n_ev(self):
         return self.Info['events']
@@ -238,13 +269,13 @@ if __name__ == '__main__':
 
     from argparse import ArgumentParser
     p_ = ArgumentParser()
-    p_.add_argument('b', nargs='?', default='23b')
+    p_.add_argument('b', nargs='?', default='16b')
     p_.add_argument('-a', action='store_true')
     p_.add_argument('-all', action='store_true')
     args = p_.parse_args()
 
     a = Analysis()
-    b = Batch(None if args.all else args.b, 0, a.BeamTest.Path)
+    b = init_batch(None if args.all else args.b, 0, a.BeamTest)
     r = b[0]
     if args.a:
         b.show_all()
