@@ -60,6 +60,10 @@ class DUT(Device):
     def __repr__(self):
         return f'{super().__repr__()}, Bias: {self.Bias:1.0f}V'
 
+    @classmethod
+    def from_name(cls, name, log, has_ref=False):
+        return cls(log['duts'].index(name), log, has_ref)
+
     def load_specs(self):
         f = Dir.joinpath('config', 'dia_info.json')
         return Config(f, section=self.Name, from_json=True)
