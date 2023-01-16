@@ -14,6 +14,7 @@ class BeamTest:
         self.T = datetime.strptime(p.stem, '%Y-%m')
         self.Year = self.T.year
         self.Tag = self.T.strftime('%Y%m')
+        self.Name = self.T.strftime('%Y-%m')
 
     def __str__(self):
         return self.T.strftime('%b %Y')
