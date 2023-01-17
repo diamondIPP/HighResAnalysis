@@ -53,11 +53,12 @@ class Proteus:
         self.NRefPlanes = sum(['REF' in d['type'] for d in toml.load(str(self.ConfigDir.joinpath('device.toml')))['sensors']])
         self.MaxDUTs = len(toml.load(str(self.ConfigDir.joinpath('geometry.toml')))['sensors']) - self.NTelPlanes - 1  # default geo has all sensors (tel, ref and dut)
         self.DUTs = duts
+        self.DUTPos = dut_pos
 
         self.RawFilePath = Path(raw_file)
         self.RunNumber = int(''.join(filter(lambda x: x.isdigit(), self.RawFilePath.stem)))
         self.AlignRun = choose(align_run, self.RunNumber)
-        self.Geo = self.init_geo(dut_pos)
+        self.RawGeo = self.init_raw_geo(dut_pos)  # geometry before any alignment
         self.Device = self.init_device(duts)
         self.Ana = self.init_ana(duts)
 
@@ -70,7 +71,7 @@ class Proteus:
         self.N = max_events
         self.S = skip_events
         self.AlignDir = Path('alignment')
-        self.Align = self.init_align(self.DUTs)
+        self.Align = self.init_align(self.DUTs)  # configuration
         self.AlignSteps = list(toml.load(str(self.Align))['align'])
 
         self.Steps = [(self.noise_scan, self.toml_name(self.dut_names[-1], 'mask', 'mask')), (self.align, self.align_file), (self.recon, self.OutFilePath)]
@@ -87,12 +88,28 @@ class Proteus:
         copytree(self.ConfigDir.with_name('default'), self.ConfigDir)
 
     @init_toml('geometry')
-    def init_geo(self, dut_pos, data=None):
+    def init_raw_geo(self, dut_pos, data=None):
         for i in range(self.MaxDUTs):  # remove non-existing DUTs
             if i not in dut_pos:
                 data['sensors'].pop(i - self.MaxDUTs)
         for i, dic in enumerate(data['sensors']):  # fix ids
             dic['id'] = i
+
+    def init_geo(self):
+        """parse the aligned geometry file in case not all DUTs were selected. Should only be used after alignment was done."""
+        f = self.align_file
+        data = toml.load(str(f))
+        ndut = len(data['sensors']) - self.NTelPlanes - self.NRefPlanes
+        dut_nrs = [min(i, ndut - 1) for i in self.DUTPos]  # nr of DUT required not the position
+        for i in range(ndut):  # remove non-existing DUTs
+            if i not in dut_nrs:
+                data['sensors'].pop(i - ndut)
+        for i, dic in enumerate(data['sensors']):  # fix ids
+            dic['id'] = i
+        tmp = self.ConfigDir.joinpath(f'tmp-{f.name}')
+        with open(tmp, 'w') as ftmp:
+            toml.dump(data, ftmp)
+        return tmp
 
     @init_toml('device')
     def init_device(self, duts, data=None):
@@ -146,7 +163,7 @@ class Proteus:
         return toml.load(str(self.align_file))
 
     def z_positions(self, raw=False):
-        d = toml.load(str(self.Geo if raw else self.align_file))
+        d = toml.load(str(self.RawGeo if raw else self.align_file))
         return array([s['offset'][-1] for s in d['sensors']])
 
     @property
@@ -189,7 +206,7 @@ class Proteus:
         chdir(self.ConfigDir)  # proteus needs to be in the directory where all the toml files are (for the default args)...
         cfg = '' if cfg is None else f'-c {str(cfg).replace(".toml", "")}.toml'
         section = '' if section is None else f'-u {section}'
-        geo = f'-g {choose(geo, self.Geo)}'
+        geo = f'-g {choose(geo, self.RawGeo)}'
         dev = f'-d {choose(dev, self.Device)}'
         n = f'-n {choose(n, self.N)}' if choose(n, self.N) is not None else ''
         s = f'-s {choose(s, self.S)}' if choose(s, self.S) is not None else ''
@@ -239,10 +256,10 @@ class Proteus:
     def recon(self, cfg=None, progress=True, section=None):
         """ step 3: based on the alignment generate the tracks with proteus. """
         self.Out.parent.mkdir(exist_ok=True)
-        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.align_file, progress=progress, section=section)
+        self.run('pt-recon', out=self.Out, cfg=choose(cfg, self.Ana), geo=self.init_geo(), progress=progress, section=section)
 
     def track(self):
-        """ tracking and clustering for the event alignment. """
+        """ tracking and clustering (obsolete, now done with "recon"). """
         self.Out.parent.mkdir(exist_ok=True)
         self.run('pt-track', out=self.TrackName)
     # endregion RUN
