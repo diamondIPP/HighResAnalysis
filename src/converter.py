@@ -10,7 +10,8 @@ from uproot import ReadOnlyDirectory
 from uproot.models import TTree
 
 from src.proteus import Proteus
-from src.run import Run, Analysis, Batch, DUT
+from src.run import Run, Analysis, init_batch, DUT, Batch
+from analysis import BeamTest
 from utility.utils import *
 from plotting.utils import download_file, remove_file, warning
 
@@ -318,10 +319,10 @@ class Converter:
 def batch_converter(cls: Converter):
     class BatchConverter(cls):
 
-        def __init__(self, data_dir: Path, batch_name):
+        def __init__(self, beam_test: BeamTest, batch_name):
 
-            self.Batch = Batch(batch_name, 0, data_dir)
-            super().__init__(data_dir, self.Batch.Runs[0].Number)
+            self.Batch = batch_name if isinstance(batch_name, Batch) else init_batch(batch_name, 0, beam_test)
+            super().__init__(beam_test.Path, self.Batch.Runs[0].Number)
             self.OutFilePath = self.Batch.FileName
 
         def __repr__(self):
@@ -332,7 +333,7 @@ def batch_converter(cls: Converter):
 
         @classmethod
         def from_batch(cls, b: Batch):
-            return cls(b.DataDir, b.Name)
+            return cls(b.BeamTest, b)
 
         def trigger_info_file(self):
             return super().trigger_info_file().with_name(f'dut-{self.Batch.FileName.stem}.root')
