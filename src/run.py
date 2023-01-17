@@ -7,7 +7,7 @@
 from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner, isint
 from plotting.utils import load_json, warning, critical
 import plotting.latex as tex
-from src.analysis import Analysis, Path, choose
+from src.analysis import Analysis, Path, choose, BeamTest
 from src.dut import DUT
 
 
@@ -25,27 +25,28 @@ def load_nrs(p: Path):
     return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green']
 
 
-def init_batch(name, dut_nr, beam_test, log=None):
+def init_batch(name, dut_nr, beam_test: BeamTest, log=None):
     custom = Batch.load_custom(beam_test.Name)
-    return DUTBatch(name, beam_test.Path, log) if name in custom and type(custom[name]) == dict else Batch(name, dut_nr, beam_test.Path, log)
+    return DUTBatch(name, beam_test, log) if name in custom and type(custom[name]) == dict else Batch(name, dut_nr, beam_test, log)
 
 
 class Batch:
     """ class containing the run infos of a single batch. """
 
-    def __init__(self, name, dut_nr, data_dir: Path, log=None):
+    def __init__(self, name, dut_nr, beam_test: BeamTest, log=None):
         self.Name = name
-        self.DataDir = data_dir
+        self.BeamTest = beam_test
+        self.DataDir = beam_test.Path
         self.Log = load_runlog(self.DataDir) if log is None else log
         self.LogNames = self.load_log_names()
-        self.Custom = Batch.load_custom(data_dir)
+        self.Custom = Batch.load_custom(beam_test.Name)
         self.Runs = self.load_runs(dut_nr)
         self.FirstRun = self.Runs[0]
         self.RunNrs = array([run.Number for run in self.Runs])
         self.Size = len(self.Runs)
         self.DUT = self.Runs[0].DUT
 
-        self.FileName = data_dir.joinpath('data', f'batch{self}.hdf5')
+        self.FileName = self.DataDir.joinpath('data', f'batch{self}.hdf5')
 
         if not self.verify():
             critical('the duts of the individual runs do not agree! This is not implemented yet ...')
@@ -117,7 +118,7 @@ class Batch:
 
     def show_custom(self, dut_nr=0, dut=None):
         rows = []
-        batches = [Batch(n, dut_nr, self.DataDir, self.Log) for n, runs in self.Custom.items() if len(self.Log[str(runs[0])]['duts']) > dut_nr]
+        batches = [Batch(n, dut_nr, self.BeamTest, self.Log) for n, runs in self.Custom.items() if len(self.Log[str(runs[0])]['duts']) > dut_nr]
         batches = list(filter(lambda x: x.DUT.Name == dut, batches)) if dut is not None else batches
         irrs = array([i.DUT.get_irradiation(self.DataDir.name.replace('-', '')) for i in batches]).astype('d')
         for i, b_ in enumerate(batches):
@@ -140,8 +141,8 @@ class Batch:
 class DUTBatch(Batch):
     """ extension of batch class for a single DUT (for runs with mismatching duts). """
 
-    def __init__(self, name, data_dir: Path, log=None):
-        super().__init__(name, 0, data_dir, log)
+    def __init__(self, name, beam_test: BeamTest, log=None):
+        super().__init__(name, 0, beam_test, log)
 
     def verify(self):
         return True
@@ -258,7 +259,7 @@ class Ensemble(object):
 
     def init_batch(self, name, bt):
         dut_nr = Batch.find_dut_numbers(name, self.DUTName, self.Logs[bt], self.BeamTests[bt])[0]  # TODO: update if batches with varying dut_nrs are implemented
-        return Batch(name, dut_nr, self.BeamTests[bt].Path, self.Logs[bt])
+        return Batch(name, dut_nr, self.BeamTests[bt], self.Logs[bt])
 
     @property
     def biases(self):

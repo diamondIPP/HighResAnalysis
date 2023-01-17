@@ -6,7 +6,7 @@
 import h5py
 import uproot
 
-from src.run import Batch
+from src.run import init_batch
 from plotting.utils import choose, info, colored, GREEN, RED, check_call, critical, warning
 from utility.utils import print_banner, PBAR, small_banner, byte2str
 from src.analysis import Analysis
@@ -24,7 +24,7 @@ class AutoConvert:
     def __init__(self, first_run=None, last_run=None, batch=None, beamtest=None, verbose=False, force=False):
 
         self.Ana = Analysis(beamtest, verbose=verbose)
-        self.Batch = Batch(batch, dut_nr=0, data_dir=self.Ana.BeamTest.Path)
+        self.Batch = init_batch(batch, dut_nr=0, beam_test=self.Ana.BeamTest)
         self.Converter = CERNConverter if self.Ana.BeamTest.Location == 'CERN' else Converter
 
         self.FirstRun, self.LastRun = first_run, last_run
