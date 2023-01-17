@@ -7,7 +7,7 @@ from subprocess import check_call
 import uproot
 
 from plotting.utils import array, info as pinfo
-from src.converter import Converter
+from src.converter import Converter, DUT
 
 
 class CERNConverter(Converter):
@@ -19,11 +19,13 @@ class CERNConverter(Converter):
     STEP  0: merge tel and dut root files (python)\n"""
     __doc__ += '\n'.join(Converter.__doc__.split('\n')[3:])
 
-    def __init__(self, data_dir, run_number):
+    def __init__(self, data_dir, run_number, dut_name=None):
 
+        self.DUTName = dut_name
         Converter.__init__(self, data_dir, run_number)
-        self.EventAlignment = self.init_event_alignment()
+
         self.Adc2Vcal = self.init_adc2vcal()
+        self.EventAlignment = self.init_event_alignment()
         self.Ref = self.init_ref()
 
     def proteus_raw_file_path(self):
@@ -59,6 +61,9 @@ class CERNConverter(Converter):
     def init_ref(self):
         from cern.ref import RefConverter
         return RefConverter(self)
+
+    def init_duts(self):
+        return super().init_duts() if self.DUTName is None else [DUT.from_name(self.DUTName, self.Run.Info)]
 
     def merge_root_files(self, force=False):
         """merge the telescope and DUT root files"""

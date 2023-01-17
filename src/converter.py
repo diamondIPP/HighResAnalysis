@@ -10,7 +10,7 @@ from uproot import ReadOnlyDirectory
 from uproot.models import TTree
 
 from src.proteus import Proteus
-from src.run import Run, Analysis, Batch
+from src.run import Run, Analysis, Batch, DUT
 from utility.utils import *
 from plotting.utils import download_file, remove_file, warning
 
@@ -25,11 +25,14 @@ class Converter:
     STEP  4: root -> hdf5                 (python)
     """
 
+    DUTName = None
+
     def __init__(self, data_dir: Path, run_number):
 
         self.T0 = time()
         self.T1 = timedelta(seconds=0)
         self.Run = Run(run_number, 0, data_dir)
+        self.DUTs = self.init_duts()
 
         # DIRECTORIES
         self.DataDir = data_dir
@@ -45,7 +48,7 @@ class Converter:
 
         # FILES
         self.OutFilePath = self.SaveDir.joinpath(f'run{self.Run:04d}.hdf5')
-        self.RawFile: ReadOnlyDirectory = None
+        self.RawFile: ReadOnlyDirectory = None  # noqa
         self.F = None
 
     def __repr__(self):
@@ -144,7 +147,7 @@ class Converter:
         data_dir = self.DataDir.joinpath('proteus')
         conf_dir = Dir.joinpath('proteus', self.DataDir.stem)
         me, se = [Analysis.Config.getint('align', opt) for opt in ['max events', 'skip events']]
-        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se, dut_pos=self.Run.Positions, duts=self.Run.DUTs, align_run=self.Run.Number)
+        return Proteus(soft_dir, data_dir, conf_dir, raw_file=self.proteus_raw_file_path(), max_events=me, skip_events=se, dut_pos=self.dut_pos, duts=self.dut_names, align_run=self.Run.Number)
 
     def init_raw(self):
         from src.raw import Raw
@@ -157,6 +160,17 @@ class Converter:
     def calibration(self):
         from src.calibration import Calibration
         return Calibration
+
+    def init_duts(self):
+        return [DUT(i, self.Run.Info) for i in range(self.Run.NDUTs)]
+
+    @property
+    def dut_names(self):
+        return [dut.Name for dut in self.DUTs]
+
+    @property
+    def dut_pos(self):
+        return [dut.Position for dut in self.DUTs]
 
     def load_calibration(self, dut_nr=None):
         return self.calibration(self.Run if dut_nr is None else Run(self.Run.Number, dut_nr, self.Run.TCDir))

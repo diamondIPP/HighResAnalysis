@@ -9,19 +9,18 @@ from numpy import round
 
 from plotting.utils import info
 from cern.converter import CERNConverter
-from src.dut import DUT
 from utility.utils import PBAR
 
 
 class Adc2Vcal:
 
-    def __init__(self, c: CERNConverter, dut_name=None):
+    def __init__(self, c: CERNConverter):
         """Reads the DUT ROOT files saved with pXar and converts adc -> vcal and removes faulty events from the telescope.
            Specific DUTs can be selected with the <dut_name> arg [default = None -> all DUTs]. """
 
         self.Parent = c
         self.Run = c.Run
-        self.DUTs = [DUT.from_name(n, self.Run.Info) for n in (self.Run.DUTs if dut_name is None else [dut_name])]
+        self.DUTs = c.DUTs
         self.NDUTs = len(self.DUTs)
         self.NTelPlanes = c.NTelPlanes
 
