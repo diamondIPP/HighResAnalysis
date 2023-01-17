@@ -5,7 +5,6 @@
 # --------------------------------------------------------
 import cern.converter
 import plotting.latex as tex
-import src.bins as bins
 import src.converter
 from mod.dut_cuts import DUTCut
 from plotting.fit import *
@@ -15,7 +14,7 @@ from src.dut import Plane
 from src.run import Run
 from utility.affine_transformations import transform, m_transform
 from utility.utils import *
-from plotting.draw import set_statbox
+import src.bins as bins
 
 
 def no_trans(f):
