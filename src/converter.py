@@ -323,7 +323,7 @@ def batch_converter(cls: Converter):
         def __init__(self, beam_test: BeamTest, batch_name):
 
             self.Batch = batch_name if isinstance(batch_name, Batch) else init_batch(batch_name, 0, beam_test)
-            super().__init__(beam_test.Path, self.Batch.Runs[0].Number)
+            super().__init__(beam_test.Path, self.Batch.Runs[0].Number, self.Batch.DUTName)
             self.OutFilePath = self.Batch.FileName
 
         def __repr__(self):

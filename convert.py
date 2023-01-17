@@ -86,7 +86,7 @@ class BatchConvert(AutoConvert):
 
     def __init__(self, batch=None, beamtest=None, verbose=False, force=False):
         super().__init__(None, None, batch, beamtest, verbose, force)
-        self.Converters = [self.Converter.from_run(r) for r in self.Batch.Runs]
+        self.Converters = [self.Converter.from_run(r, dut_name=self.Batch.DUTName) for r in self.Batch.Runs]
         self.Converter = batch_converter(self.Converters[0].__class__).from_batch(self.Batch)
 
     @staticmethod
