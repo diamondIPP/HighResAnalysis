@@ -33,6 +33,8 @@ def init_batch(name, dut_nr, beam_test: BeamTest, log=None):
 class Batch:
     """ class containing the run infos of a single batch. """
 
+    DUTName = None
+
     def __init__(self, name, dut_nr, beam_test: BeamTest, log=None):
         self.Name = name
         self.BeamTest = beam_test
@@ -143,6 +145,7 @@ class DUTBatch(Batch):
 
     def __init__(self, name, beam_test: BeamTest, log=None):
         super().__init__(name, 0, beam_test, log)
+        self.DUTName = self.DUT.Name
 
     def verify(self):
         return True
