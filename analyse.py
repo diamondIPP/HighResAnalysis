@@ -8,8 +8,8 @@ from argparse import ArgumentParser
 from numpy import *
 
 import convert
-import src.bins as bins  # noqa
 from plotting.draw import *  # noqa
+import src.bins as bins  # noqa
 from src.dut_analysis import DUTAnalysis, Analysis
 from src.batch_analysis import BatchAnalysis
 from src.run import load_nrs
