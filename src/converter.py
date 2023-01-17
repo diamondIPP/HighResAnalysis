@@ -11,7 +11,7 @@ from uproot.models import TTree
 
 from src.proteus import Proteus
 from src.run import Run, Analysis, init_batch, DUT, Batch
-from analysis import BeamTest
+from src.analysis import BeamTest
 from utility.utils import *
 from plotting.utils import download_file, remove_file, warning
 
@@ -28,11 +28,12 @@ class Converter:
 
     DUTName = None
 
-    def __init__(self, data_dir: Path, run_number):
+    def __init__(self, data_dir: Path, run_number, dut_name=None):
 
         self.T0 = time()
         self.T1 = timedelta(seconds=0)
         self.Run = Run(run_number, 0, data_dir)
+        self.DUTName = dut_name  # only used in CERNConverter
         self.DUTs = self.init_duts()
 
         # DIRECTORIES
@@ -133,10 +134,10 @@ class Converter:
     # ----------------------------------------
     # region INIT
     @classmethod
-    def from_run(cls, run: Run):
-        cal = cls(run.TCDir, run.Number)
-        cal.Run = run
-        return cal
+    def from_run(cls, run: Run, dut_name=None):
+        conv = cls(run.TCDir, run.Number, dut_name)
+        conv.Run = run
+        return conv
 
     @classmethod
     def from_ana(cls, run_number, dut=0, ana: Analysis = None):

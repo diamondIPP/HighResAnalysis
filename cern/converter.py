@@ -21,8 +21,7 @@ class CERNConverter(Converter):
 
     def __init__(self, data_dir, run_number, dut_name=None):
 
-        self.DUTName = dut_name
-        Converter.__init__(self, data_dir, run_number)
+        Converter.__init__(self, data_dir, run_number, dut_name)
 
         self.Adc2Vcal = self.init_adc2vcal()
         self.EventAlignment = self.init_event_alignment()
