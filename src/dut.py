@@ -13,7 +13,8 @@ class Device:
         self.Number = number
         self.Name = name
         self.Type = typ
-        self.Plane = self.init_plane(has_ref)
+        self.HasRef = has_ref
+        self.Plane = self.init_plane()
 
     def __str__(self):
         return self.Name
@@ -21,8 +22,8 @@ class Device:
     def __repr__(self):
         return f'{self.Type} {self.Number}, {self}'
 
-    def init_plane(self, has_ref):
-        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + self.Number + int(has_ref), self.Type)
+    def init_plane(self):
+        return Plane(Analysis.Config.getint('TELESCOPE', 'planes') + self.Number + int(self.HasRef), self.Type)
 
 
 class REF(Device):

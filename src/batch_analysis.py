@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from src.dut_analysis import DUTAnalysis, Analysis, ev2str, Path, datetime
-from src.run import Batch
+from src.run import init_batch, Batch
 from src.converter import batch_converter
 
 
@@ -13,9 +13,17 @@ class BatchAnalysis(DUTAnalysis):
 
     def __init__(self, batch_name, dut_number, test_campaign, verbose=True, test=False):
 
-        self.Batch = batch_name if isinstance(batch_name, Batch) else Batch(batch_name, dut_number, Analysis(test_campaign).BeamTest)
-        self.DUT = self.Batch.DUT
-        super().__init__(self.Batch.min_run.Number, dut_number, test_campaign, verbose, test)
+        self.Batch = batch_name if isinstance(batch_name, Batch) else init_batch(batch_name, dut_number, Analysis(test_campaign).BeamTest)
+        super().__init__(self.prepare_run(), dut_number, test_campaign, verbose, test)
+
+    def prepare_run(self):
+        run = self.Batch.min_run
+        if self.Batch.DUTName is not None:
+            run.NDUTs = 1
+            dut = run.DUT
+            dut.Number = 0
+            dut.Plane.Number = Analysis.Config.getint('TELESCOPE', 'planes') + int(dut.HasRef)
+        return run
 
     @classmethod
     def from_batch(cls, batch: Batch, verbose=True, test=False):

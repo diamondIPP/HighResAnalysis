@@ -36,7 +36,7 @@ class DUTAnalysis(Analysis):
     def __init__(self, run_number, dut_number, test_campaign, verbose=True, test=False):
 
         Analysis.__init__(self, test_campaign, meta_sub_dir='DUT', verbose=verbose)
-        self.Run = Run.from_ana(run_number, dut_number, self)
+        self.Run = run_number if isinstance(run_number, Run) else Run.from_ana(run_number, dut_number, self)
         self.DUT = self.Run.DUT
         self.print_start()
 
@@ -184,7 +184,7 @@ class DUTAnalysis(Analysis):
             _ = f[str(self.Plane)]  # check if data is complete
             return f
         except (KeyError, OSError) as err:
-            self.remove_file()
+            # self.remove_file()
             critical(f'error loading data file, deleting {self.file_name}\n{err}')
 
     def reload_data(self):
