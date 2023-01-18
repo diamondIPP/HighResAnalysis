@@ -22,7 +22,7 @@ from functools import wraps
 from plotting.utils import info, critical, add_to_info, get_kw, time, remove_file
 from datetime import timedelta, datetime
 from multiprocessing import Pool, cpu_count
-from hashlib import md5
+from hashlib import md5, sha256
 from pathlib import Path
 
 
@@ -526,3 +526,15 @@ def show_hdf5(f: h5py.File, *include, ex_str=None):
                 if hasattr(g, 'keys'):
                     for i in g.keys():
                         print(f'│   │   ├── {i}')
+
+
+def file_hash(fname, block_size=65536):
+
+    fhash = sha256()
+    with open(fname, 'rb') as f:
+        fb = f.read(block_size)     # Read from the file. Take in the amount declared above
+        while len(fb) > 0:          # While there is still data being read from the file
+            fhash.update(fb)        # Update the hash
+            fb = f.read(block_size) # Read the next block from the file
+
+    return fhash.hexdigest()
