@@ -24,7 +24,7 @@ class AutoConvert:
     def __init__(self, first_run=None, last_run=None, batch=None, beamtest=None, verbose=False, force=False):
 
         self.Ana = Analysis(beamtest, verbose=verbose)
-        self.Batch = init_batch(batch, dut_nr=0, beam_test=self.Ana.BeamTest)
+        self.Batch = init_batch(batch, dut=0, beam_test=self.Ana.BeamTest)
         self.Converter = CERNConverter if self.Ana.BeamTest.Location == 'CERN' else Converter
 
         self.FirstRun, self.LastRun = first_run, last_run

@@ -4,9 +4,9 @@
 # created on October 5th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner, isint
+from numpy import where, roll, split
+from utility.utils import print_table, datetime, ev2str, remove_letters, Dir, array, small_banner, isint, do_pickle, file_hash
 from plotting.utils import load_json, warning, critical
-import plotting.latex as tex
 from src.analysis import Analysis, Path, choose, BeamTest
 from src.dut import DUT
 
@@ -25,9 +25,41 @@ def load_nrs(p: Path):
     return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green']
 
 
-def init_batch(name, dut_nr, beam_test: BeamTest, log=None):
-    custom = Batch.load_custom(beam_test.Name)
-    return DUTBatch(name, beam_test, log) if name in custom and type(custom[name]) == dict else Batch(name, dut_nr, beam_test, log)
+def init_batch(name, dut, beam_test: BeamTest, log=None):
+    batches = load_batches(beam_test)
+    return DUTBatch(name, beam_test, log) if type(batches[name]) == dict else Batch(name, dut, beam_test, log) if isint(dut) else Batch.from_dut_name(name, dut, beam_test, log)
+
+
+def load_batches(bt: BeamTest, redo=False):
+    """ unify batches from run logs and custom batches and save them in a tmp file. """
+    log_file = bt.Path.joinpath(Analysis.Config.get('data', 'runlog file'))
+    custom_file = Dir.joinpath('ensembles', f'{bt.Name}.json')
+    tmp_file = Analysis.MetaDir.joinpath('ensembles', f'{bt.Tag}.pickle')
+    tmp_file.parent.mkdir(exist_ok=True)
+
+
+    if tmp_file.exists() and not redo:
+        h1, h2, bs = do_pickle(tmp_file)
+        if file_hash(log_file) == h1 and file_hash(custom_file) == h2:
+            return bs
+
+    def load():
+        log = load_json(log_file)
+
+        # batches from log
+        d = array(sorted([(run, dic['batch']) for run, dic in log.items() if dic['status'] == 'green'], key=lambda x: x[1])).T
+        s = where(d[1] != roll(d[1], 1))[0]  # indices where the new batches start
+        batches = {batch: runs.astype('i8') for batch, runs in zip(d[1][s], split(d[0], s[1:]))}
+
+        # custom batches
+        if custom_file.exists():
+            good_runs = lambda runs: array([run for run in runs if log[str(run)]['status'] == 'green'])
+            batches.update({batch: {dut: good_runs(d_runs) for dut, d_runs in runs.items()} if type(runs) is dict else good_runs(runs) for batch, runs in load_json(custom_file).items()})
+
+        return file_hash(log_file), file_hash(custom_file), dict(sorted(batches.items(), key=lambda dic_pair: int(remove_letters(dic_pair[0]))))
+
+    return do_pickle(tmp_file, load, redo=True)[2]
+
 
 
 class Batch:
@@ -40,8 +72,7 @@ class Batch:
         self.BeamTest = beam_test
         self.DataDir = beam_test.Path
         self.Log = load_runlog(self.DataDir) if log is None else log
-        self.LogNames = self.load_log_names()
-        self.Custom = Batch.load_custom(beam_test.Name)
+
         self.Runs = self.load_runs(dut_nr)
         self.FirstRun = self.Runs[0]
         self.RunNrs = array([run.Number for run in self.Runs])
@@ -57,14 +88,18 @@ class Batch:
         return str(self.Name)
 
     def __repr__(self):
-        return f'Batch {self} ({self.Size} runs {self.min_run}-{self.max_run}, {ev2str(self.n_ev)} ev)'
+        return f'{self.__class__.__name__} {self} ({self.Size} runs {self.min_run}-{self.max_run}, {ev2str(self.n_ev)} ev)'
 
     def __getitem__(self, item):
         return self.Runs[item]
 
     @classmethod
-    def from_beamtest(cls, bt, name, dut_nr, log=None):
-        return cls(name, dut_nr, bt.Path, log)
+    def from_dut_name(cls, name, dut_name, bt: BeamTest, log=None):
+        log = load_runlog(bt.Path) if log is None else log
+        dut_nrs = list(set([log[str(nr)]['duts'].index(dut_name) for nr in load_batches(bt)[name]]))
+        if len(dut_nrs) == 1:
+            return cls(name, dut_nrs[0], bt, log)
+        critical(f'cannot instanciate Batch {name} from DUT {dut_name}, varying DUT numbers ...')
 
     def verify(self):
         if self.Name is None:
@@ -72,23 +107,10 @@ class Batch:
         duts = [run.DUTs for run in self.Runs]
         return all([d == duts[0] for d in duts])
 
-    def load_log_names(self):
-        return sorted(list(set([dic['batch'] for dic in self.Log.values() if dic['batch']])), key=lambda x: (int(remove_letters(x)), x))
-
-    @staticmethod
-    def load_custom(name):
-        """ user defined batches in ./ensembles"""
-        return load_json(Dir.joinpath('ensembles', f'{Path(name).stem}.json'))
-
-    def run_is_good(self, nr):
-        return self.Log[str(nr)]['status'] == 'green'
-
     def load_runs(self, dut_nr):
-        if self.Name in self.LogNames or self.Name is None:
-            is_good = lambda dic: (self.Name is None or dic['batch'] == self.Name) and dic['status'] == 'green'
-            return [Run(key, dut_nr, self.DataDir, log=self.Log) for key, dic in self.Log.items() if is_good(dic)]
-        if self.Name in self.Custom:
-            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in self.Custom[self.Name] if self.run_is_good(nr)]
+        batches = load_batches(self.BeamTest)
+        if self.Name in batches:
+            return [Run(nr, dut_nr, self.DataDir, log=self.Log) for nr in batches[self.Name]]
         critical('unknown batch name')
 
     @property
@@ -108,27 +130,13 @@ class Batch:
         print_table([run.info for run in self.Runs], header=['Nr.', 'Events', 'DUTs', 'Begin', 'End'])
 
     def show_all(self):
-        data = {n: [] for n in self.LogNames}
-        for run, log in self.Log.items():
-            if log['status'] == 'green':
-                log['run_nr'] = run
-                data[log['batch']].append(log)
-        r_str = lambda x: f'{x[0]["run_nr"]:>03}-{x[-1]["run_nr"]:>03}'
-        t_str = lambda x: [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [x[0]['start'], x[-1]['end']]]
-        rows = [[n, r_str(logs), ev2str(sum([log['events'] for log in logs])), ', '.join(logs[0]['duts'])] + t_str(logs) for n, logs in data.items() if len(logs)]
-        print_table(rows, header=['Batch', 'Events', 'Runs', 'DUTs', 'Begin', 'End'])
-
-    def show_custom(self, dut_nr=0, dut=None):
         rows = []
-        batches = [Batch(n, dut_nr, self.BeamTest, self.Log) for n, runs in self.Custom.items() if len(self.Log[str(runs[0])]['duts']) > dut_nr]
-        batches = list(filter(lambda x: x.DUT.Name == dut, batches)) if dut is not None else batches
-        irrs = array([i.DUT.get_irradiation(self.DataDir.name.replace('-', '')) for i in batches]).astype('d')
-        for i, b_ in enumerate(batches):
-            tc = self.DataDir.name.replace('-', '')
-            bt = tex.multirow(datetime.strptime(tc, '%Y%m').strftime('%b%y'), len(batches)) if not i else ''
-            irr = f'{irrs[i]:.1f}' if not all(irrs == irrs[0]) else tex.multirow(f'{irrs[i]:.1f}', len(batches)) if not i else ''
-            rows.append([bt, irr, b_.Name, f'{tex.num_range(*b_.RunNrs[[0, -1]])} ({b_.Size})', 'data', b_.DUT.Bias, ev2str(b_.n_ev)])
-        print(tex.table(None, rows=rows))
+        log = {int(i): dic for i, dic in self.Log.items()}
+        for n, rs in load_batches(self.BeamTest).items():
+            duts, rs = (rs.keys(), list(rs.values())[0]) if type(rs) is dict else (log[rs[0]]['duts'], rs)
+            t_str = [f'{datetime.fromtimestamp(t)}'[-8:-3] for t in [log[rs[0]]['start'], log[rs[-1]]['end']]]
+            rows.append([n, f'{rs[0]:03d}-{rs[-1]:03d}', ev2str(sum([log[i]['events'] for i in rs])), ', '.join(duts)] + t_str)
+        print_table(rows, header=['Batch', 'Runs', 'Events', 'DUTs', 'Begin', 'End'])
 
     def find_runs(self, dut, bias, min_run=0):
         return array([run.Number for run in self.Runs if dut in run.DUTs and int(run.Info['hv'][run.DUTs.index(dut)]) == bias and run >= min_run])  # noqa
@@ -151,7 +159,8 @@ class DUTBatch(Batch):
         return True
 
     def load_runs(self, dut_nr=None):
-        return [Run.from_dut_name(nr, dut_name, self.DataDir, self.Log) for dut_name, nrs in self.Custom[self.Name].items() for nr in nrs if self.run_is_good(nr)]
+        batches = load_batches(self.BeamTest)
+        return [Run.from_dut_name(nr, dut_name, self.DataDir, self.Log) for dut_name, nrs in batches[self.Name].items() for nr in nrs]
 
 
 class Run:
@@ -224,7 +233,7 @@ class Run:
 
 
 class Ensemble(object):
-    """ General enseble class for runs. """
+    """ General enseble class for runs and batches. """
 
     FilePath = Dir.joinpath('ensembles', 'scans.json')
 
@@ -255,14 +264,13 @@ class Ensemble(object):
         return d[self.Name]
 
     def init_units(self):
-        return [self.init_run(name, bt) if isint(name) else self.init_batch(name, bt) for bt in self.Dic for name in self.Dic[bt]]
+        return [self.init_run(n, bt) if isint(n) else self.init_batch(n, bt) for bt in self.Dic for n in self.Dic[bt]]
 
     def init_run(self, run_number, bt):
         return Run(run_number, self.Logs[bt][str(run_number)]['duts'].index(self.DUTName), self.BeamTests[bt].Path, self.Logs[bt])
 
     def init_batch(self, name, bt):
-        dut_nr = Batch.find_dut_numbers(name, self.DUTName, self.Logs[bt], self.BeamTests[bt])[0]  # TODO: update if batches with varying dut_nrs are implemented
-        return Batch(name, dut_nr, self.BeamTests[bt], self.Logs[bt])
+        return init_batch(name, self.DUTName, self.BeamTests[bt], self.Logs[bt])
 
     @property
     def biases(self):
@@ -273,10 +281,12 @@ if __name__ == '__main__':
 
     from argparse import ArgumentParser
     p_ = ArgumentParser()
-    p_.add_argument('b', nargs='?', default='16b')
+    p_.add_argument('b', nargs='?', default='1a')
     p_.add_argument('-a', action='store_true')
     p_.add_argument('-all', action='store_true')
     args = p_.parse_args()
+
+    beam_tests = [Analysis.load_test_campaign(str(bt)) for ls in Analysis.Locations.values() for bt in ls]
 
     a = Analysis()
     b = init_batch(None if args.all else args.b, 0, a.BeamTest)
