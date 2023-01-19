@@ -282,7 +282,7 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
         return f['data']
 
 
-def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
+def do_pickle(path, func=None, value=None, redo=False, *args, **kwargs):
     if value is not None:
         with open(path, 'wb') as f:
             pickle.dump(value, f)
