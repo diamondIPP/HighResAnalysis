@@ -37,7 +37,6 @@ def load_batches(bt: BeamTest, redo=False):
     tmp_file = Analysis.MetaDir.joinpath('ensembles', f'{bt.Tag}.pickle')
     tmp_file.parent.mkdir(exist_ok=True)
 
-
     if tmp_file.exists() and not redo:
         h1, h2, bs = do_pickle(tmp_file)
         if file_hash(log_file) == h1 and file_hash(custom_file) == h2:
