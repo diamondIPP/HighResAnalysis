@@ -75,21 +75,28 @@ def res_analysis(cls):
             return array([Gauss(f(show=False, cut=cut, pl=pl), thresh=.05).fit()[1:] for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])]) / (1 if local else 1e3)
 
         @staticmethod
-        def mean_std(f, local=False, cut=None, pl=None, thresh=.3):
+        def mean_std(f, cut=None, pl=None, thresh=.3, rf=0.):
             """estimate mean and std from the residual distribution"""
             h = f(show=False, cut=cut, pl=pl, w=5, save=False)
-            set_x_range(*ax_range(h=h, thresh=thresh * h.GetMaximum()))
-            return array([ufloat(h.GetMean(), h.GetMeanError()), ufloat(h.GetStdDev(), h.GetStdDevError())]) / (1 if local else 1e3)
+            set_x_range(*ax_range(h=h, thresh=thresh * h.GetMaximum(), fl=rf, fh=rf))
+            return array([ufloat(h.GetMean(), h.GetMeanError()), ufloat(h.GetStdDev(), h.GetStdDevError())]) / 1e3
 
         @save_pickle('Res', suf_args='all', field='DUT')
-        def mean_stds(self, local=False, cut=None, pl=None, thresh=.3, _redo=False):
-            return array([self.mean_std(f, local, cut, pl, thresh) for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])])
+        def mean_stds(self, local=False, cut=None, pl=None, thresh=.3, rf=0., _redo=False):
+            return array([self.mean_std(f, cut, pl, thresh, rf) for f in ([self.draw_x, self.draw_y] if local else [self.draw_u, self.draw_v])])
 
         def means(self, local=False, cut=None, pl=None, redo=False):
             return self.mean_stds(local, cut, pl, _redo=redo)[:, 0]
 
         def std(self, local=False, cut=None, pl=None, redo=False):
             return self.mean_stds(local, cut, pl, _redo=redo)[:, 1]
+
+        def raw_mean_stds(self, local=False, pl=None, redo=False):
+            """:returns mean and STD [um] in x and y only using the residual cut"""
+            return self.mean_stds(local, cut=self.Cut['res'], pl=pl, rf=.5, _redo=redo) * 1e3
+
+        def raw_stds(self, local=False, pl=None, redo=False):
+            return self.raw_mean_stds(local, pl, redo=redo)[:, 1]
 
         def show(self, redo=False):
             x, y = self.mean_stds(_redo=redo) * 1e3
