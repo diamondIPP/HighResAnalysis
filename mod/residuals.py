@@ -186,8 +186,8 @@ def res_analysis(cls):
             cut = self.Cut(cut) & (self.Cut['res'] if 'res' in self.Cut.names else True)
             x, y = transform(*self.get_xy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[:2]  # convert to mm
             tx, ty = transform(*self.get_txy(local=True, cut=cut, pl=pl), sx, sy) if d is None else d[2:]
-            d = self.rotate(x, y, *((tx, ty) if m is None else m_transform(m, *d[2:])), p=p)
-            t = self.translate(*d[:4])
+            d = self.find_rot(x, y, *((tx, ty) if m is None else m_transform(m, *d[2:])), p=p)
+            t = self.find_trans(*d[:4])
             self.Rot.append(d[4])
             self.Trans.append(t)
             m = choose(m, identity(3)) @ matrix(1, 1, *t, rx=d[4], order='str')
@@ -200,11 +200,11 @@ def res_analysis(cls):
         def draw_align(self, imax=20):
             self.align(imax=imax, _redo=True)
             x = arange(imax)
-            self.Draw.graph(x, self.Rot, x_tit='Iteration', y_tit='Rotation Angle [rad]')
-            self.Draw.multigraph([self.Draw.graph(x, m, x_tit='Iteration', y_tit='Mean Residual [mm]', show=False) for m in array(self.Trans).T], 'Residuals', ['x', 'y'])
+            self.Draw.graph(x, self.Rot, x_tit='Iteration', y_tit='Rotation Angle [rad]', file_name='AlignRot')
+            self.Draw.multigraph([self.Draw.graph(x, m, x_tit='Iteration', y_tit='Mean Residual [mm]', show=False) for m in array(self.Trans).T], 'Residuals', ['x', 'y'], file_name='AlignTrans')
 
         @staticmethod
-        def rotate(*d, p):
+        def find_rot(*d, p):
             x, y, tx, ty = d
             dx, dy = x - tx, y - ty
             qx, qy = quantile([dx, dy], [p, 1 - p], axis=1).T
@@ -214,7 +214,7 @@ def res_analysis(cls):
             return x, y, *transform(tx, ty, rx=r), r
 
         @staticmethod
-        def translate(*d):
+        def find_trans(*d):
             x, y, tx, ty = d
             return mean([x - tx, y - ty], axis=1)
         # endregion ALIGN
