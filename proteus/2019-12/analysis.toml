@@ -1,4 +1,4 @@
-[recon]
+[recon.straight3d]
 sensor_ids = [0,1,2,3,4,5,6,7]
 tracking_ids = [0,1,2,3,4,5]
 num_points_min = 5
@@ -6,7 +6,7 @@ search_spatial_sigma_max = 50.0
 extrapolation_ids = [0,1,2,3,4,5,6,7]
 track_fitter = "straight3d"
 
-[recon.gbl3d]
+[recon]
 tracking_ids = [0,1,2,3,4,5]
 extrapolation_ids = [0,1,2,3,4,5,6,7]
 search_spatial_sigma_max = 10.0
