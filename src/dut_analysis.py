@@ -485,6 +485,11 @@ class DUTAnalysis(Analysis):
         g = self.Draw.profile(x, y, **self.t_args(), graph=True, y_tit=self.get_ph_tit(e), stats=True, show=False)
         return self.Draw(g, **prep_kw(dkw, y_range=ax_range(graph_y(g, err=False), fl=1, fh=2), file_name='PhTime'))
 
+    def draw_signal_vs_r(self, cut=None, **dkw):
+        rmax = min(self.DUT.PXYu / 2)
+        r, phi, ph = self.r_phi(fz=self.get_phs, cut=cut)
+        return self.Draw.profile(r[r < rmax], ph[r < rmax], **prep_kw(dkw, title='PhVsR', y_tit=self.ph_tit, x_tit='Radius from r/o column [#mum]', file_name='PhR', graph=True))
+
     def fit_signal(self, bw=None, e=False, **dkw):
         g = self.draw_signal_trend(bw, e, show=False)
         fit = FitRes(g.Fit('pol0', 'sq'))
@@ -548,6 +553,10 @@ class DUTAnalysis(Analysis):
         (x, y), e = concatenate([d + [i, j] for i in [-mx, 0, mx] for j in [-my, 0, my]]).T, tile(z_, 9)  # copy arrays in each direction
         cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
         return x[cut], y[cut], e[cut]
+
+    def r_phi(self, cut=None, fz=None):
+        x, y, zz = self.contracted_vars(*1 / self.DUT.RXY, fz=fz, cut=cut, expand=False)
+        return [*cart2pol(x - self.DUT.PXu / 2, y - self.DUT.PYu / 2), zz]
 
     def draw_in(self, mx, my, ox=0, oy=0, n=None, cut=None, fz=None, dc=False, dr=False, expand=True, **dkw):
         mx *= 2 if dc else 1
