@@ -448,8 +448,8 @@ class DUTAnalysis(Analysis):
     # region SIGNAL
     def r_ph_cols(self, r=7, only_corners=True):
         """:returns ratio of pulse heights in a radius [r] around the readout and bias columns. """
-        rcut = self.Cut.make_rcol_pix_fiducial(r) if only_corners else self.Cut.make_rcol_cell_fiducial(r)
-        return self.ph(cut=self.Cut.add(rcut)) / self.ph(cut=self.Cut.add(self.Cut.make_bcol_fiducial(r)))
+        bcut = self.Cut.corner_bias_cols(r) if only_corners else self.Cut.bias_cols(r)
+        return self.ph(cut=self.Cut.add(bcut)) / self.ph(cut=self.Cut.add(self.Cut.readout_cols(r)))
 
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, qscale=None, **dkw):
         return self.Draw.distribution(self.get_phs(e, cut, qscale), **prep_kw(dkw, title='PH', x_tit=self.get_ph_tit(e, qscale), leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
