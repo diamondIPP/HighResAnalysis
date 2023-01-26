@@ -55,6 +55,7 @@ class DUT(Device):
             self.PXY = self.PXYu / 1e3  # in mm
             self.PX, self.PY = self.PXY
             self.PXu, self.PYu = self.PXYu
+            self.RX, self.RY = self.Plane.PXY / self.PXY
         self.Vcal2e = Analysis.Config.get_float('DUT', 'vcal to electrons')
         self.Vcal2ke = self.Vcal2e / 1e3
 
