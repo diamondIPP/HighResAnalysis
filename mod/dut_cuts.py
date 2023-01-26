@@ -3,7 +3,7 @@
 #       cuts for analysis of a single DUT
 # created on March 26th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones, isnan
+from numpy import array, invert, all, zeros, quantile, max, inf, sqrt, where, ndarray, any, append, ones, isnan, arange
 
 from plotting.draw import make_box_args, Draw, prep_kw, TCutG, Config, cart2pol
 from src.cut import Cuts
@@ -174,28 +174,46 @@ class DUTCut(Cuts):
         cut_value = self.get_config('max cluster size', dtype=int)
         return None if cut_value is None else self.Ana.get_cluster_size(cut=False) <= cut_value
 
-    def make_pixel_fiducial(self, r0, r1=0, ox=0, oy=0):
+    def cols(self, r0, r1=0, cell=True, bias=True):
+        """select a circle or circular disk around all 3D columns."""
         r0, r1 = sorted([r0, r1])
-        x, y, zz = self.Ana.contracted_vars(cut=0, ox=self.Ana.Plane.PXu / 2 - ox, oy=self.Ana.Plane.PYu / 2 - oy, expand=False)  # move 0 to the centre of the pixel
-        r, phi = cart2pol(x - self.Ana.Plane.PXu / 2, y - self.Ana.Plane.PYu / 2)  # centre around 0
+        mxy = 1 / self.Ana.DUT.RXY if cell else [1, 1]
+        ox, oy = self.Ana.Plane.PXYu / self.Ana.DUT.RXY / 2
+        x, y, zz = self.Ana.contracted_vars(*mxy, *[ox, oy] if bias else [0, 0], cut=0, expand=False)  # move column to the centre of the pixel
+        r, phi = cart2pol(x - ox, y - oy)  # centre around 0
         return (r0 <= r) & (r <= r1)
 
-    @save_hdf5(suf_args='all')
-    def make_cell_fiducial(self, r0, r1=0, ox=0, oy=0):
+    def _bias_cols(self, col_pos, r0, r1=0, ox=0, oy=0):
+        """select a circle or circular disk around all a give set of bias columns."""
         r0, r1 = sorted([r0, r1])
-        mx, my = self.Ana.DUT.PXY / self.Ana.Plane.PXY
-        x, y, zz = self.Ana.contracted_vars(mx, my, cut=0, ox=self.Ana.DUT.PXu / 2 - ox, oy=self.Ana.DUT.PYu / 2 - oy, expand=False)  # move 0 to the centre of the pixel
-        r, phi = cart2pol(x - self.Ana.DUT.PXu / 2, y - self.Ana.DUT.PYu / 2)  # centre around 0
-        return (r0 <= r) & (r <= r1)
+        x, y, zz = self.Ana.contracted_vars(cut=0, expand=False, ox=ox, oy=oy)
+        cuts = []
+        for ix, iy in col_pos:
+                r, phi = cart2pol(x - ix - ox, y - iy - oy)  # move column centre to 0
+                cuts.append((r0 <= r) & (r <= r1))
+        return any(cuts, axis=0) if cuts else True
 
-    def make_bcol_fiducial(self, r0, r1=0):
-        return self.make_cell_fiducial(r0, r1, *self.Ana.DUT.PXYu / 2)
+    def readout_cols(self, r0, r1=0):
+        """select a circle or circular disk around all readout columns"""
+        return self.cols(r0, r1, bias=False)
 
-    def make_rcol_pix_fiducial(self, r0, r1=0):
-        return self.make_pixel_fiducial(r0, r1)
+    def bias_cols(self, r0, r1=0):
+        """select a circle or circular disk around all bias columns"""
+        return self.cols(r0, r1)
 
-    def make_rcol_cell_fiducial(self, r0, r1=0):
-        return self.make_cell_fiducial(r0, r1)
+    def corner_bias_cols(self, r0, r1=0):
+        """select a circle or circular disk around the bias columns in the corners of the pixel"""
+        return self.cols(r0, r1, cell=False)
+
+    def inner_bias_cols(self, r0, r1=0):
+        """select a circle or circular disk around the inner bias columns not touching the edges of the pixel."""
+        col_pos = [[ix, iy] for ix in arange(1, self.Ana.DUT.RX) * self.Ana.DUT.PXu for iy in arange(1, self.Ana.DUT.RY) * self.Ana.DUT.PYu]
+        return self._bias_cols(col_pos, r0, r1)
+
+    def outer_bias_cols(self, r0, r1=0):
+        """select a circle or circular disk around the outer bias columns on the edges of the pixel."""
+        col_pos = array([[ix, 0] for ix in arange(1, self.Ana.DUT.RX) * self.Ana.DUT.PXu] + [[0, iy] for iy in arange(1, self.Ana.DUT.RY) * self.Ana.DUT.PYu])
+        return self._bias_cols(col_pos, r0, r1, *self.Ana.DUT.PXYu / 2)
     # endregion GENERATE
     # ----------------------------------------
 
