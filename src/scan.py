@@ -61,7 +61,7 @@ class Scan(Ensemble):
         return Draw.legend(h, choose(self.x2str, titles), **kwargs)
 
     def init_analyses(self, verbose, test):
-        return [BatchAnalysis.from_batch(u, verbose, test) if type(u) is Batch else DUTAnalysis.from_run(u, verbose, test) for u in self.Units]
+        return [BatchAnalysis.from_batch(u, verbose, test) if isinstance(u, Batch) else DUTAnalysis.from_run(u, verbose, test) for u in self.Units]
 
     def draw_graph(self, y, t=False, **dkw):
         x = self.t() if t else self.x()
