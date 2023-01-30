@@ -368,13 +368,14 @@ class DUTAnalysis(Analysis):
     def draw_hitmap(self, bw=.3, local=True, cut=False, fid=False, **dkw):
         return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
 
-    def draw_dead_pixel_map(self, thresh=.01, **dkw):
+    def draw_dead_pixel_map(self, nsigma=5, **dkw):
         """ :returns map of dead pixels within the full avtive area of the detector (if available, else in the fiducial region). """
         fid = self.Cut.get_full_fid() if 'full size' in self.Cut.Config.options() else self.Cut.get_fid()
         x, y, e = hist_xyz(self.draw_occupancy(cut=False, save=False), flat=True, z_sup=False, err=False, grid=True)
         d = array([x, y]).T
         cut = self.Cut.points_in_polygon(d, fid)
-        cut &= e < mean(e[cut]) * thresh
+        m, s = mean_sigma(e[cut], err=False)
+        cut &= e <= max(1, m - s * nsigma)
         return self.Draw.histo_2d(*d[cut].T - .5, bins.get_local(self.Plane), **prep_kw(dkw, title='Dead Pixel Map', **self.ax_tits(local=True), file_name='DeadPixMap', draw_opt='col',
                                                                                              leg=self.Cut.get_fid()))
 
