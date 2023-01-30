@@ -447,12 +447,12 @@ class DUTAnalysis(Analysis):
         g = [self.Draw.graph(*get_3d_correlations(self.Draw.histo_3d(t, d0[i], d1[i]), thresh=thresh), y_tit='Correlation Factor', show=False) for i in range(2)]
         return self.Draw.multigraph(g, 'CorrFac', ['x', 'y'], draw_opt='pl', **prep_kw(dkw, **self.t_args(), y_range=[-1.05, 1.05], file_name='CorrTrend'))
 
-    def draw_alignment(self, pl=2, thresh=.3, **dkw):
+    def draw_ev_alignment(self, pl=2, thresh=.3, **dkw):
         gx, gy = self.draw_correlation_trend(pl, show=False).GetListOfGraphs()
         (t, x), y = graph_xy(gx, err=False), graph_y(gy, err=False)
         r = [1 if abs(ix) > thresh and abs(iy) > thresh else 2 for ix, iy in zip(x, y)]
         x, y = t.repeat(r), ones(sum(r))
-        binning = bins.from_vec(graph_x(gx)) + [3, 0, 3]
+        binning = bins.from_vec(graph_x(gx, err=False)) + [3, 0, 3]
         gStyle.SetPalette(3, array([1, 633, 418], 'i'))
         self.Draw.histo_2d(x, y, binning, 'Event Alignment', **prep_kw(dkw, **self.t_args(), y_tit='Alignment', stats=False, l_off_y=99, center_y=True, draw_opt='col', z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
