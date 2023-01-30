@@ -365,8 +365,23 @@ class DUTAnalysis(Analysis):
         pl = self.Plane if local else self.Planes[0]
         return self.Draw.histo_2d(x, y, bins.get_xy(local, pl, bw, aspect_ratio=True), 'ClusterOcc', **prep_kw(dkw, qz=.99, z0=0, **self.ax_tits(local), file_name='Occupancy'))
 
-    def draw_hit_map(self, bw=.3, local=True, cut=False, fid=False, **dkw):
+    def draw_hitmap(self, bw=.3, local=True, cut=False, fid=False, **dkw):
         return self.Tracks.draw_map(bw, local, self.Cut.get_nofid(cut, fid), local, **prep_kw(dkw, leg=self.Cut.get_fid() if local else None, title='HitMap', file_name='HitMap'))
+
+    def draw_dead_pixel_map(self, thresh=.01, **dkw):
+        """ :returns map of dead pixels within the full avtive area of the detector (if available, else in the fiducial region). """
+        fid = self.Cut.get_full_fid() if 'full size' in self.Cut.Config.options() else self.Cut.get_fid()
+        x, y, e = hist_xyz(self.draw_occupancy(cut=False, save=False), flat=True, z_sup=False, err=False, grid=True)
+        d = array([x, y]).T
+        cut = self.Cut.points_in_polygon(d, fid)
+        cut &= e < mean(e[cut]) * thresh
+        return self.Draw.histo_2d(*d[cut].T - .5, bins.get_local(self.Plane), **prep_kw(dkw, title='Dead Pixel Map', **self.ax_tits(local=True), file_name='DeadPixMap', draw_opt='col',
+                                                                                             leg=self.Cut.get_fid()))
+
+    def draw_noise_map(self, **dkw):
+        """ :returns map of noise pixels identified by proteus. """
+        return self.Draw.histo_2d(*self.get_mask(), bins.get_xy(True, self.Plane), **prep_kw(dkw, title='Noise Map', **self.ax_tits(local=True), file_name='NoiseMap', draw_opt='col',
+                                                                                             leg=self.Cut.get_fid()))
 
     def draw_cluster_size(self, cut=None, pl=None, **dkw):
         v = self.get_cluster_size(self.Cut.exclude('cs', cut), pl)
@@ -464,7 +479,7 @@ class DUTAnalysis(Analysis):
         return self.draw_signal_distribution(cut, draw_thresh, e=True, **dkw)
 
     def draw_low_ph_map(self, cmax, cmin=None, res=.5, **dkw):
-        self.draw_hit_map(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
+        self.draw_hitmap(res, cut=self.Cut.get_nofid() & self.Cut.make_ph(cmax, cmin), **prep_kw(dkw, file_name=f'LowPH{cmax}'))
 
     def draw_signal_map(self, res=.3, fid=False, cut=None, qscale=None, pix_grid=False, local=True, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [partial(self.get_txy, local=local), partial(self.get_phs, qscale=qscale)]]
