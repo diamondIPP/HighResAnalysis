@@ -397,6 +397,11 @@ class DUTAnalysis(Analysis):
         h = self.Draw.distribution(self.get_trigger_phase(self.Cut.exclude('tp', cut)), bins.TP, **prep_kw(dkw, title='Trigger Phase', x_tit='Trigger Phase'))
         return self.Draw(h, **prep_kw(dkw, y_range=[0, 1.1 * h.GetMaximum()], file_name='TriggerPhase'))
 
+    def draw_tp_map(self, res=.2, local=True, cut=None, fid=False, **dkw):
+        cut = self.Cut.get_nofid(self.Cut.exclude('tp', cut), fid)
+        (x, y), tp = self.get_txy(local, cut), self.get_trigger_phase(cut)
+        return self.Draw.prof2d(x, y, tp, bins.get_xy(local, self.Plane, res), 'Cluster Size', **prep_kw(dkw, qz=.98, z0=1, z_tit='Trigger Phase', **self.ax_tits(local), file_name='TPMap'))
+
     def draw_time(self, cut=None, **dkw):
         t = self.time(cut)
         g = self.Draw.profile(arange(t.size), t, title='Time', **prep_kw(dkw, markersize=.6, x_tit='Event Number', y_tit='Time [hh:mm]', draw_opt='aplx', graph=True))
@@ -610,8 +615,10 @@ class DUTAnalysis(Analysis):
     def draw_cs_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
         return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_cluster_size, tit='CS', **prep_kw(dkw, qz=.98, z0=1, pal=53, z_tit='Cluster Size'))
 
-    def draw_tp_in_pixel(self, n=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in_pixel(ox, oy, n, self.Cut.exclude('tp', cut), fz=self.get_trigger_phase, tit='TP', **prep_kw(dkw, pal=53, z_tit='Trigger Phase'))
+    def draw_tp_in_pixel(self, n=None, ox=0, oy=0, cut=None, tp=None, **dkw):
+        cut = self.Cut.exclude('tp', cut) & (True if tp is None else self.get_trigger_phase(cut=0) == tp)
+        tit = f'TP{"" if tp is None else tp}'
+        return self.draw_in_pixel(ox, oy, n, cut, fz=self.get_trigger_phase if tp is None else None, tit=tit, **prep_kw(dkw, pal=53, z_tit='Trigger Phase' if tp is None else None))
 
     def draw_columns(self, show=True):
         if hasattr(self.DUT, 'ColumnDiameter'):
