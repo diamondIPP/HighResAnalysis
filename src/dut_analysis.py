@@ -221,6 +221,7 @@ class DUTAnalysis(Analysis):
     def get_phs(self, e=False, cut=None, qscale=None):
         x = self.get_data('Clusters', 'Charge', cut) * (self.DUT.Vcal2ke if e else 1)
         return x if qscale is None else x / quantile(x, qscale)
+    phs = get_phs
 
     def ph(self, cut=None):
         return mean_sigma(self.get_phs(cut=cut))[0]
@@ -348,6 +349,11 @@ class DUTAnalysis(Analysis):
     def segment_centres(self, nx, ny, width=False):
         x, y = self.segments(nx, ny, width)
         return x[:-1] + diff(x) / 2, y[:-1] + diff(y) / 2
+
+    def segment_values(self, nx=2, ny=2, f=None, cut=None):
+        sx, sy = self.segments(nx, ny)
+        (x, y), zz = self.get_txy(local=True, cut=cut), choose(f, self.phs, cut=cut)
+        return [zz[(x >= sx[i]) & (x <= sx[i + 1]) & (y >= sy[j]) & (y <= sy[j + 1])] for i in range(sx.size - 1) for j in range(sy.size - 1)]
     # endregion MISC
     # ----------------------------------------
 
@@ -493,6 +499,10 @@ class DUTAnalysis(Analysis):
         obj = (self.draw_pixel_grid() if pix_grid else []) + [self.Cut.get_fid(local=local)]
         return self.Draw.prof2d(x, y, z_, bins.get_xy(local, self.Plane, res), 'Charge Map', **prep_kw(dkw, qz=.95, leg=obj, z_tit=zt, **self.ax_tits(local), file_name='SignalMap'))
 
+    def draw_segment_map(self, nx=2, ny=2, cut=None, **dkw):
+        (x, y), zz = self.get_txy(cut=cut), self.phs(cut=cut)
+        return self.Draw.prof2d(x, y, zz, bins.make2d(*self.segments(nx, ny)), **prep_kw(dkw, **self.ax_tits(), z_tit=self.ph_tit, file_name=f'Segment{nx}x{ny}Map'))
+
     def draw_signal_occupancy(self, fid=False, cut=None, **dkw):
         (x, y), z_ = [f(cut=self.Cut.get_nofid(cut, fid)) for f in [self.get_xy, self.get_phs]]
         self.Draw.prof2d(x, y, z_, self.loc_bins, 'Charge Occupancy', **prep_kw(dkw, leg=self.Cut.get_fid(), z_tit=self.ph_tit, **self.ax_tits()))
@@ -538,6 +548,10 @@ class DUTAnalysis(Analysis):
         self.info(f'Uniformity: {value:.2f}')
         self.Draw(h, **prep_kw(dkw, file_name='Uniformity', leg=leg, normalise=True, stats=set_statbox(w=.35, all_stat=True)))
         return m, fwhm, value
+
+    def draw_segment_dists(self, nx=2, ny=2, **dkw):
+        h = [self.Draw.distribution(v, **prep_kw(dkw, x_tit=self.ph_tit)) for v in self.segment_values(nx, ny)]
+        return self.Draw.stack(h, 'SegmentDists', [f'{i}-{j}' for i in range(nx) for j in range(ny)], **prep_kw(dkw, scale=True, file_name=f'Segment{nx}x{ny}Dists'))
     # endregion SIGNAL
     # ----------------------------------------
 
