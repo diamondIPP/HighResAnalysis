@@ -83,10 +83,13 @@ class Scan(Ensemble):
     def draw_r_ph_cols(self, t=False, r=7, **dkw):
         return self.draw_graph(self.values(DUTAnalysis.r_ph_cols, r=r), t, **prep_kw(dkw, y_tit='Pulse Height Ratio', file_name='RPHCols'))
 
-
     def draw_ph_dists(self, **dkw):
         h = [ana.draw_signal_distribution(save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
         return self.Draw.stack(h, 'PHDists', self.x2str(), **prep_kw(dkw, scale=True, file_name='PhDists'))
+
+    def draw_ph_around_cols(self, r0=7, r1=0, **dkw):
+        h = [ana.draw_signal_around_cols(r0, r1, save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
+        return self.Draw.stack(h, 'PHDistsCols', self.x2str(), **prep_kw(dkw, scale=True, file_name='PhDistsCols'))
 
 
 class VScan(Scan):

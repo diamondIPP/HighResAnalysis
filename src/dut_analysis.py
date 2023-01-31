@@ -353,7 +353,7 @@ class DUTAnalysis(Analysis):
     def segment_values(self, nx=2, ny=2, f=None, cut=None):
         sx, sy = self.segments(nx, ny)
         (x, y), zz = self.get_txy(local=True, cut=cut), choose(f, self.phs, cut=cut)
-        return [zz[(x >= sx[i]) & (x <= sx[i + 1]) & (y >= sy[j]) & (y <= sy[j + 1])] for i in range(sx.size - 1) for j in range(sy.size - 1)]
+        return [zz[(x >= sx[i]) & (x <= sx[i + 1]) & (y >= sy[j]) & (y <= sy[j + 1])] for j in range(sy.size - 1) for i in range(sx.size - 1)]  # second for loop runs first
     # endregion MISC
     # ----------------------------------------
 
@@ -480,6 +480,9 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_distribution(self, cut=None, draw_thresh=False, e=False, qscale=None, **dkw):
         return self.Draw.distribution(self.get_phs(e, cut, qscale), **prep_kw(dkw, title='PH', x_tit=self.get_ph_tit(e, qscale), leg=self.draw_trim(e, draw_thresh), file_name='SignalDist'))
+
+    def draw_signal_around_cols(self, r0=7, r1=0, **dkw):
+        return self.draw_signal_distribution(cut=self.Cut.add(self.Cut.readout_cols(r0, r1)), **dkw)
 
     def draw_trim(self, e, thresh=False):
         if self.Calibration.Trim is None:
