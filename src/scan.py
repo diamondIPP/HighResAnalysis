@@ -6,6 +6,7 @@
 
 from src.run import Ensemble, Dir
 from src.batch_analysis import DUTAnalysis, BatchAnalysis, Batch
+from mod.dut_cuts import DUTCut
 from numpy import array
 from plotting.save import prep_kw, SaveDraw, Path, Draw, datetime, choose, rm_key
 from utility.utils import bias2rootstr
@@ -22,6 +23,7 @@ class Scan(Ensemble):
 
         self.Anas = self.init_analyses(verbose, test)
         self.Draw = SaveDraw(self, results_dir=self.Name)
+        self.Cut = DUTCut
 
     @property
     def server_save_dir(self):
@@ -45,8 +47,12 @@ class Scan(Ensemble):
     def n_ev(self):
         return sum([u.n_ev for u in self.Units])
 
-    def values(self, f, *args, **kwargs):
-        return array([f(ana, *args, **kwargs) for ana in self.Anas])
+    def values(self, f, cuts=None, *args, **kwargs):
+        return array([f(ana, *args, **kwargs) for ana in self.Anas] if cuts is None else [f(ana, cut=cut, *args, **kwargs) for ana, cut in zip(self.Anas, cuts)])
+
+    def cuts(self, f, add=True, *args, **kwargs):
+        cuts = [f(ana.Cut, *args, **kwargs) for ana in self.Anas]
+        return [ana.Cut.add(c) for c, ana in zip(cuts, self.Anas)] if add else cuts
 
     def t(self):
         return self.values(DUTAnalysis.mean_time)
@@ -55,7 +61,7 @@ class Scan(Ensemble):
         return self.t()
 
     def x2str(self):
-        return [datetime.fromtimestamp(i).strftime('%H:%M') for i in self.x()]
+        return [datetime.fromtimestamp(i.n).strftime('%H:%M') for i in self.x()]
 
     def legend(self, h, titles=None, **kwargs):
         return Draw.legend(h, choose(self.x2str, titles), **kwargs)
@@ -68,20 +74,25 @@ class Scan(Ensemble):
         fname = f'{dkw.pop("file_name")}{"Time" if t else ""}' if 'file_name' in dkw else None
         return self.Draw.graph(x, y, **prep_kw(dkw, **Scan.XArgs if t else self.XArgs, file_name=fname))
 
-    def draw_efficiency(self, t=False, **dkw):
-        return self.draw_graph(self.values(DUTAnalysis.eff), t, **prep_kw(dkw, y_tit='Efficiency [%]', file_name='Eff'))
+    def draw_2vars(self, fx, fy, cuts=None, **dkw):
+        x, y = [self.values(f, cuts) for f in [fx, fy]]
+        g = [self.Draw.graph([ix], [iy]) for ix, iy in zip(x, y)]
+        return self.Draw.multigraph(g, 'tit', self.x2str(), **prep_kw(dkw, file_name='test'))
 
-    def draw_current(self, t=False, **dkw):
-        return self.draw_graph(self.values(DUTAnalysis.current), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
+    def draw_efficiency(self, t=False, cuts=None, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.eff, cuts), t, **prep_kw(dkw, y_tit='Efficiency [%]', file_name='Eff'))
 
-    def draw_pulse_height(self, t=False, **dkw):
-        return self.draw_graph(self.values(DUTAnalysis.ph), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
+    def draw_current(self, t=False, cuts=None, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.current, cuts), t, **prep_kw(dkw, y_tit='Current [nA]', file_name='Curr'))
 
-    def draw_cluster_size(self, t=False, **dkw):
-        return self.draw_graph(self.values(DUTAnalysis.cs), t, **prep_kw(dkw, y_tit='Cluster Size', file_name='CS'))
+    def draw_pulse_height(self, t=False, cuts=None, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.ph, cuts), t, **prep_kw(dkw, y_tit='Pulse Height [vcal]', file_name='PH'))
 
-    def draw_r_ph_cols(self, t=False, r=7, **dkw):
-        return self.draw_graph(self.values(DUTAnalysis.r_ph_cols, r=r), t, **prep_kw(dkw, y_tit='Pulse Height Ratio', file_name='RPHCols'))
+    def draw_cluster_size(self, t=False, cuts=None, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.cs, cuts), t, **prep_kw(dkw, y_tit='Cluster Size', file_name='CS'))
+
+    def draw_r_ph_cols(self, t=False, cuts=None, r=7, **dkw):
+        return self.draw_graph(self.values(DUTAnalysis.r_ph_cols, cuts, r=r), t, **prep_kw(dkw, y_tit='Pulse Height Ratio', file_name='RPHCols'))
 
     def draw_ph_dists(self, **dkw):
         h = [ana.draw_signal_distribution(save=False, **rm_key(dkw, 'save')) for ana in self.Anas]
@@ -103,7 +114,7 @@ class VScan(Scan):
         return array(self.biases)
 
     def x2str(self):
-        return bias2rootstr(*self.x())
+        return bias2rootstr(*self.x()).tolist()
 
 
 class TScan(Scan):
