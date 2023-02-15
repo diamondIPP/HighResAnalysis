@@ -287,8 +287,8 @@ class DUTAnalysis(Analysis):
     def alignment(self, pl):
         return self.Proteus.alignment()['sensors'][pl]
 
-    def eff(self):
-        return self.Efficiency.value()
+    def eff(self, cut=None):
+        return self.Efficiency.value(cut=cut)
 
     def current(self):
         return self.Currents()
