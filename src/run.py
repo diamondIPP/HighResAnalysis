@@ -12,6 +12,7 @@ from src.dut import DUT
 
 
 def load_runlog(p: Path):
+    print("Runlog Path:", p)
     f = p.joinpath(Analysis.Config.get('data', 'runlog file'))
     if not f.exists():
         warning('runlog file does not exist! -> creating new one!')
@@ -22,7 +23,7 @@ def load_runlog(p: Path):
 
 def load_nrs(p: Path):
     log = load_runlog(p)
-    return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green']
+    return [key for key, dic in log.items() if 'status' not in dic or dic['status'] == 'green' or dic['status'] == 'yellow']
 
 
 def init_batch(name, dut, beam_test: BeamTest, log=None):
